@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/modernist-793ea341-9454-47d6-bedf-3b1d6c882491/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="_ds/modernist-793ea341-9454-47d6-bedf-3b1d6c882491/_ds_bundle.js"></script>
+<style>
+:root{--font-heading:Archivo,'Golos Text',system-ui,sans-serif;--font-body:Archivo,'Golos Text',system-ui,sans-serif}
+body{margin:0;background:#e6e6ea;font-family:Archivo,'Golos Text',system-ui,sans-serif}
+a{color:var(--color-accent)}a:hover{color:var(--color-accent-600)}
+t-x{display:contents}t-x>i{font-style:normal}
+[data-lang="ru"] t-x>i:nth-child(2),[data-lang="en"] t-x>i:nth-child(1){display:none}
+@keyframes wspin{to{transform:rotate(360deg)}}
+.w-scr{height:100%;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:15px;--color-bg:#efeff4;--color-surface:#ffffff;--color-text:#1c1c1e;--color-divider:#e3e3e8;--color-accent:#007aff;--color-accent-600:#0069db;--color-accent-700:#0062cc}
+.w-scr[data-theme="dark"]{--color-bg:#000000;--color-surface:#1c1c1e;--color-text:#ffffff;--color-divider:rgba(255,255,255,.13);--color-accent:#0a84ff;--color-accent-600:#3d9bff;--color-accent-700:#6cb6ff}
+.w-hd{display:flex;align-items:center;gap:10px;padding:8px 14px 10px;flex:none}
+.w-back{border:0;background:color-mix(in srgb,var(--color-text) 6%,transparent);color:var(--color-text);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;display:grid;place-items:center}
+.w-title{font:800 17px/1.2 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.01em;flex:1}
+.w-body{flex:1;overflow:auto;padding:0 16px 22px}
+.w-k{font-size:12.5px;color:color-mix(in srgb,var(--color-text) 55%,transparent)}
+.w-lb{font-size:11.5px;letter-spacing:.02em;color:color-mix(in srgb,var(--color-text) 45%,transparent);padding:16px 4px 6px}
+.w-card{background:var(--color-surface);border-radius:22px;overflow:hidden;margin-top:2px}
+.w-row{display:flex;align-items:center;gap:13px;padding:14px 16px;background:transparent;width:100%;border:0;text-align:left;font:inherit;color:inherit}
+button.w-row{cursor:pointer}
+.w-row + .w-row{box-shadow:inset 0 1px 0 var(--color-divider)}
+button.w-row:hover{background:color-mix(in srgb,var(--color-text) 4%,transparent)}
+button.w-row:active{background:color-mix(in srgb,var(--color-text) 9%,transparent)}
+.w-ic{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--color-accent) 13%,transparent);color:var(--color-accent-700);font:800 14px Archivo,'Golos Text',system-ui,sans-serif}
+.w-row > span:not([class]){display:flex;flex-direction:column;min-width:0;flex:1}
+.w-t{font:600 15px/1.25 Archivo,'Golos Text',system-ui,sans-serif;display:block}
+.w-s{display:block;font-size:12.5px;line-height:1.35;color:color-mix(in srgb,var(--color-text) 52%,transparent);margin-top:2px}
+.w-ch{margin-left:auto;flex:none;color:color-mix(in srgb,var(--color-text) 30%,transparent);font-size:17px;line-height:1}
+.w-val{margin-left:auto;flex:none;font:800 14px Archivo,'Golos Text',system-ui,sans-serif}
+.w-tiles{display:flex;gap:8px;margin-top:18px}
+.w-tile{display:flex;flex-direction:column;align-items:center;gap:8px;background:transparent;border:0;cursor:pointer;color:inherit;flex:1;padding:0}
+.w-tileic{width:56px;height:56px;border-radius:50%;background:var(--color-surface);display:grid;place-items:center;color:var(--color-accent)}
+.w-ic svg{display:block}
+.w-tile:hover .w-tileic{background:color-mix(in srgb,var(--color-accent) 12%,transparent)}
+.w-tilelb{font-size:11.5px;line-height:1.25;text-align:center;color:color-mix(in srgb,var(--color-text) 60%,transparent)}
+.w-main{width:100%;border:0;border-radius:16px;background:var(--color-accent);color:#fff;font:800 16px Archivo,'Golos Text',system-ui,sans-serif;padding:16px;cursor:pointer;text-align:center;margin-top:18px}
+.w-main:hover{background:var(--color-accent-600)}
+.w-main:active{background:var(--color-accent-700)}
+.w-sec{width:100%;border:0;border-radius:16px;background:color-mix(in srgb,var(--color-text) 6%,transparent);color:var(--color-text);font:800 16px Archivo,'Golos Text',system-ui,sans-serif;padding:16px;cursor:pointer;text-align:center;margin-top:10px}
+.w-sec:hover{background:color-mix(in srgb,var(--color-text) 11%,transparent)}
+.w-track{height:8px;border-radius:99px;background:color-mix(in srgb,var(--color-text) 9%,transparent);overflow:hidden;margin-top:10px}
+.w-tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--color-divider);flex:none;padding-bottom:24px;background:var(--color-surface)}
+.w-tab{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:transparent;cursor:pointer;padding:8px 4px 4px;font:600 10.5px Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:0}
+.w-tab svg{display:block}
+.w-tab:hover{opacity:.75}
+.dv-turn{padding:40px 44px 32px;scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:800 10px Archivo,'Golos Text',system-ui,sans-serif,monospace;letter-spacing:.08em;padding:4px 9px;border-radius:99px;background:#1c1c1e;color:#fff;text-decoration:none}
+.dv-tname{font:800 13px/1.2 Archivo,'Golos Text',system-ui,sans-serif,sans-serif;color:#201e1d}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:800 10.5px Archivo,'Golos Text',system-ui,sans-serif,monospace;letter-spacing:.06em;padding:4px 9px;border-radius:99px;background:rgba(32,30,29,.1);color:#201e1d;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Archivo,'Golos Text',system-ui,sans-serif,sans-serif;color:rgba(32,30,29,.6)}
+.dv-card{background:#efeff4;border-radius:22px;box-shadow:0 3px 14px rgba(32,30,29,.07);overflow:hidden}
+.dv-opt:target .dv-oid{background:#007aff;color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.6 Archivo,'Golos Text',system-ui,sans-serif,sans-serif;color:rgba(32,30,29,.6)}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t3" data-lang="{{ lang }}">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname"><t-x><i>ocmanager — TMA в стилистике кошелькового мини-приложения: цифра-герой, круглые действия, сгруппированные списки</i><i>ocmanager — TMA in a wallet mini-app idiom: hero figure, round actions, grouped lists</i></t-x></span></div>
+
+<div class="dv-opts">
+  <div class="dv-opt" id="3a">
+    <div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a><t-x><i>Прототип целиком. Кликабельно, RU/EN и тема — кнопками сверху.</i><i>Full prototype. Clickable; RU/EN and theme from the buttons above.</i></t-x></div>
+    <div style="display:flex;gap:10px;margin-bottom:4px">
+      <button class="btn btn-secondary" onClick="{{ toggleLang }}" style="font-size:12px;border-radius:99px">RU / EN</button>
+      <button class="btn btn-secondary" onClick="{{ toggleTheme }}" style="font-size:12px;border-radius:99px"><t-x><i>Тема</i><i>Theme</i></t-x></button>
+      <button class="btn btn-secondary" onClick="{{ reset }}" style="font-size:12px;border-radius:99px"><t-x><i>Сброс</i><i>Reset</i></t-x></button>
+    </div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+      <div class="w-scr" data-theme="{{ theme }}" data-lang="{{ lang }}" style="padding-top:54px">
+
+        <div class="w-hd">
+          <sc-if value="{{ canBack }}" hint-placeholder-val="{{ true }}">
+            <button class="w-back" onClick="{{ back }}">&#8249;</button>
+          </sc-if>
+          <div class="w-title">{{ title }}</div>
+          <div style="font-size:11px;color:color-mix(in srgb,var(--color-text) 40%,transparent)">@ocmanager_bot</div>
+        </div>
+
+        <div class="w-body">
+
+          <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="padding:14px 4px 0">
+                <div class="w-k"><t-x><i>Доступ активен ещё</i><i>Access active for</i></t-x></div>
+                <div style="font:800 64px/1 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.045em;margin:6px 0 4px">18 <span style="font-size:24px;letter-spacing:-.01em"><t-x><i>дней</i><i>days</i></t-x></span></div>
+                <div class="w-s" style="font-size:13px"><t-x><i>Стандарт · до 21.09.2026 · автопродление {{ autoLabel }}</i><i>Standard · through 21.09.2026 · auto-renew {{ autoLabel }}</i></t-x></div>
+              </div>
+
+              <div class="w-tiles">
+                <button class="w-tile" onClick="{{ goRenew }}"><span class="w-tileic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.9-6.4"/><path d="M20.5 3.5v5h-5"/></svg></span><span class="w-tilelb"><t-x><i>Продлить</i><i>Renew</i></t-x></span></button>
+                <button class="w-tile" onClick="{{ goAdd }}"><span class="w-tileic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="w-tilelb"><t-x><i>Устройство</i><i>Device</i></t-x></span></button>
+                <button class="w-tile" onClick="{{ tabPlans }}"><span class="w-tileic"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg></span><span class="w-tilelb"><t-x><i>Тарифы</i><i>Plans</i></t-x></span></button>
+                <button class="w-tile" onClick="{{ tabMore }}"><span class="w-tileic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.7 9.4a2.4 2.4 0 0 1 4.6.8c0 1.6-2.3 2-2.3 3.6"/><path d="M12 17.3h.01"/></svg></span><span class="w-tilelb"><t-x><i>Помощь</i><i>Help</i></t-x></span></button>
+              </div>
+
+              <div class="w-lb"><t-x><i>ТРАФИК ЗА ПЕРИОД</i><i>TRAFFIC THIS PERIOD</i></t-x></div>
+              <div class="w-card" style="padding:16px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <span style="font:800 24px Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.02em">{{ usedLabel }} <span style="font-size:14px">/ 100 ГБ</span></span>
+                  <span class="w-k">{{ pctLabel }}</span>
+                </div>
+                <div class="w-track"><div style="height:100%;background:var(--color-accent);width:{{ trafficW }}"></div></div>
+                <div class="w-s" style="margin-top:8px"><t-x><i>Счётчик обнулится 21 сентября вместе с продлением.</i><i>The counter resets on 21 September together with the renewal.</i></t-x></div>
+              </div>
+
+              <div class="w-lb"><t-x><i>ПОДПИСКА</i><i>SUBSCRIPTION</i></t-x></div>
+              <div class="w-card">
+                <button class="w-row" onClick="{{ tabDevices }}"><span class="w-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3.5"/><path d="M11 18.6h2"/></svg></span><span><span class="w-t"><t-x><i>Устройства</i><i>Devices</i></t-x></span><span class="w-s"><t-x><i>iPhone 15, MacBook Air</i><i>iPhone 15, MacBook Air</i></t-x></span></span><span class="w-val">{{ devLabel }} / 3</span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ goRenew }}"><span class="w-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.9-6.4"/><path d="M20.5 3.5v5h-5"/></svg></span><span><span class="w-t"><t-x><i>Автопродление</i><i>Auto-renew</i></t-x></span><span class="w-s"><t-x><i>Списание 299 ₽ · 21.09.2026</i><i>299 ₽ charge · 21.09.2026</i></t-x></span></span><span class="w-val">{{ autoLabel }}</span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ tabPlans }}"><span class="w-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6"/><path d="M6 11.5 12 5.5l6 6"/></svg></span><span><span class="w-t"><t-x><i>Сменить тариф</i><i>Change plan</i></t-x></span><span class="w-s"><t-x><i>Больше устройств или трафика</i><i>More devices or traffic</i></t-x></span></span><span class="w-ch">&#8250;</span></button>
+              </div>
+
+              <button class="w-main" onClick="{{ goAdd }}"><t-x><i>Добавить устройство</i><i>Add a device</i></t-x></button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPlans }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div class="w-s" style="padding:12px 4px 0"><t-x><i>Оплата через Tribute. Продление автоматическое, ключи не перевыпускаются.</i><i>Paid via Tribute. Renewal is automatic, keys are never reissued.</i></t-x></div>
+              <div class="w-card" style="margin-top:14px">
+                <button class="w-row" onClick="{{ goCheckout }}"><span class="w-ic">1</span><span><span class="w-t">Базовый</span><span class="w-s"><t-x><i>30 дней · 1 устройство · 50 ГБ</i><i>30 days · 1 device · 50 GB</i></t-x></span></span><span class="w-val">149&#8201;₽</span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ goRenew }}" style="background:color-mix(in srgb,var(--color-accent) 8%,transparent)"><span class="w-ic" style="background:var(--color-accent);color:#fff">3</span><span><span class="w-t">Стандарт <span style="font:800 10px Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:.06em;background:var(--color-accent);color:#fff;border-radius:99px;padding:2px 8px;vertical-align:1px"><t-x><i>ТЕКУЩИЙ</i><i>CURRENT</i></t-x></span></span><span class="w-s"><t-x><i>30 дней · 3 устройства · 100 ГБ</i><i>30 days · 3 devices · 100 GB</i></t-x></span></span><span class="w-val" style="color:var(--color-accent-700)">299&#8201;₽</span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ goCheckout }}"><span class="w-ic">5</span><span><span class="w-t">Год</span><span class="w-s"><t-x><i>365 дней · 5 устройств · 300 ГБ/мес · 208 ₽/мес</i><i>365 days · 5 devices · 300 GB/mo · 208 ₽/mo</i></t-x></span></span><span class="w-val">2&#8201;490&#8201;₽</span><span class="w-ch">&#8250;</span></button>
+              </div>
+              <div class="w-lb"><t-x><i>ПРОБНЫЙ ПЕРИОД</i><i>FREE TRIAL</i></t-x></div>
+              <div class="w-card" style="padding:16px">
+                <div class="w-s"><t-x><i>3 дня и 5 ГБ на одно устройство — использован 12 августа. Один раз на аккаунт Telegram.</i><i>3 days and 5 GB on one device — used on 12 August. Once per Telegram account.</i></t-x></div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isCheckout }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="padding:14px 4px 0">
+                <div class="w-k"><t-x><i>К оплате</i><i>Total</i></t-x></div>
+                <div style="font:800 56px/1 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.045em;margin:6px 0 0">299&#8201;₽</div>
+              </div>
+              <div class="w-card" style="margin-top:20px">
+                <div class="w-row"><span class="w-t"><t-x><i>Тариф</i><i>Plan</i></t-x></span><span class="w-val">Стандарт</span></div>
+                <div class="w-row"><span class="w-t"><t-x><i>Период</i><i>Period</i></t-x></span><span class="w-val"><t-x><i>30 дней</i><i>30 days</i></t-x></span></div>
+                <div class="w-row"><span class="w-t"><t-x><i>Способ оплаты</i><i>Method</i></t-x></span><span class="w-val">Tribute</span></div>
+                <div class="w-row"><span class="w-t"><t-x><i>Автопродление</i><i>Auto-renew</i></t-x></span><span class="w-val"><t-x><i>включится</i><i>will be on</i></t-x></span></div>
+              </div>
+              <div class="w-s" style="padding:14px 4px 0"><t-x><i>Оплата откроется в Tribute. Доступ включится сразу после подтверждения — обычно за несколько секунд.</i><i>Checkout opens in Tribute. Access switches on right after confirmation, usually within seconds.</i></t-x></div>
+              <button class="w-main" onClick="{{ pay }}"><t-x><i>Перейти к оплате</i><i>Continue to payment</i></t-x></button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPaying }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:26px 4px 0">
+              <div style="width:60px;height:60px;border-radius:50%;border:3px solid var(--color-divider);border-top-color:var(--color-accent);animation:wspin 1s linear infinite"></div>
+              <div style="font:800 26px/1.15 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.02em;margin:22px 0 8px"><t-x><i>Ждём подтверждение</i><i>Waiting for confirmation</i></t-x></div>
+              <div class="w-s" style="font-size:13.5px"><t-x><i>Tribute прислал платёж, обрабатываем. Можно закрыть приложение — бот пришлёт сообщение, когда доступ будет готов.</i><i>Tribute has sent the payment and we are processing it. You can close the app — the bot will message you when access is ready.</i></t-x></div>
+              <div class="w-card" style="margin-top:16px"><div class="w-row"><span class="w-t">webhook</span><span class="w-val" style="font-family:ui-monospace,monospace;font-size:12.5px">newSubscription · 200</span></div></div>
+              <button class="w-sec" onClick="{{ paid }}"><t-x><i>Показать результат</i><i>Show the result</i></t-x></button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPaid }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:26px 4px 0">
+              <div style="width:60px;height:60px;border-radius:50%;background:var(--color-accent);color:#fff;display:grid;place-items:center;font:800 30px Archivo,'Golos Text',system-ui,sans-serif">&#10003;</div>
+              <div style="font:800 30px/1.1 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.025em;margin:22px 0 8px"><t-x><i>Подписка активна</i><i>Subscription is active</i></t-x></div>
+              <div class="w-s" style="font-size:13.5px"><t-x><i>Стандарт до 21 октября 2026. Осталось выпустить ключ для первого устройства.</i><i>Standard through 21 October 2026. One step left: issue a key for your first device.</i></t-x></div>
+              <button class="w-main" onClick="{{ goAdd }}"><t-x><i>Добавить устройство</i><i>Add a device</i></t-x></button>
+              <button class="w-sec" onClick="{{ tabHome }}"><t-x><i>К подписке</i><i>Back to subscription</i></t-x></button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isDevices }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <sc-if value="{{ hasDevices }}" hint-placeholder-val="{{ true }}">
+                <div>
+                  <div class="w-lb"><t-x><i>ЗАНЯТО {{ devLabel }} ИЗ 3 СЛОТОВ</i><i>{{ devLabel }} OF 3 SLOTS USED</i></t-x></div>
+                  <div class="w-card">
+                    <button class="w-row" onClick="{{ goGuide }}"><span class="w-ic">iOS</span><span><span class="w-t">iPhone 15</span><span class="w-s"><t-x><i>в сети · 12,4 ГБ · c42-d1</i><i>online · 12.4 GB · c42-d1</i></t-x></span></span><span class="w-ch">&#8250;</span></button>
+                    <button class="w-row" onClick="{{ goGuide }}"><span class="w-ic" style="font-size:11px">mac</span><span><span class="w-t">MacBook Air</span><span class="w-s"><t-x><i>2 дня назад · 27,8 ГБ · c42-d2</i><i>2 days ago · 27.8 GB · c42-d2</i></t-x></span></span><span class="w-ch">&#8250;</span></button>
+                    <button class="w-row" onClick="{{ goAdd }}"><span class="w-ic" style="background:color-mix(in srgb,var(--color-text) 8%,transparent);color:var(--color-text)">+</span><span><span class="w-t"><t-x><i>Свободный слот</i><i>Free slot</i></t-x></span><span class="w-s"><t-x><i>Выпустить ключ на новое устройство</i><i>Issue a key for a new device</i></t-x></span></span><span class="w-ch">&#8250;</span></button>
+                  </div>
+                  <div class="w-lb"><t-x><i>ДЕЙСТВИЯ</i><i>ACTIONS</i></t-x></div>
+                  <div class="w-card">
+                    <button class="w-row" onClick="{{ goError }}"><span class="w-t" style="color:var(--color-accent-700)"><t-x><i>Отозвать ключ</i><i>Revoke a key</i></t-x></span><span class="w-ch">&#8250;</span></button>
+                  </div>
+                  <div class="w-s" style="padding:12px 4px 0"><t-x><i>Один ключ работает на одном устройстве. Отозванный ключ перестаёт подключаться сразу, слот освобождается.</i><i>One key works on one device. A revoked key stops connecting immediately and its slot frees up.</i></t-x></div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ noDevices }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:34px 4px 0">
+                  <div style="width:60px;height:60px;border-radius:50%;background:color-mix(in srgb,var(--color-text) 7%,transparent);display:grid;place-items:center;font:800 26px Archivo,'Golos Text',system-ui,sans-serif;opacity:.5">+</div>
+                  <div style="font:800 26px/1.15 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.02em;margin:20px 0 8px"><t-x><i>Устройств пока нет</i><i>No devices yet</i></t-x></div>
+                  <div class="w-s" style="font-size:13.5px"><t-x><i>Подписка активна, но ни один ключ не выпущен. Выпуск занимает около десяти секунд, ключ приходит одноразовой ссылкой.</i><i>Your subscription is active but no key has been issued. Issuing takes about ten seconds; the key arrives as a one-time link.</i></t-x></div>
+                  <button class="w-main" onClick="{{ goAdd }}"><t-x><i>Выпустить первый ключ</i><i>Issue the first key</i></t-x></button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isAdd }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div class="w-s" style="padding:12px 4px 0"><t-x><i>Выберите систему устройства — от неё зависит формат ключа и инструкция.</i><i>Pick the device platform — it decides the key format and the guide.</i></t-x></div>
+              <div class="w-card" style="margin-top:14px">
+                <button class="w-row" onClick="{{ pickIos }}"><span class="w-ic">iOS</span><span><span class="w-t">iPhone, iPad</span><span class="w-s">AnyConnect</span></span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ pickAndroid }}"><span class="w-ic" style="font-size:11px">and</span><span><span class="w-t">Android</span><span class="w-s">OpenConnect</span></span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ pickWindows }}"><span class="w-ic" style="font-size:11px">win</span><span><span class="w-t">Windows</span><span class="w-s">OpenConnect GUI</span></span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ pickMac }}"><span class="w-ic" style="font-size:11px">mac</span><span><span class="w-t">macOS</span><span class="w-s">AnyConnect</span></span><span class="w-ch">&#8250;</span></button>
+              </div>
+              <div class="w-lb"><t-x><i>НАЗВАНИЕ</i><i>NAME</i></t-x></div>
+              <div class="w-card" style="padding:6px 10px"><input class="input" value="iPhone 15" readOnly="{{ true }}" style="border:0;background:transparent;min-height:44px;font-size:15px"></div>
+              <div class="w-s" style="padding:12px 4px 0"><t-x><i>Останется 1 из 3 свободных слотов. Слот освобождается отзывом ключа.</i><i>1 of 3 slots will remain. A slot frees up when its key is revoked.</i></t-x></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isKey }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div class="w-card" style="margin-top:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:color-mix(in srgb,var(--color-accent) 10%,transparent)">
+                <span style="font-size:12.5px;line-height:1.4"><t-x><i>Пароль и ссылка показываются один раз</i><i>Password and link are shown once</i></t-x></span>
+                <span style="font:800 19px Archivo,'Golos Text',system-ui,sans-serif;color:var(--color-accent-700);font-variant-numeric:tabular-nums">{{ ttl }}</span>
+              </div>
+
+              <div class="w-lb"><t-x><i>ПАРОЛЬ К ФАЙЛУ КЛЮЧА</i><i>KEY FILE PASSWORD</i></t-x></div>
+              <div class="w-card" style="padding:16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <code style="font-family:ui-monospace,monospace;font-size:19px;letter-spacing:.05em">7fQ2-mK9v-Lt41</code>
+                <button class="btn btn-ghost" style="font-size:12.5px;border-radius:99px"><t-x><i>Копировать</i><i>Copy</i></t-x></button>
+              </div>
+
+              <div class="w-card" style="margin-top:12px;padding:16px;display:flex;gap:16px;align-items:center">
+                <div style="width:118px;height:118px;flex:none;border-radius:20px;background:color-mix(in srgb,var(--color-text) 5%,transparent);position:relative;display:grid;place-items:center">
+                  <div style="position:absolute;top:12px;left:12px;width:24px;height:24px;border:5px solid var(--color-text);border-radius:8px"></div>
+                  <div style="position:absolute;top:12px;right:12px;width:24px;height:24px;border:5px solid var(--color-text);border-radius:8px"></div>
+                  <div style="position:absolute;bottom:12px;left:12px;width:24px;height:24px;border:5px solid var(--color-text);border-radius:8px"></div>
+                  <span style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.5">QR &#8212; <t-x><i>эскиз</i><i>sketch</i></t-x></span>
+                </div>
+                <div class="w-s" style="font-size:12.5px"><t-x><i>Сканируйте с телефона, чтобы открыть ссылку там, где будет стоять ключ. Ссылка одноразовая: после первого скачивания перестаёт работать.</i><i>Scan from the phone where the key will live. The link is single-use: it stops working after the first download.</i></t-x></div>
+              </div>
+
+              <button class="w-main" onClick="{{ goGuide }}"><t-x><i>Скачать ключ .p12</i><i>Download the .p12 key</i></t-x></button>
+              <button class="w-sec" onClick="{{ goGuide }}"><t-x><i>Инструкция для {{ osName }}</i><i>Guide for {{ osName }}</i></t-x></button>
+              <div class="w-s" style="padding:12px 4px 0"><t-x><i>Ту же ссылку бот отправил сообщением. Потерянный ключ не восстанавливается — выпускается новый, старый отзывается.</i><i>The bot has sent the same link in a message. A lost key cannot be recovered — issue a new one and the old is revoked.</i></t-x></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isGuide }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div class="w-lb">{{ osName }} &#183; <t-x><i>4 ШАГА, ОКОЛО 2 МИНУТ</i><i>4 STEPS, ABOUT 2 MINUTES</i></t-x></div>
+              <sc-if value="{{ isApple }}" hint-placeholder-val="{{ true }}">
+                <div class="w-card">
+                  <div class="w-row" style="align-items:flex-start"><span class="w-ic">01</span><span><span class="w-t"><t-x><i>Скачайте файл ключа</i><i>Download the key file</i></t-x></span><span class="w-s"><t-x><i>Нажмите ссылку выше. Файл сохранится в «Загрузки».</i><i>Tap the link above. The file lands in Downloads.</i></t-x></span></span></div>
+                  <div class="w-row" style="align-items:flex-start"><span class="w-ic">02</span><span><span class="w-t"><t-x><i>Установите профиль</i><i>Install the profile</i></t-x></span><span class="w-s"><t-x><i>Настройки → Профиль загружен → Установить. Пароль: 7fQ2-mK9v-Lt41.</i><i>Settings → Profile Downloaded → Install. Password: 7fQ2-mK9v-Lt41.</i></t-x></span></span></div>
+                  <div class="w-row" style="align-items:flex-start"><span class="w-ic">03</span><span><span class="w-t"><t-x><i>Откройте AnyConnect</i><i>Open AnyConnect</i></t-x></span><span class="w-s"><t-x><i>Подключения → Добавить: vpn.example.com. Сертификат подставится сам.</i><i>Connections → Add: vpn.example.com. The certificate is picked up automatically.</i></t-x></span></span></div>
+                  <div class="w-row" style="align-items:flex-start"><span class="w-ic">04</span><span><span class="w-t"><t-x><i>Подключитесь</i><i>Connect</i></t-x></span><span class="w-s"><t-x><i>Переключатель AnyConnect → ON. Устройство появится в списке через минуту.</i><i>Flip the AnyConnect switch to ON. The device shows up within a minute.</i></t-x></span></span></div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ isNotApple }}" hint-placeholder-val="{{ false }}">
+                <div class="w-card">
+                  <div class="w-row" style="align-items:flex-start"><span class="w-ic">01</span><span><span class="w-t"><t-x><i>Установите OpenConnect</i><i>Install OpenConnect</i></t-x></span><span class="w-s"><t-x><i>Бесплатный клиент из магазина приложений или с openconnect.gitlab.io.</i><i>The free client from the app store or openconnect.gitlab.io.</i></t-x></span></span></div>
+                  <div class="w-row" style="align-items:flex-start"><span class="w-ic">02</span><span><span class="w-t"><t-x><i>Скачайте файл ключа</i><i>Download the key file</i></t-x></span><span class="w-s"><t-x><i>Ссылка выше. Пароль к файлу: 7fQ2-mK9v-Lt41.</i><i>Use the link above. File password: 7fQ2-mK9v-Lt41.</i></t-x></span></span></div>
+                  <div class="w-row" style="align-items:flex-start"><span class="w-ic">03</span><span><span class="w-t"><t-x><i>Импортируйте сертификат</i><i>Import the certificate</i></t-x></span><span class="w-s"><t-x><i>Новое подключение → vpn.example.com → сертификат из файла .p12.</i><i>New connection → vpn.example.com → certificate from the .p12 file.</i></t-x></span></span></div>
+                  <div class="w-row" style="align-items:flex-start"><span class="w-ic">04</span><span><span class="w-t"><t-x><i>Подключитесь</i><i>Connect</i></t-x></span><span class="w-s"><t-x><i>Нажмите «Подключиться». Пароль спросят один раз.</i><i>Press Connect. The password is asked once.</i></t-x></span></span></div>
+                </div>
+              </sc-if>
+              <button class="w-main" onClick="{{ tabDevices }}"><t-x><i>Готово</i><i>Done</i></t-x></button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isRenew }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="padding:14px 4px 0">
+                <div class="w-k"><t-x><i>Следующее списание</i><i>Next charge</i></t-x></div>
+                <div style="font:800 46px/1 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.04em;margin:6px 0 4px">299&#8201;₽</div>
+                <div class="w-s" style="font-size:13px">21.09.2026 &#183; Tribute</div>
+              </div>
+              <div class="w-card" style="margin-top:20px">
+                <button class="w-row" onClick="{{ toggleAuto }}"><span><span class="w-t"><t-x><i>Автопродление</i><i>Auto-renew</i></t-x></span><span class="w-s"><t-x><i>Нажмите, чтобы переключить</i><i>Tap to toggle</i></t-x></span></span><span class="w-val" style="color:var(--color-accent-700)">{{ autoLabel }}</span></button>
+                <div class="w-row"><span class="w-t"><t-x><i>Тариф</i><i>Plan</i></t-x></span><span class="w-val">Стандарт</span></div>
+                <div class="w-row"><span class="w-t"><t-x><i>Период</i><i>Period</i></t-x></span><span class="w-val"><t-x><i>30 дней</i><i>30 days</i></t-x></span></div>
+              </div>
+              <div class="w-s" style="padding:14px 4px 0"><t-x><i>Ключи не перевыпускаются, соединение не рвётся, счётчик трафика начнётся заново. Отключение автопродления не отключает доступ: оплаченный период дорабатывает до конца.</i><i>Keys are not reissued, the connection is not dropped, the traffic counter starts over. Turning auto-renew off does not cut access: the paid period runs to its end.</i></t-x></div>
+              <button class="w-main" onClick="{{ pay }}"><t-x><i>Продлить сейчас на 30 дней</i><i>Extend now by 30 days</i></t-x></button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isMore }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div class="w-lb"><t-x><i>АККАУНТ</i><i>ACCOUNT</i></t-x></div>
+              <div class="w-card">
+                <div class="w-row"><span class="w-t">Telegram ID</span><span class="w-val">418 302 774</span></div>
+                <button class="w-row" onClick="{{ toggleLang }}"><span class="w-t"><t-x><i>Язык</i><i>Language</i></t-x></span><span class="w-val">{{ langLabel }}</span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ toggleTheme }}"><span class="w-t"><t-x><i>Тема</i><i>Theme</i></t-x></span><span class="w-val">{{ themeLabel }}</span><span class="w-ch">&#8250;</span></button>
+                <div class="w-row"><span class="w-t"><t-x><i>Поддержка</i><i>Support</i></t-x></span><span class="w-val">@ocmanager_help</span></div>
+              </div>
+              <div class="w-lb"><t-x><i>ДЕМО-СОСТОЯНИЯ</i><i>DEMO STATES</i></t-x></div>
+              <div class="w-card">
+                <button class="w-row" onClick="{{ emptyDevices }}"><span class="w-t"><t-x><i>Нет устройств</i><i>No devices</i></t-x></span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ goError }}"><span class="w-t"><t-x><i>Ошибка выдачи</i><i>Issuing error</i></t-x></span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ goOnboarding }}"><span class="w-t"><t-x><i>Онбординг</i><i>Onboarding</i></t-x></span><span class="w-ch">&#8250;</span></button>
+                <button class="w-row" onClick="{{ reset }}"><span class="w-t"><t-x><i>Сброс</i><i>Reset</i></t-x></span><span class="w-ch">&#8250;</span></button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;height:100%">
+              <div style="flex:1">
+                <div style="font:800 40px/1.02 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.04em;padding:18px 4px 0"><t-x><i>Доступ<br>за две минуты</i><i>Access in<br>two minutes</i></t-x></div>
+                <div class="w-card" style="margin-top:22px">
+                  <div class="w-row"><span class="w-ic">01</span><span class="w-t"><t-x><i>Выберите тариф</i><i>Pick a plan</i></t-x><span class="w-s"><t-x><i>Срок, число устройств, трафик</i><i>Period, devices, traffic</i></t-x></span></span></div>
+                  <div class="w-row"><span class="w-ic">02</span><span class="w-t"><t-x><i>Оплатите в Tribute</i><i>Pay in Tribute</i></t-x><span class="w-s"><t-x><i>Доступ включится сам</i><i>Access switches on by itself</i></t-x></span></span></div>
+                  <div class="w-row"><span class="w-ic">03</span><span class="w-t"><t-x><i>Получите ключ</i><i>Get the key</i></t-x><span class="w-s"><t-x><i>И инструкцию под свою систему</i><i>And a guide for your platform</i></t-x></span></span></div>
+                </div>
+                <div class="w-card" style="margin-top:12px;padding:16px;background:color-mix(in srgb,var(--color-accent) 10%,transparent)">
+                  <div class="w-t"><t-x><i>Пробный период</i><i>Free trial</i></t-x></div>
+                  <div class="w-s"><t-x><i>3 дня, 5 ГБ, одно устройство. Без оплаты, один раз на аккаунт.</i><i>3 days, 5 GB, one device. No payment, once per account.</i></t-x></div>
+                </div>
+              </div>
+              <div>
+                <button class="w-main" onClick="{{ tabHome }}"><t-x><i>Начать пробный период</i><i>Start the trial</i></t-x></button>
+                <button class="w-sec" onClick="{{ tabPlans }}"><t-x><i>Посмотреть тарифы</i><i>See the plans</i></t-x></button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:26px 4px 0">
+              <div style="width:60px;height:60px;border-radius:50%;border:3px solid var(--color-accent);color:var(--color-accent);display:grid;place-items:center;font:800 30px Archivo,'Golos Text',system-ui,sans-serif">!</div>
+              <div style="font:800 28px/1.12 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.025em;margin:22px 0 8px"><t-x><i>Не получилось</i><i>Something went wrong</i></t-x></div>
+              <div class="w-s" style="font-size:13.5px"><t-x><i>Сервер выдачи ключей недоступен. Подписка и оплата не затронуты — деньги на месте, доступ работает. Запрос сохранён и выполнится сам, как только сервер вернётся.</i><i>The key-issuing server is unavailable. Your subscription and payment are untouched — the money is safe and access still works. The request is queued and will run once the server is back.</i></t-x></div>
+              <div class="w-card" style="margin-top:16px"><div class="w-row"><span class="w-t"><t-x><i>Код</i><i>Code</i></t-x></span><span class="w-val" style="font-family:ui-monospace,monospace;font-size:12.5px">NODE_DEGRADED</span></div></div>
+              <button class="w-main" onClick="{{ tabHome }}"><t-x><i>Повторить</i><i>Try again</i></t-x></button>
+              <button class="w-sec" onClick="{{ tabMore }}"><t-x><i>Написать в поддержку</i><i>Message support</i></t-x></button>
+            </div>
+          </sc-if>
+
+        </div>
+
+        <div class="w-tabs">
+          <button class="w-tab" onClick="{{ tabHome }}" style="color:{{ cHome }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="3.5"/><path d="M2.5 10h19"/></svg><span><t-x><i>Подписка</i><i>Plan</i></t-x></span></button>
+          <button class="w-tab" onClick="{{ tabDevices }}" style="color:{{ cDevices }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3.5"/><path d="M11 18.6h2"/></svg><span><t-x><i>Устройства</i><i>Devices</i></t-x></span></button>
+          <button class="w-tab" onClick="{{ tabPlans }}" style="color:{{ cPlans }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg><span><t-x><i>Тарифы</i><i>Plans</i></t-x></span></button>
+          <button class="w-tab" onClick="{{ tabMore }}" style="color:{{ cMore }}"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg><span><t-x><i>Ещё</i><i>More</i></t-x></span></button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div class="dv-opt" id="3b">
+    <div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a><t-x><i>Тёмная тема: главный экран и список устройств</i><i>Dark theme: home and the device list</i></t-x></div>
+    <div class="dv-card" style="width:390px;background:#000">
+      <div class="w-scr" data-theme="dark" style="height:auto">
+        <div class="w-body" style="padding-top:18px">
+          <div style="padding:0 4px">
+            <div class="w-k"><t-x><i>Доступ активен ещё</i><i>Access active for</i></t-x></div>
+            <div style="font:800 58px/1 Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.045em;margin:6px 0 4px">18 <span style="font-size:22px"><t-x><i>дней</i><i>days</i></t-x></span></div>
+            <div class="w-s" style="font-size:13px">Стандарт · до 21.09.2026</div>
+          </div>
+          <div class="w-tiles">
+            <div class="w-tile"><span class="w-tileic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.9-6.4"/><path d="M20.5 3.5v5h-5"/></svg></span><span class="w-tilelb"><t-x><i>Продлить</i><i>Renew</i></t-x></span></div>
+            <div class="w-tile"><span class="w-tileic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="w-tilelb"><t-x><i>Устройство</i><i>Device</i></t-x></span></div>
+            <div class="w-tile"><span class="w-tileic"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg></span><span class="w-tilelb"><t-x><i>Тарифы</i><i>Plans</i></t-x></span></div>
+            <div class="w-tile"><span class="w-tileic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.7 9.4a2.4 2.4 0 0 1 4.6.8c0 1.6-2.3 2-2.3 3.6"/><path d="M12 17.3h.01"/></svg></span><span class="w-tilelb"><t-x><i>Помощь</i><i>Help</i></t-x></span></div>
+          </div>
+          <div class="w-lb"><t-x><i>ТРАФИК ЗА ПЕРИОД</i><i>TRAFFIC THIS PERIOD</i></t-x></div>
+          <div class="w-card" style="padding:16px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font:800 24px Archivo,'Golos Text',system-ui,sans-serif;letter-spacing:-.02em">40,0 <span style="font-size:14px">/ 100 ГБ</span></span><span class="w-k">40%</span></div>
+            <div class="w-track"><div style="height:100%;background:var(--color-accent);width:40%"></div></div>
+          </div>
+          <div class="w-lb"><t-x><i>УСТРОЙСТВА</i><i>DEVICES</i></t-x></div>
+          <div class="w-card">
+            <div class="w-row"><span class="w-ic">iOS</span><span><span class="w-t">iPhone 15</span><span class="w-s"><t-x><i>в сети · 12,4 ГБ</i><i>online · 12.4 GB</i></t-x></span></span><span class="w-ch">&#8250;</span></div>
+            <div class="w-row"><span class="w-ic" style="font-size:11px">mac</span><span><span class="w-t">MacBook Air</span><span class="w-s"><t-x><i>2 дня назад · 27,8 ГБ</i><i>2 days ago · 27.8 GB</i></t-x></span></span><span class="w-ch">&#8250;</span></div>
+          </div>
+          <button class="w-main"><t-x><i>Добавить устройство</i><i>Add a device</i></t-x></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="dv-next"><t-x><i>Дальше: «убери круглые плитки, оставь списки» · «сделай цифрой-героем трафик, а не срок» · «синий акцент вместо красного» · «перенеси эту стилистику в вариант 2»</i><i>Next: “drop the round tiles, keep the lists” · “make traffic the hero figure instead of the deadline” · “blue accent instead of red” · “port this styling into version 2”</i></t-x></p>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;lang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ru&quot;,&quot;en&quot;],&quot;default&quot;:&quot;ru&quot;,&quot;tsType&quot;:&quot;'ru'|'en'&quot;,&quot;section&quot;:&quot;Прототип&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;section&quot;:&quot;Прототип&quot;},&quot;trafficPct&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:100,&quot;step&quot;:1,&quot;default&quot;:40,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Прототип&quot;}}">
+class Component extends DCLogic {
+  state = {
+    lang: this.props.lang ?? 'ru',
+    theme: this.props.theme ?? 'light',
+    screen: 'home',
+    stack: [],
+    os: 'ios',
+    auto: true,
+    devices: 2,
+    ttl: 872,
+  };
+  componentDidMount() {
+    this.timer = setInterval(() => this.setState(s => ({ ttl: s.ttl > 0 ? s.ttl - 1 : 0 })), 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  go(name) { this.setState(s => ({ screen: name, stack: [...s.stack, s.screen] })); }
+  tab(name) { this.setState({ screen: name, stack: [] }); }
+  renderVals() {
+    const s = this.state, ru = s.lang === 'ru';
+    const pct = Math.max(0, Math.min(100, this.props.trafficPct ?? 40));
+    const used = (pct * 1.0).toFixed(1);
+    const titles = {
+      home: ru ? 'Моя подписка' : 'My subscription',
+      plans: ru ? 'Тарифы' : 'Plans',
+      checkout: ru ? 'Оплата' : 'Checkout',
+      paying: ru ? 'Оплата' : 'Checkout',
+      paid: ru ? 'Готово' : 'Done',
+      devices: ru ? 'Устройства' : 'Devices',
+      add: ru ? 'Новое устройство' : 'New device',
+      key: ru ? 'Ключ подключения' : 'Connection key',
+      guide: ru ? 'Подключение' : 'Setup',
+      renew: ru ? 'Продление' : 'Renewal',
+      more: ru ? 'Аккаунт' : 'Account',
+      onboarding: 'ocmanager',
+      error: ru ? 'Ошибка' : 'Error',
+    };
+    const on = 'var(--color-accent)';
+    const off = 'color-mix(in srgb, var(--color-text) 42%, transparent)';
+    const mm = String(Math.floor(s.ttl / 60)).padStart(2, '0');
+    const ss = String(s.ttl % 60).padStart(2, '0');
+    const osNames = { ios: 'iOS', android: 'Android', windows: 'Windows', macos: 'macOS' };
+    const pick = (os) => () => { this.setState({ os }); this.go('key'); };
+    return {
+      lang: s.lang, theme: s.theme, isDark: s.theme === 'dark',
+      title: titles[s.screen] || '', canBack: s.stack.length > 0,
+      isHome: s.screen === 'home', isPlans: s.screen === 'plans',
+      isCheckout: s.screen === 'checkout', isPaying: s.screen === 'paying',
+      isPaid: s.screen === 'paid', isDevices: s.screen === 'devices',
+      isAdd: s.screen === 'add', isKey: s.screen === 'key',
+      isGuide: s.screen === 'guide', isRenew: s.screen === 'renew',
+      isMore: s.screen === 'more', isOnboarding: s.screen === 'onboarding',
+      isError: s.screen === 'error',
+      hasDevices: s.devices > 0, noDevices: s.devices === 0,
+      isApple: s.os === 'ios' || s.os === 'macos',
+      isNotApple: !(s.os === 'ios' || s.os === 'macos'),
+      osName: osNames[s.os],
+      trafficW: pct + '%',
+      pctLabel: pct + '%',
+      usedLabel: ru ? used.replace('.', ',') : used,
+      devLabel: String(s.devices),
+      autoLabel: s.auto ? (ru ? 'включено' : 'on') : (ru ? 'выключено' : 'off'),
+      langLabel: ru ? 'Русский' : 'English',
+      themeLabel: s.theme === 'dark' ? (ru ? 'Тёмная' : 'Dark') : (ru ? 'Светлая' : 'Light'),
+      cHome: s.screen === 'home' ? on : off,
+      cDevices: s.screen === 'devices' ? on : off,
+      cPlans: s.screen === 'plans' ? on : off,
+      cMore: s.screen === 'more' ? on : off,
+      ttl: mm + ':' + ss,
+      toggleLang: () => this.setState(st => ({ lang: st.lang === 'ru' ? 'en' : 'ru' })),
+      toggleTheme: () => this.setState(st => ({ theme: st.theme === 'light' ? 'dark' : 'light' })),
+      toggleAuto: () => this.setState(st => ({ auto: !st.auto })),
+      reset: () => this.setState({ screen: 'home', stack: [], devices: 2, os: 'ios', auto: true, ttl: 872 }),
+      back: () => this.setState(st => ({ screen: st.stack[st.stack.length - 1], stack: st.stack.slice(0, -1) })),
+      tabHome: () => this.tab('home'), tabDevices: () => this.tab('devices'),
+      tabPlans: () => this.tab('plans'), tabMore: () => this.tab('more'),
+      goAdd: () => this.go('add'), goKey: () => this.go('key'), goGuide: () => this.go('guide'),
+      goRenew: () => this.go('renew'), goCheckout: () => this.go('checkout'),
+      goError: () => this.go('error'), goOnboarding: () => this.tab('onboarding'),
+      pay: () => this.go('paying'), paid: () => this.setState({ screen: 'paid', stack: [] }),
+      emptyDevices: () => { this.setState({ devices: 0 }); this.tab('devices'); },
+      pickIos: pick('ios'), pickAndroid: pick('android'),
+      pickWindows: pick('windows'), pickMac: pick('macos'),
+    };
+  }
+}
+</script>
+</body>
+</html>
