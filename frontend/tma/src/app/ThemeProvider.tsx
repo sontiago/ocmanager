@@ -6,6 +6,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { themeParams } from "@telegram-apps/sdk-react";
+
 export type ThemeChoice = "system" | "light" | "dark";
 
 const STORAGE_KEY = "ocm-theme";
@@ -36,7 +38,12 @@ function writeStored(choice: ThemeChoice) {
   }
 }
 
-function prefersDark(): boolean {
+function clientDark(): boolean {
+  try {
+    if (themeParams.isMounted()) return themeParams.isDark();
+  } catch {
+    // SDK не инициализирован — значит, мы точно не в Telegram.
+  }
   return (
     typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -45,16 +52,26 @@ function prefersDark(): boolean {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [choice, setChoiceState] = useState<ThemeChoice>(readStored);
-  const [systemDark, setSystemDark] = useState(prefersDark);
+  const [systemDark, setSystemDark] = useState(clientDark);
 
-  // Тема клиента Telegram может смениться, пока приложение открыто, —
-  // поэтому здесь подписка, а не однократное чтение.
   useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    const unsubs: Array<() => void> = [];
+
+    // Тема клиента Telegram может смениться, пока приложение открыто.
+    try {
+      unsubs.push(themeParams.isDark.sub(() => setSystemDark(clientDark())));
+    } catch {
+      // не в Telegram
+    }
+
+    if (typeof window.matchMedia === "function") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const onChange = () => setSystemDark(clientDark());
+      mq.addEventListener("change", onChange);
+      unsubs.push(() => mq.removeEventListener("change", onChange));
+    }
+
+    return () => unsubs.forEach((off) => off());
   }, []);
 
   const resolved: "light" | "dark" =
