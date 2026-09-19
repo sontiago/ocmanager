@@ -13,31 +13,34 @@ import { Account } from "../screens/Account";
 import { Renew } from "../screens/Renew";
 import { Instructions } from "../screens/Instructions";
 import { DeviceSecret } from "../screens/DeviceSecret";
+import { I18nProvider } from "../i18n/I18nProvider";
 
 export function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path={PATHS.home} element={<Subscription />} />
-            <Route path={PATHS.plans} element={<Plans />} />
-            <Route path={PATHS.checkout} element={<Checkout />} />
-            <Route path={PATHS.devices} element={<Devices />} />
-            <Route path={PATHS.deviceNew} element={<DeviceCreate />} />
-            <Route path={PATHS.deviceKey} element={<DeviceSecret />} />
-            <Route path={PATHS.deviceGuide} element={<Instructions />} />
-            <Route path={PATHS.renew} element={<Renew />} />
-            <Route path={PATHS.account} element={<Account />} />
-            <Route path={PATHS.onboarding} element={<Onboarding />} />
-            {/* Временно: уберётся на этапе 3, когда появится граница ошибок. */}
-            <Route
-              path="/error"
-              element={<ErrorState onRetry={() => {}} onSupport={() => {}} />}
-            />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <I18nProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path={PATHS.home} element={<Subscription />} />
+              <Route path={PATHS.plans} element={<Plans />} />
+              <Route path={PATHS.checkout} element={<Checkout />} />
+              <Route path={PATHS.devices} element={<Devices />} />
+              <Route path={PATHS.deviceNew} element={<DeviceCreate />} />
+              <Route path={PATHS.deviceKey} element={<DeviceSecret />} />
+              <Route path={PATHS.deviceGuide} element={<Instructions />} />
+              <Route path={PATHS.renew} element={<Renew />} />
+              <Route path={PATHS.account} element={<Account />} />
+              <Route path={PATHS.onboarding} element={<Onboarding />} />
+              {/* Временно: уберётся на этапе 3, когда появится граница ошибок. */}
+              <Route
+                path="/error"
+                element={<ErrorState onRetry={() => {}} onSupport={() => {}} />}
+              />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </I18nProvider>
     </ThemeProvider>
   );
 }

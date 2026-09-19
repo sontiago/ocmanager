@@ -1,3 +1,5 @@
+import type { MessageKey } from "../i18n/ru";
+
 export const ROUTES = {
   home: "/",
   plans: "/plans",
@@ -43,18 +45,18 @@ export function hasTabBar(pathname: string): boolean {
   return TAB_ROUTES.includes(pathname);
 }
 
-/** Заголовок в шапке.*/
-export function titleFor(pathname: string): string {
-  if (pathname === ROUTES.home) return "Моя подписка";
-  if (pathname === ROUTES.plans) return "Тарифы";
-  if (pathname.endsWith("/checkout")) return "Оплата";
-  if (pathname === ROUTES.deviceNew) return "Новое устройство";
-  if (pathname.startsWith("/devices/key/")) return "Ключ подключения";
-  if (pathname.startsWith("/devices/guide/")) return "Подключение";
-  if (pathname === ROUTES.devices) return "Устройства";
-  if (pathname === ROUTES.renew) return "Продление";
-  if (pathname === ROUTES.account) return "Аккаунт";
-  if (pathname === ROUTES.onboarding) return "ocmanager";
-  if (pathname === "/error") return "Ошибка";
-  return "";
+/** Ключ заголовка в шапке; null — заголовка у экрана нет. */
+export function titleFor(pathname: string): MessageKey | null {
+  if (pathname === ROUTES.home) return "title.home";
+  if (pathname === ROUTES.plans) return "title.plans";
+  if (pathname.endsWith("/checkout")) return "title.checkout";
+  if (pathname === ROUTES.deviceNew) return "title.deviceNew";
+  if (pathname.startsWith("/devices/key/")) return "title.deviceKey";
+  if (pathname.startsWith("/devices/guide/")) return "title.deviceGuide";
+  if (pathname === ROUTES.devices) return "title.devices";
+  if (pathname === ROUTES.renew) return "title.renew";
+  if (pathname === ROUTES.account) return "title.account";
+  if (pathname === ROUTES.onboarding) return "title.onboarding";
+  if (pathname === "/error") return "title.error";
+  return null;
 }
