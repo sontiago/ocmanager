@@ -1,1 +1,6 @@
 docs/*
+
+# Enviroment
+.env
+.env.local
+.env.production.local
