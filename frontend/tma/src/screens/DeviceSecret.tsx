@@ -61,7 +61,7 @@ export function DeviceSecret() {
           {expired ? T.expired : T.once}
         </span>
         <span className="text-[19px] font-extrabold tabular-nums text-accent-700">
-          {formatCountdown(secondsLeft)}
+          {formatCountdown(secondsLeft * 1000)}
         </span>
       </Callout>
 

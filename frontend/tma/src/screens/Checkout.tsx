@@ -37,7 +37,9 @@ export function Checkout() {
     <div>
       <div className="px-1 pt-3.5">
         <Caption>{T.total}</Caption>
-        <Hero size="lg">{formatMoney(plan.price_amount, plan.currency)}</Hero>
+        <Hero size="lg">
+          {formatMoney(plan.price_amount, plan.currency, "ru")}
+        </Hero>
       </div>
 
       <Card className="mt-5">

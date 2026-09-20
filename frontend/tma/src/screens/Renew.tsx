@@ -28,7 +28,7 @@ export function Renew() {
     <div>
       <div className="px-1 pt-3.5">
         <Caption>{T.next}</Caption>
-        <Hero size="md">{formatMoney(s.price_amount, s.currency)}</Hero>
+        <Hero size="md">{formatMoney(s.price_amount, s.currency, "ru")}</Hero>
         <Note>{s.expires_at} · Tribute</Note>
       </div>
 

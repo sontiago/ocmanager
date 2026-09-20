@@ -51,7 +51,7 @@ export function Plans() {
             subtitle={planSubtitle(plan)}
             value={
               <span className={plan.is_current ? "text-accent-700" : undefined}>
-                {formatMoney(plan.price_amount, plan.currency)}
+                {formatMoney(plan.price_amount, plan.currency, "ru")}
               </span>
             }
             chevron
