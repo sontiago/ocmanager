@@ -87,15 +87,16 @@ export function resetStore(scenario?: ScenarioId): void {
 }
 
 export function setFault(fault: FaultId): void {
-  state.fault = fault;
+  // Новый объект состояния, а не правка поля: useSyncExternalStore сравнивает
+  // снимки по Object.is, и мутация на месте не вызвала бы перерисовку.
+  state = { ...state, fault };
   notify();
 }
 
 export function setLatency(ms: number): void {
-  state.latencyMs = ms;
+  state = { ...state, latencyMs: ms };
   notify();
 }
-
 export function subscribeStore(fn: () => void): () => void {
   listeners.add(fn);
   return () => {
