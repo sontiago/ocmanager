@@ -1,16 +1,19 @@
 import type { MessageKey } from "../i18n/ru";
 
-export type ApiErrorCode =
-  | "network"
-  | "unauthorized"
-  | "initdata_expired"
-  | "rate_limited"
-  | "device_limit_reached"
-  | "trial_already_used"
-  | "subscription_inactive"
-  | "node_unavailable"
-  | "not_found"
-  | "internal";
+export const API_ERROR_CODES = [
+  "network",
+  "unauthorized",
+  "initdata_expired",
+  "rate_limited",
+  "device_limit_reached",
+  "trial_already_used",
+  "subscription_inactive",
+  "node_unavailable",
+  "not_found",
+  "internal",
+] as const;
+
+export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
 
 const RETRYABLE: ReadonlySet<ApiErrorCode> = new Set([
   "network",
