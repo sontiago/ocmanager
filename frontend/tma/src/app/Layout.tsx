@@ -1,14 +1,17 @@
 import { Outlet, useLocation } from "react-router";
 import { Header } from "./Header";
 import { TabBar } from "./TabBar";
-import { hasTabBar, titleFor } from "./routes";
 import { useTranslation } from "../i18n/useTranslation";
+import { backTargetFor, hasTabBar, titleFor } from "./routes";
+import { useBackButton } from "../telegram/backButton";
 
 export function Layout() {
   const { pathname } = useLocation();
   const { t } = useTranslation();
   const showTabBar = hasTabBar(pathname);
   const titleKey = titleFor(pathname);
+
+  useBackButton(backTargetFor(pathname));
 
   return (
     <div className="flex h-full flex-col bg-bg text-ink">

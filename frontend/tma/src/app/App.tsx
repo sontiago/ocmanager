@@ -1,52 +1,29 @@
-import { BrowserRouter, Route, Routes } from "react-router";
-import { ThemeProvider } from "./ThemeProvider";
-import { Layout } from "./Layout";
-import { PATHS } from "./routes";
-import { Subscription } from "../screens/Subscription";
-import { Plans } from "../screens/Plans";
-import { Checkout } from "../screens/Checkout";
-import { Devices } from "../screens/Devices";
-import { DeviceCreate } from "../screens/DeviceCreate";
-import { ErrorState } from "../ui/ErrorState";
-import { Onboarding } from "../screens/Onboarding";
-import { Account } from "../screens/Account";
-import { Renew } from "../screens/Renew";
-import { Instructions } from "../screens/Instructions";
-import { DeviceSecret } from "../screens/DeviceSecret";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { BrowserRouter } from "react-router";
+import { ApiProvider } from "../api/ApiProvider";
+import type { ApiClient } from "../api/contract";
+import { createQueryClient } from "../api/queryClient";
 import { I18nProvider } from "../i18n/I18nProvider";
-import { ApiError } from "../api/errors";
+import { AppRoutes } from "./router";
+import { ThemeProvider } from "./ThemeProvider";
 
-export function App() {
+export function App({ client }: { client: ApiClient }) {
+  // useState, а не модульная константа: QueryClient должен пережить
+  // StrictMode-двойной рендер, но не переживать перемонтирование App.
+  const [queryClient] = useState(createQueryClient);
+
   return (
-    <ThemeProvider>
-      <I18nProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path={PATHS.home} element={<Subscription />} />
-              <Route path={PATHS.plans} element={<Plans />} />
-              <Route path={PATHS.checkout} element={<Checkout />} />
-              <Route path={PATHS.devices} element={<Devices />} />
-              <Route path={PATHS.deviceNew} element={<DeviceCreate />} />
-              <Route path={PATHS.deviceKey} element={<DeviceSecret />} />
-              <Route path={PATHS.deviceGuide} element={<Instructions />} />
-              <Route path={PATHS.renew} element={<Renew />} />
-              <Route path={PATHS.account} element={<Account />} />
-              <Route path={PATHS.onboarding} element={<Onboarding />} />
-              <Route
-                path="/error"
-                element={
-                  <ErrorState
-                    error={new ApiError("node_unavailable", 503)}
-                    onRetry={() => {}}
-                    onSupport={() => {}}
-                  />
-                }
-              />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </I18nProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider client={client}>
+        <ThemeProvider>
+          <I18nProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </I18nProvider>
+        </ThemeProvider>
+      </ApiProvider>
+    </QueryClientProvider>
   );
 }

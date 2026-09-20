@@ -7,6 +7,7 @@ import type { ApiClient } from "../api/contract";
 import { createMockClient } from "../api/mock/client";
 import { I18nProvider } from "../i18n/I18nProvider";
 import type { Lang } from "../telegram/auth";
+import { ThemeProvider } from "../app/ThemeProvider";
 
 export interface RenderOptions {
   client?: ApiClient;
@@ -30,9 +31,11 @@ export function renderWithProviders(
     return (
       <QueryClientProvider client={queryClient}>
         <ApiProvider client={client}>
-          <I18nProvider lang={lang}>
-            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
-          </I18nProvider>
+          <ThemeProvider>
+            <I18nProvider lang={lang}>
+              <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+            </I18nProvider>
+          </ThemeProvider>
         </ApiProvider>
       </QueryClientProvider>
     );

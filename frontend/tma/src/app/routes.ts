@@ -60,3 +60,16 @@ export function titleFor(pathname: string): MessageKey | null {
   if (pathname === "/error") return "title.error";
   return null;
 }
+
+/**
+ * Куда уводит нативная кнопка «Назад» Telegram; null — экран корневой,
+ * кнопку не показываем. Путь задан явно, а не через history.back():
+ * после возврата из внешней оплаты история браузера непредсказуема.
+ */
+export function backTargetFor(pathname: string): string | null {
+  if (hasTabBar(pathname)) return null;
+  if (pathname === ROUTES.onboarding) return null;
+  if (pathname.endsWith("/checkout")) return ROUTES.plans;
+  if (pathname.startsWith("/devices/")) return ROUTES.devices;
+  return ROUTES.home;
+}
