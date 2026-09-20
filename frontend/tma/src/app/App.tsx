@@ -14,6 +14,7 @@ import { Renew } from "../screens/Renew";
 import { Instructions } from "../screens/Instructions";
 import { DeviceSecret } from "../screens/DeviceSecret";
 import { I18nProvider } from "../i18n/I18nProvider";
+import { ApiError } from "../api/errors";
 
 export function App() {
   return (
@@ -32,10 +33,15 @@ export function App() {
               <Route path={PATHS.renew} element={<Renew />} />
               <Route path={PATHS.account} element={<Account />} />
               <Route path={PATHS.onboarding} element={<Onboarding />} />
-              {/* Временно: уберётся на этапе 3, когда появится граница ошибок. */}
               <Route
                 path="/error"
-                element={<ErrorState onRetry={() => {}} onSupport={() => {}} />}
+                element={
+                  <ErrorState
+                    error={new ApiError("node_unavailable", 503)}
+                    onRetry={() => {}}
+                    onSupport={() => {}}
+                  />
+                }
               />
             </Route>
           </Routes>

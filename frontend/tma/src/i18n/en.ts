@@ -21,6 +21,8 @@ export const en: Record<MessageKey, string> = {
   "error.node_unavailable": "The server is temporarily unavailable. Try later.",
   "error.not_found": "Not found.",
   "error.internal": "Internal server error.",
+  "error.code": "Code",
+  "error.support": "Contact support",
 
   "nav.subscription": "Subscription",
   "nav.devices": "Devices",

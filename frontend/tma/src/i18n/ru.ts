@@ -22,6 +22,8 @@ export const ru = {
   "error.node_unavailable": "Сервер временно недоступен. Попробуйте позже.",
   "error.not_found": "Не найдено.",
   "error.internal": "Внутренняя ошибка сервера.",
+  "error.code": "Код",
+  "error.support": "Написать в поддержку",
 
   // Навигация
   "nav.subscription": "Подписка",

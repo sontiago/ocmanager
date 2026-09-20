@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { haptic } from "../telegram/haptics";
 
 interface CellProps {
   icon?: ReactNode;
@@ -58,7 +59,10 @@ export function Cell({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        haptic.selection();
+        onClick();
+      }}
       className={`${base} cursor-pointer hover:bg-row-hover active:bg-row-press`}
     >
       {body}
