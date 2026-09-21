@@ -45,6 +45,7 @@ export const en: Record<MessageKey, string> = {
   "plans.subtitle": "Pick the one that fits",
   "plans.buy": "Buy for {price}",
   "plans.current": "Current plan",
+  "plans.currentShort": "CURRENT",
   "plans.unlimitedTraffic": "Unlimited traffic",
   "plans.trafficPerMonth": "{amount} per month",
   "plans.trialTitle": "Try for free",

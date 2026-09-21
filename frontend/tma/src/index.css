@@ -84,6 +84,14 @@
     transparent
   ); /* текущий тариф */
 
+  --c-success: #34c759;
+  --c-warning: #ff9500;
+  --c-danger: #ff3b30;
+
+  --c-success-fill: color-mix(in srgb, var(--c-success) 15%, transparent);
+  --c-warning-fill: color-mix(in srgb, var(--c-warning) 18%, transparent);
+  --c-danger-fill: color-mix(in srgb, var(--c-danger) 13%, transparent);
+
   /* сверху — контентная safe-area (под кнопками клиента),
      снизу — safe-area устройства (home indicator).
      До инициализации SDK обе дают 0px — это нормально в браузере. */
@@ -106,6 +114,9 @@
   --c-accent: #0a84ff;
   --c-accent-600: #3d9bff;
   --c-accent-700: #6cb6ff;
+  --c-success: #30d158;
+  --c-warning: #ff9f0a;
+  --c-danger: #ff453a;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -131,6 +142,12 @@
   --color-accent-fill: var(--c-accent-fill);
   --color-accent-tint: var(--c-accent-tint);
   --color-accent-tint-weak: var(--c-accent-tint-weak);
+  --color-success: var(--c-success);
+  --color-warning: var(--c-warning);
+  --color-danger: var(--c-danger);
+  --color-success-fill: var(--c-success-fill);
+  --color-warning-fill: var(--c-warning-fill);
+  --color-danger-fill: var(--c-danger-fill);
 
   --radius-card: 22px;
   --radius-btn: 16px;

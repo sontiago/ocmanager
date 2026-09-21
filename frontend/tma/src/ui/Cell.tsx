@@ -13,6 +13,8 @@ interface CellProps {
   /** Подсветка строки: текущий тариф в списке. */
   highlighted?: boolean;
   className?: string;
+  /** Необратимое действие строкой списка: «Отозвать устройство». */
+  destructive?: boolean;
 }
 
 export function Cell({
@@ -25,6 +27,7 @@ export function Cell({
   align = "center",
   highlighted = false,
   className = "",
+  destructive = false,
 }: CellProps) {
   const base = [
     // класс cell — зацепка для правила .cell + .cell в index.css
@@ -38,7 +41,13 @@ export function Cell({
     <>
       {icon}
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-[15px] font-semibold leading-tight">{title}</span>
+        <span
+          className={`text-[15px] font-semibold leading-tight ${
+            destructive ? "text-danger" : ""
+          }`}
+        >
+          {title}
+        </span>
         {subtitle && (
           <span className="mt-0.5 text-[12.5px] leading-[1.35] text-ink-2">
             {subtitle}

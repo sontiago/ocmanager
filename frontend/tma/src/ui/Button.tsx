@@ -4,7 +4,7 @@ import { haptic } from "../telegram/haptics";
 interface ButtonProps {
   children: ReactNode;
   onClick?: () => void;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "destructive";
   /** Операция в процессе: кнопка заблокирована и помечена для скринридера. */
   loading?: boolean;
   disabled?: boolean;
@@ -24,6 +24,7 @@ export function Button({
   const variants = {
     primary: "bg-accent text-white hover:bg-accent-600 active:bg-accent-700",
     secondary: "bg-fill text-ink hover:bg-fill-strong",
+    destructive: "bg-danger-fill text-danger",
   };
   const inactive = disabled || loading;
 

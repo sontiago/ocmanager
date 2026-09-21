@@ -49,6 +49,7 @@ export const ru = {
   "plans.subtitle": "Выберите подходящий вариант",
   "plans.buy": "Купить за {price}",
   "plans.current": "Текущий тариф",
+  "plans.currentShort": "ТЕКУЩИЙ",
   "plans.unlimitedTraffic": "Безлимитный трафик",
   "plans.trafficPerMonth": "{amount} в месяц",
   "plans.trialTitle": "Попробовать бесплатно",
