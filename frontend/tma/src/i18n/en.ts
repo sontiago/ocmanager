@@ -196,6 +196,13 @@ export const en: Record<MessageKey, string> = {
   "renew.note":
     "Renewal only moves the date: keys are not reissued, the connection is not dropped, and the traffic counter starts over. Turning auto-renewal off does not cut access — the paid period runs to its end.",
   "renew.submit": "Renew now for {days}",
+
+  "account.language": "Language",
+  "account.theme": "Theme",
+  "account.themeSystem": "Match Telegram",
+  "account.themeLight": "Light",
+  "account.themeDark": "Dark",
+  "account.support": "Support",
 };
 
 export const enPlural: Record<

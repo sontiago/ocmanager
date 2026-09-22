@@ -4,6 +4,7 @@ export interface AppEnv {
   apiMode: ApiMode;
   apiBaseUrl: string;
   devPanel: boolean;
+  supportHandle: string;
 }
 
 type RawEnv = Record<string, string | undefined>;
@@ -20,6 +21,7 @@ export function readEnv(raw: RawEnv): AppEnv {
     apiMode: mode,
     apiBaseUrl: (raw.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, ""),
     devPanel: raw.VITE_DEV_PANEL === "true",
+    supportHandle: raw.VITE_SUPPORT_HANDLE ?? "@ocmanager_help",
   };
 }
 

@@ -27,4 +27,10 @@ describe("readEnv", () => {
   it("dev-панель выключена, если флаг не выставлен", () => {
     expect(readEnv({}).devPanel).toBe(false);
   });
+  it("контакт поддержки берётся из окружения, иначе остаётся дефолтный", () => {
+    expect(readEnv({}).supportHandle).toBe("@ocmanager_help");
+    expect(readEnv({ VITE_SUPPORT_HANDLE: "@vpn_help" }).supportHandle).toBe(
+      "@vpn_help",
+    );
+  });
 });

@@ -207,6 +207,14 @@ export const ru = {
   "renew.note":
     "Продление меняет только дату: ключи не перевыпускаются, соединение не рвётся, счётчик трафика начинается заново. Отключение автопродления не отключает доступ — оплаченный период дорабатывает до конца.",
   "renew.submit": "Продлить сейчас на {days}",
+
+  // Аккаунт
+  "account.language": "Язык",
+  "account.theme": "Тема",
+  "account.themeSystem": "Как в Telegram",
+  "account.themeLight": "Светлая",
+  "account.themeDark": "Тёмная",
+  "account.support": "Поддержка",
 } as const;
 
 export const ruPlural = {
