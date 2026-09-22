@@ -58,7 +58,7 @@ describe("главный экран", () => {
   });
 
   it("без подписки предлагает выбрать тариф", async () => {
-    resetStore("new_user");
+    resetStore("trial_used");
     renderWithProviders(<Subscription />);
     await waitFor(() => expect(screen.getByText("Подписки нет")).toBeVisible());
 
@@ -66,6 +66,16 @@ describe("главный экран", () => {
       screen.getByRole("button", { name: "Выбрать тариф" }),
     );
     expect(navigate).toHaveBeenCalledWith(ROUTES.plans);
+  });
+
+  it("новичку с доступным пробным периодом показывает онбординг", async () => {
+    resetStore("new_user");
+    renderWithProviders(<Subscription />);
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(ROUTES.onboarding, {
+        replace: true,
+      }),
+    );
   });
 
   it("действующая подписка отвечает сроком, тарифом и автопродлением", async () => {

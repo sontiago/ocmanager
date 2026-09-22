@@ -203,6 +203,15 @@ export const en: Record<MessageKey, string> = {
   "account.themeLight": "Light",
   "account.themeDark": "Dark",
   "account.support": "Support",
+
+  "onboarding.title1": "Access",
+  "onboarding.title2": "in two minutes",
+  "onboarding.step1Title": "Pick a plan",
+  "onboarding.step1Body": "Duration, devices, traffic",
+  "onboarding.step2Title": "Pay in Tribute",
+  "onboarding.step2Body": "Access turns on by itself",
+  "onboarding.step3Title": "Get your key",
+  "onboarding.step3Body": "And a guide for your system",
 };
 
 export const enPlural: Record<

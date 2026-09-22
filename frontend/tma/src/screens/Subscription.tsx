@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { useDevices, useSubscription } from "../api/hooks";
+import { useDevices, useSubscription, useMe } from "../api/hooks";
 import type { Subscription as Sub } from "../api/types";
 import { ROUTES } from "../app/routes";
 import { useTranslation } from "../i18n/useTranslation";
@@ -25,6 +25,7 @@ import { SectionLabel } from "../ui/SectionLabel";
 import { Skeleton } from "../ui/Skeleton";
 import { StatusIcon } from "../ui/StatusIcon";
 import { IconArrowUp, IconPhone, IconRenew } from "../ui/icons";
+import { useEffect } from "react";
 
 export function Subscription() {
   const navigate = useNavigate();
@@ -34,6 +35,17 @@ export function Subscription() {
   // Список устройств нужен только для подписи строки. Экран его не ждёт:
   // срок и трафик важнее имён и приходят отдельным запросом.
   const devices = useDevices();
+
+  const me = useMe();
+
+  // Новичку с нетронутым пробным периодом показываем онбординг: «Подписки
+  // нет» с одной кнопкой ничего не объясняет про продукт. Условие смотрит
+  // именно на null — undefined означает «ещё не загрузилось».
+  useEffect(() => {
+    if (subscription.data === null && me.data?.trial_available) {
+      navigate(ROUTES.onboarding, { replace: true });
+    }
+  }, [subscription.data, me.data, navigate]);
 
   if (subscription.isPending) return <SubscriptionSkeleton />;
 

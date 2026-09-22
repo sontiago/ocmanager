@@ -1,6 +1,10 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useMe, useStartTrial, useSubscription } from "../api/hooks";
 import { ROUTES } from "../app/routes";
-import { TRIAL } from "./demo";
+import { useTranslation } from "../i18n/useTranslation";
+import { formatBytes } from "../lib/format";
+import { TRIAL_PREVIEW } from "../lib/trial";
 import { Button } from "../ui/Button";
 import { Callout } from "../ui/Callout";
 import { Card } from "../ui/Card";
@@ -8,60 +12,92 @@ import { Cell } from "../ui/Cell";
 import { CellIcon } from "../ui/CellIcon";
 import { Note } from "../ui/Note";
 
-const T = {
-  title: ["Доступ", "за две минуты"],
-  steps: [
-    { title: "Выберите тариф", body: "Срок, число устройств, трафик" },
-    { title: "Оплатите в Tribute", body: "Доступ включится сам" },
-    { title: "Получите ключ", body: "И инструкцию под свою систему" },
-  ],
-  trialTitle: "Пробный период",
-  trial: (d: number, gb: number) =>
-    `${d} дня, ${gb} ГБ, одно устройство. Без оплаты, один раз на аккаунт.`,
-  start: "Начать пробный период",
-  seePlans: "Посмотреть тарифы",
-};
+const STEPS = [
+  { title: "onboarding.step1Title", body: "onboarding.step1Body" },
+  { title: "onboarding.step2Title", body: "onboarding.step2Body" },
+  { title: "onboarding.step3Title", body: "onboarding.step3Body" },
+] as const;
 
 export function Onboarding() {
   const navigate = useNavigate();
+  const { t, tPlural, lang } = useTranslation();
+
+  const me = useMe();
+  const subscription = useSubscription();
+  const startTrial = useStartTrial();
+
+  // Экран для того, у кого ещё ничего нет. Если подписка уже появилась —
+  // вернулись по истории или набрали адрес руками — рассказывать нечего.
+  useEffect(() => {
+    if (subscription.data) navigate(ROUTES.home, { replace: true });
+  }, [subscription.data, navigate]);
 
   return (
     // h-full + flex-col: содержимое растягивается, кнопки прижимаются к низу.
+    // Единственный экран приложения с прижатым футером — здесь выбор и есть
+    // всё содержание, и он не должен уезжать за край.
     <div className="flex h-full flex-col">
       <div className="flex-1">
         <div className="px-1 pt-4.5 text-[40px] font-extrabold leading-[1.02] tracking-[-0.04em]">
-          {T.title[0]}
+          {/* Каждая строка — свой узел: иначе текстовые узлы склеиваются
+              в «Доступза две минуты» при выделении и в поиске по тексту. */}
+          <span>{t("onboarding.title1")}</span>
           <br />
-          {T.title[1]}
+          <span>{t("onboarding.title2")}</span>
         </div>
 
         <Card className="mt-[22px]">
-          {T.steps.map((step, index) => (
+          {STEPS.map((step, index) => (
             <Cell
               key={step.title}
               icon={<CellIcon>{String(index + 1).padStart(2, "0")}</CellIcon>}
-              title={step.title}
-              subtitle={step.body}
+              title={t(step.title)}
+              subtitle={t(step.body)}
             />
           ))}
         </Card>
 
-        <Callout>
-          <div className="text-[15px] font-semibold">{T.trialTitle}</div>
-          <Note className="mt-0.5">
-            {T.trial(TRIAL.days, TRIAL.traffic_gb)}
+        {me.data?.trial_available && (
+          <Callout>
+            <div className="text-[15px] font-semibold">
+              {t("plans.trialTitle")}
+            </div>
+            <Note className="mt-0.5">
+              {t("plans.trialBody", {
+                days: tPlural("unit.day", TRIAL_PREVIEW.duration_days),
+                traffic: formatBytes(TRIAL_PREVIEW.traffic_limit_bytes, lang),
+              })}
+            </Note>
+          </Callout>
+        )}
+
+        {startTrial.isError && (
+          <Note tone="danger" className="px-1 pt-3">
+            {t(startTrial.error.messageKey())}
           </Note>
-        </Callout>
+        )}
       </div>
 
       <div className="pt-4">
-        <Button onClick={() => navigate(ROUTES.home)}>{T.start}</Button>
+        {me.data?.trial_available && (
+          <Button
+            className="mb-2.5"
+            loading={startTrial.isPending}
+            onClick={() =>
+              startTrial.mutate(undefined, {
+                onSuccess: () => navigate(ROUTES.home),
+              })
+            }
+          >
+            {t("plans.trialStart")}
+          </Button>
+        )}
+
         <Button
-          variant="secondary"
-          className="mt-2.5"
+          variant={me.data?.trial_available ? "secondary" : "primary"}
           onClick={() => navigate(ROUTES.plans)}
         >
-          {T.seePlans}
+          {t("subscription.choosePlan")}
         </Button>
       </div>
     </div>

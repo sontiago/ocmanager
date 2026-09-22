@@ -215,6 +215,16 @@ export const ru = {
   "account.themeLight": "Светлая",
   "account.themeDark": "Тёмная",
   "account.support": "Поддержка",
+
+  // Онбординг
+  "onboarding.title1": "Доступ",
+  "onboarding.title2": "за две минуты",
+  "onboarding.step1Title": "Выберите тариф",
+  "onboarding.step1Body": "Срок, число устройств, трафик",
+  "onboarding.step2Title": "Оплатите в Tribute",
+  "onboarding.step2Body": "Доступ включится сам",
+  "onboarding.step3Title": "Получите ключ",
+  "onboarding.step3Body": "И инструкцию под свою систему",
 } as const;
 
 export const ruPlural = {
