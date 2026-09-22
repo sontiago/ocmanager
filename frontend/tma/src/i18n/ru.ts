@@ -197,6 +197,16 @@ export const ru = {
     "Подключитесь: sudo openconnect --certificate=key.pem <адрес сервера>",
   "instructions.linux.4":
     "Для постоянного подключения добавьте профиль в NetworkManager: nmcli connection add type vpn",
+
+  // Продление
+  "renew.nextCharge": "Следующее списание",
+  "renew.price": "Стоимость продления",
+  "renew.accessEnds": "Доступ заканчивается {date}",
+  "renew.managed":
+    "Включается и отключается в Tribute — там же, где оформлялась оплата",
+  "renew.note":
+    "Продление меняет только дату: ключи не перевыпускаются, соединение не рвётся, счётчик трафика начинается заново. Отключение автопродления не отключает доступ — оплаченный период дорабатывает до конца.",
+  "renew.submit": "Продлить сейчас на {days}",
 } as const;
 
 export const ruPlural = {

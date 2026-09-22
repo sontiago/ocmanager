@@ -187,6 +187,15 @@ export const en: Record<MessageKey, string> = {
     "Connect: sudo openconnect --certificate=key.pem <server address>",
   "instructions.linux.4":
     "For a persistent connection add a NetworkManager profile: nmcli connection add type vpn",
+
+  "renew.nextCharge": "Next charge",
+  "renew.price": "Renewal price",
+  "renew.accessEnds": "Access ends on {date}",
+  "renew.managed":
+    "Turned on and off in Tribute — where the payment was set up",
+  "renew.note":
+    "Renewal only moves the date: keys are not reissued, the connection is not dropped, and the traffic counter starts over. Turning auto-renewal off does not cut access — the paid period runs to its end.",
+  "renew.submit": "Renew now for {days}",
 };
 
 export const enPlural: Record<
