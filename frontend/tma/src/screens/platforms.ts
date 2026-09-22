@@ -26,3 +26,8 @@ export const PLATFORMS: readonly Platform[] = [
   "macos",
   "linux",
 ];
+
+/** Платформа из адреса приходит строкой: адрес мог набрать человек. */
+export function isPlatform(value: string | undefined): value is Platform {
+  return PLATFORMS.some((platform) => platform === value);
+}

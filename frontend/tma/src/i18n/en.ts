@@ -146,6 +146,47 @@ export const en: Record<MessageKey, string> = {
   "subscription.accessLeft": "Access active for",
   "subscription.changePlan": "Change plan",
   "subscription.changePlanBody": "More devices or traffic",
+
+  "instructions.ios.1": "Install Cisco Secure Client from the App Store",
+  "instructions.ios.2":
+    "Open the downloaded key file and enter the password — iOS will offer to install a profile",
+  "instructions.ios.3":
+    "Settings → General → VPN & Device Management → install the profile",
+  "instructions.ios.4":
+    "Open Cisco Secure Client, add a connection with the server address and turn the VPN on",
+
+  "instructions.android.1": "Install Cisco Secure Client from Google Play",
+  "instructions.android.2":
+    "In the app open Menu → Manage certificates → Import from file",
+  "instructions.android.3":
+    "Pick the downloaded key file and enter the password",
+  "instructions.android.4":
+    "Add a connection with the server address, select the imported certificate and turn the VPN on",
+
+  "instructions.windows.1": "Install OpenConnect GUI from the official site",
+  "instructions.windows.2":
+    "Double-click the downloaded key file and enter the password — Windows stores the certificate in your personal store",
+  "instructions.windows.3":
+    "In OpenConnect GUI create a profile, enter the server address and pick the certificate from the store",
+  "instructions.windows.4":
+    "Press Connect — the tunnel comes up in a couple of seconds",
+
+  "instructions.macos.1": "Install OpenConnect GUI or Cisco Secure Client",
+  "instructions.macos.2":
+    "Double-click the downloaded key file and enter the password — the certificate goes into Keychain",
+  "instructions.macos.3":
+    "Create a profile with the server address and select the imported certificate",
+  "instructions.macos.4":
+    "Connect and allow the system to add the VPN configuration",
+
+  "instructions.linux.1":
+    "Install the openconnect package: apt install openconnect or dnf install openconnect",
+  "instructions.linux.2":
+    "Unpack the key: openssl pkcs12 -in key.p12 -out key.pem -nodes (it asks for the password)",
+  "instructions.linux.3":
+    "Connect: sudo openconnect --certificate=key.pem <server address>",
+  "instructions.linux.4":
+    "For a persistent connection add a NetworkManager profile: nmcli connection add type vpn",
 };
 
 export const enPlural: Record<

@@ -157,6 +157,46 @@ export const ru = {
   "subscription.accessLeft": "Доступ активен ещё",
   "subscription.changePlan": "Сменить тариф",
   "subscription.changePlanBody": "Больше устройств или трафика",
+
+  "instructions.ios.1": "Установите Cisco Secure Client из App Store",
+  "instructions.ios.2":
+    "Откройте скачанный файл ключа и введите пароль — iOS предложит установить профиль",
+  "instructions.ios.3":
+    "Настройки → Основные → VPN и управление устройством → установите профиль",
+  "instructions.ios.4":
+    "Откройте Cisco Secure Client, добавьте подключение с адресом сервера и включите VPN",
+
+  "instructions.android.1": "Установите Cisco Secure Client из Google Play",
+  "instructions.android.2":
+    "В приложении откройте меню → Управление сертификатами → Импорт из файла",
+  "instructions.android.3": "Выберите скачанный файл ключа и введите пароль",
+  "instructions.android.4":
+    "Добавьте подключение с адресом сервера, выберите импортированный сертификат и включите VPN",
+
+  "instructions.windows.1": "Установите OpenConnect GUI с официального сайта",
+  "instructions.windows.2":
+    "Дважды щёлкните по скачанному файлу ключа и введите пароль — Windows положит сертификат в личное хранилище",
+  "instructions.windows.3":
+    "В OpenConnect GUI создайте профиль, укажите адрес сервера и выберите сертификат из хранилища",
+  "instructions.windows.4":
+    "Нажмите «Подключиться» — соединение установится за пару секунд",
+
+  "instructions.macos.1": "Установите OpenConnect GUI или Cisco Secure Client",
+  "instructions.macos.2":
+    "Откройте скачанный файл ключа двойным щелчком и введите пароль — сертификат попадёт в Связку ключей",
+  "instructions.macos.3":
+    "Создайте профиль с адресом сервера и выберите импортированный сертификат",
+  "instructions.macos.4":
+    "Подключитесь и разрешите системе добавить VPN-конфигурацию",
+
+  "instructions.linux.1":
+    "Установите пакет openconnect: apt install openconnect или dnf install openconnect",
+  "instructions.linux.2":
+    "Распакуйте ключ: openssl pkcs12 -in key.p12 -out key.pem -nodes (спросит пароль)",
+  "instructions.linux.3":
+    "Подключитесь: sudo openconnect --certificate=key.pem <адрес сервера>",
+  "instructions.linux.4":
+    "Для постоянного подключения добавьте профиль в NetworkManager: nmcli connection add type vpn",
 } as const;
 
 export const ruPlural = {
