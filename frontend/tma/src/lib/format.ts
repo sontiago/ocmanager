@@ -63,6 +63,35 @@ export function formatDate(iso: string, lang: Lang): string {
   }).format(new Date(ms));
 }
 
+/**
+ * «2 часа назад», «вчера», «3 дня назад» — время последнего подключения.
+ * Старше месяца переходит на дату: «давно» интереснее точности до дня.
+ * `now` параметром, а не Date.now() внутри, — иначе тест недетерминирован.
+ */
+export function formatRelative(
+  iso: string,
+  lang: Lang,
+  now: number = Date.now(),
+): string {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return "—";
+
+  const diff = ms - now; // отрицательное — в прошлом
+  // numeric:"auto" даёт «вчера» вместо «1 день назад»
+  const rtf = new Intl.RelativeTimeFormat(LOCALES[lang], { numeric: "auto" });
+
+  const minutes = Math.round(diff / 60_000);
+  if (Math.abs(minutes) < 60) return rtf.format(minutes, "minute");
+
+  const hours = Math.round(diff / 3_600_000);
+  if (Math.abs(hours) < 24) return rtf.format(hours, "hour");
+
+  const days = Math.round(diff / 86_400_000);
+  if (Math.abs(days) < 30) return rtf.format(days, "day");
+
+  return formatDate(iso, lang);
+}
+
 /** Обратный отсчёт mm:ss для TTL одноразовой ссылки. */
 export function formatCountdown(msLeft: number): string {
   const total = Math.max(0, Math.floor(msLeft / 1000));

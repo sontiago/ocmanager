@@ -4,6 +4,7 @@ import {
   formatCountdown,
   formatDate,
   formatMoney,
+  formatRelative,
 } from "./format";
 
 /** Intl вставляет неразрывные пробелы — для читаемости утверждений нормализуем. */
@@ -85,5 +86,26 @@ describe("formatCountdown", () => {
 
   it("истёкшее время — нули, а не отрицательные значения", () => {
     expect(formatCountdown(-1)).toBe("00:00");
+  });
+});
+
+describe("formatRelative", () => {
+  const now = Date.parse("2026-09-22T12:00:00Z");
+
+  it("часы назад", () => {
+    expect(formatRelative("2026-09-22T10:00:00Z", "ru", now)).toMatch(/2 час/);
+  });
+
+  it("вчерашнее время называет словом, а не числом", () => {
+    expect(formatRelative("2026-09-21T12:00:00Z", "ru", now)).toBe("вчера");
+  });
+
+  it("старше месяца показывает датой", () => {
+    const old = "2026-01-05T12:00:00Z";
+    expect(formatRelative(old, "ru", now)).toBe(formatDate(old, "ru"));
+  });
+
+  it("на мусоре не падает", () => {
+    expect(formatRelative("не дата", "ru", now)).toBe("—");
   });
 });

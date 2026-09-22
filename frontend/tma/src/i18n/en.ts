@@ -92,6 +92,12 @@ export const en: Record<MessageKey, string> = {
   "devices.revoked": "Device revoked",
   "devices.limitReached": "Plan device limit reached",
   "devices.instructions": "Setup guide",
+  "devices.slots": "{used} of {limit} in use",
+  "devices.freeSlot": "Free slot",
+  "devices.freeSlotBody": "Issue a key for a new device",
+  "devices.revokeConfirm": "Revoke device",
+  "devices.note":
+    "One key works on one device. A revoked key stops connecting immediately and frees its slot.",
 
   "deviceCreate.title": "New device",
   "deviceCreate.pickPlatform": "Choose the operating system",

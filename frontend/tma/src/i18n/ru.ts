@@ -148,6 +148,13 @@ export const ru = {
   "subscription.accessLeft": "Доступ активен ещё",
   "subscription.changePlan": "Сменить тариф",
   "subscription.changePlanBody": "Больше устройств или трафика",
+
+  "devices.slots": "Занято {used} из {limit}",
+  "devices.freeSlot": "Свободный слот",
+  "devices.freeSlotBody": "Выпустить ключ на новое устройство",
+  "devices.revokeConfirm": "Отозвать устройство",
+  "devices.note":
+    "Один ключ работает на одном устройстве. Отозванный ключ перестаёт подключаться сразу, слот освобождается.",
 } as const;
 
 export const ruPlural = {
