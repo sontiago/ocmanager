@@ -129,6 +129,14 @@ export const en: Record<MessageKey, string> = {
     "After paying, come back to Telegram — the bot will message you once the subscription is active.",
   "checkout.notFound": "Plan not found",
   "checkout.notFoundBody": "It may no longer be on sale. Pick another one.",
+
+  "subscription.autoRenew": "Auto-renewal",
+  "subscription.nextCharge": "Charges {price}",
+  "subscription.on": "on",
+  "subscription.off": "off",
+  "subscription.accessLeft": "Access active for",
+  "subscription.changePlan": "Change plan",
+  "subscription.changePlanBody": "More devices or traffic",
 };
 
 export const enPlural: Record<
@@ -140,6 +148,12 @@ export const enPlural: Record<
     few: "{n} days",
     many: "{n} days",
     other: "{n} days",
+  },
+  "unit.dayBare": {
+    one: "day",
+    few: "days",
+    many: "days",
+    other: "days",
   },
   "unit.device": {
     one: "{n} device",

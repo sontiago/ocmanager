@@ -140,6 +140,14 @@ export const ru = {
     "После оплаты вернитесь в Telegram — бот пришлёт сообщение, когда подписка активируется.",
   "checkout.notFound": "Тариф не найден",
   "checkout.notFoundBody": "Возможно, он больше не продаётся. Выберите другой.",
+
+  "subscription.autoRenew": "Автопродление",
+  "subscription.nextCharge": "Списание {price}",
+  "subscription.on": "включено",
+  "subscription.off": "выключено",
+  "subscription.accessLeft": "Доступ активен ещё",
+  "subscription.changePlan": "Сменить тариф",
+  "subscription.changePlanBody": "Больше устройств или трафика",
 } as const;
 
 export const ruPlural = {
@@ -148,6 +156,12 @@ export const ruPlural = {
     few: "{n} дня",
     many: "{n} дней",
     other: "{n} дня",
+  },
+  "unit.dayBare": {
+    one: "день",
+    few: "дня",
+    many: "дней",
+    other: "дня",
   },
   "unit.device": {
     one: "{n} устройство",
