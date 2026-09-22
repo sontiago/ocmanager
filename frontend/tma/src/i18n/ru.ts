@@ -99,6 +99,12 @@ export const ru = {
   "devices.revoked": "Устройство отозвано",
   "devices.limitReached": "Достигнут лимит устройств тарифа",
   "devices.instructions": "Инструкция",
+  "devices.slots": "Занято {used} из {limit}",
+  "devices.freeSlot": "Свободный слот",
+  "devices.freeSlotBody": "Выпустить ключ на новое устройство",
+  "devices.revokeConfirm": "Отозвать устройство",
+  "devices.note":
+    "Один ключ работает на одном устройстве. Отозванный ключ перестаёт подключаться сразу, слот освобождается.",
 
   // Выпуск устройства
   "deviceCreate.title": "Новое устройство",
@@ -107,6 +113,8 @@ export const ru = {
   "deviceCreate.namePlaceholder": "iPhone Ивана",
   "deviceCreate.submit": "Выпустить ключ",
   "deviceCreate.issuing": "Выпускаем ключ…",
+  "deviceCreate.intro":
+    "Выберите систему устройства — от неё зависит формат ключа и инструкция.",
 
   // Секрет — показывается один раз
   "deviceSecret.title": "Ключ готов",
@@ -119,6 +127,7 @@ export const ru = {
   "deviceSecret.qrHint": "Отсканируйте, чтобы открыть на телефоне",
   "deviceSecret.next": "Перейти к инструкции",
 
+  "devices.manage": "К списку устройств",
   // Инструкции
   "instructions.title": "Как подключиться",
   "instructions.step": "Шаг {n}",
@@ -148,13 +157,6 @@ export const ru = {
   "subscription.accessLeft": "Доступ активен ещё",
   "subscription.changePlan": "Сменить тариф",
   "subscription.changePlanBody": "Больше устройств или трафика",
-
-  "devices.slots": "Занято {used} из {limit}",
-  "devices.freeSlot": "Свободный слот",
-  "devices.freeSlotBody": "Выпустить ключ на новое устройство",
-  "devices.revokeConfirm": "Отозвать устройство",
-  "devices.note":
-    "Один ключ работает на одном устройстве. Отозванный ключ перестаёт подключаться сразу, слот освобождается.",
 } as const;
 
 export const ruPlural = {

@@ -15,6 +15,7 @@ interface CellProps {
   className?: string;
   /** Необратимое действие строкой списка: «Отозвать устройство». */
   destructive?: boolean;
+  selected?: boolean;
 }
 
 export function Cell({
@@ -28,6 +29,7 @@ export function Cell({
   highlighted = false,
   className = "",
   destructive = false,
+  selected,
 }: CellProps) {
   const base = [
     // класс cell — зацепка для правила .cell + .cell в index.css
@@ -54,6 +56,11 @@ export function Cell({
           </span>
         )}
       </span>
+      {selected && (
+        <span className="shrink-0 text-[17px] font-extrabold text-accent">
+          ✓
+        </span>
+      )}
       {value && (
         <span className="shrink-0 text-sm font-extrabold">{value}</span>
       )}
@@ -73,6 +80,8 @@ export function Cell({
         onClick();
       }}
       className={`${base} cursor-pointer hover:bg-row-hover active:bg-row-press`}
+      role={selected === undefined ? undefined : "radio"}
+      aria-checked={selected}
     >
       {body}
     </button>

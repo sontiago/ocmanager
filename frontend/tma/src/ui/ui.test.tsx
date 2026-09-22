@@ -133,4 +133,11 @@ describe("Sheet", () => {
     );
     expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
   });
+  it("выбираемая ячейка сообщает состояние через ARIA", () => {
+    renderWithProviders(<Cell title="iOS" selected onClick={vi.fn()} />);
+    expect(screen.getByRole("radio", { name: /iOS/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
 });

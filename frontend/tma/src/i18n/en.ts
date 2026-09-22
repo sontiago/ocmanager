@@ -105,6 +105,9 @@ export const en: Record<MessageKey, string> = {
   "deviceCreate.namePlaceholder": "Ivan's iPhone",
   "deviceCreate.submit": "Issue key",
   "deviceCreate.issuing": "Issuing the key…",
+  "deviceCreate.intro":
+    "Pick the device's operating system — it decides the key format and the setup guide.",
+  "devices.manage": "Back to devices",
 
   "deviceSecret.title": "Your key is ready",
   "deviceSecret.warning":

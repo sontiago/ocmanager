@@ -1,103 +1,101 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import QRCode from "qrcode";
+import { useNavigate } from "react-router";
 import { ROUTES } from "../app/routes";
-import { PLATFORM_INFO, SECRET, type Platform } from "./demo";
+import { useTranslation } from "../i18n/useTranslation";
 import { formatCountdown } from "../lib/format";
+import { openExternal } from "../telegram/links";
 import { Button } from "../ui/Button";
 import { Callout } from "../ui/Callout";
 import { Card } from "../ui/Card";
+import { CopyButton } from "../ui/CopyButton";
+import { Mono } from "../ui/Mono";
 import { Note } from "../ui/Note";
+import { QrCode } from "../ui/QrCode";
 import { SectionLabel } from "../ui/SectionLabel";
-
-const T = {
-  once: "Пароль и ссылка показываются один раз",
-  expired: "Ссылка истекла",
-  passwordLabel: "ПАРОЛЬ К ФАЙЛУ КЛЮЧА",
-  copy: "Копировать",
-  copied: "Скопировано",
-  qrNote:
-    "Сканируйте с телефона, чтобы открыть ссылку там, где будет стоять ключ. Ссылка одноразовая: после первого скачивания перестаёт работать.",
-  download: "Скачать ключ .p12",
-  guide: (os: string) => `Инструкция для ${os}`,
-  note: "Ту же ссылку бот отправил сообщением. Потерянный ключ не восстанавливается — выпускается новый, старый отзывается.",
-};
+import { clearIssued, peekIssued } from "./secretVault";
 
 export function DeviceSecret() {
   const navigate = useNavigate();
-  const { platform } = useParams<{ platform: Platform }>();
-  const info = PLATFORM_INFO[platform ?? "ios"];
+  const { t } = useTranslation();
 
-  const [secondsLeft, setSecondsLeft] = useState(SECRET.ttl_seconds);
-  const [qr, setQr] = useState<string>("");
-  const [copied, setCopied] = useState(false);
+  // Читаем один раз при первом рендере: дальше экран живёт со своей копией,
+  // а хранилище можно стирать, не боясь потерять показанное.
+  const [issued] = useState(peekIssued);
+  const [msLeft, setMsLeft] = useState(() =>
+    issued ? Date.parse(issued.download_expires_at) - Date.now() : 0,
+  );
 
-  // Таймер: одна секунда, останавливается на нуле.
+  // Экран открыли напрямую — перезагрузкой или вставленной ссылкой.
+  // Показывать нечего, и пустота здесь пугает сильнее, чем возврат в список.
   useEffect(() => {
-    const id = setInterval(() => {
-      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    if (!issued) navigate(ROUTES.devices, { replace: true });
+  }, [issued, navigate]);
+
+  // Секрет живёт ровно столько, сколько открыт этот экран.
+  useEffect(() => clearIssued, []);
 
   useEffect(() => {
-    QRCode.toDataURL(SECRET.download_url, { margin: 1, width: 236 }).then(
-      setQr,
-    );
-  }, []);
+    if (!issued) return;
+    const expiresAt = Date.parse(issued.download_expires_at);
+    const timer = setInterval(() => setMsLeft(expiresAt - Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [issued]);
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(SECRET.password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  if (!issued) return null;
 
-  const expired = secondsLeft === 0;
+  const expired = msLeft <= 0;
 
   return (
     <div>
-      <Callout className="flex items-center justify-between gap-3">
+      <Callout>
         <span className="text-[12.5px] leading-[1.4]">
-          {expired ? T.expired : T.once}
-        </span>
-        <span className="text-[19px] font-extrabold tabular-nums text-accent-700">
-          {formatCountdown(secondsLeft * 1000)}
+          {t("deviceSecret.warning")}
         </span>
       </Callout>
 
-      <SectionLabel>{T.passwordLabel}</SectionLabel>
+      <SectionLabel>{t("deviceSecret.password")}</SectionLabel>
       <Card className="flex items-center justify-between gap-2.5 p-4">
-        <code className="font-mono text-[19px] tracking-[0.05em]">
-          {SECRET.password}
-        </code>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="shrink-0 cursor-pointer rounded-full bg-fill px-3 py-1.5 text-[12.5px] hover:bg-fill-strong"
-        >
-          {copied ? T.copied : T.copy}
-        </button>
+        <Mono className="text-[19px] tracking-[0.05em]">
+          {issued.p12_password}
+        </Mono>
+        <CopyButton value={issued.p12_password} />
       </Card>
 
-      <Card className="mt-3 flex items-center gap-4 p-4">
-        <div className="grid size-[118px] shrink-0 place-items-center overflow-hidden rounded-[20px] bg-white">
-          {qr && <img src={qr} alt="" className="size-full" />}
-        </div>
-        <Note>{T.qrNote}</Note>
-      </Card>
+      {expired ? (
+        // Пароль остаётся верным — истекла только ссылка на файл.
+        <Note tone="danger" className="px-1 pt-3.5">
+          {t("deviceSecret.expired")}
+        </Note>
+      ) : (
+        <>
+          <Card className="mt-3 flex items-center gap-4 p-4">
+            <QrCode
+              value={issued.download_url}
+              label={t("deviceSecret.qrHint")}
+            />
+            <Note>{t("deviceSecret.qrHint")}</Note>
+          </Card>
 
-      <Button className="mt-[18px]" onClick={() => console.log("скачать .p12")}>
-        {T.download}
-      </Button>
+          <Button
+            className="mt-[18px]"
+            onClick={() => openExternal(issued.download_url)}
+          >
+            {t("deviceSecret.download")}
+          </Button>
+
+          <Note className="px-1 pt-2 text-center">
+            {t("deviceSecret.expiresIn", { time: formatCountdown(msLeft) })}
+          </Note>
+        </>
+      )}
+
       <Button
         variant="secondary"
         className="mt-2.5"
-        onClick={() => navigate(ROUTES.deviceGuide(platform ?? "ios"))}
+        onClick={() => navigate(ROUTES.deviceGuide(issued.device.platform))}
       >
-        {T.guide(info.badge === "iOS" ? "iOS" : info.label)}
+        {t("deviceSecret.next")}
       </Button>
-
-      <Note className="px-1 pt-3">{T.note}</Note>
     </div>
   );
 }
