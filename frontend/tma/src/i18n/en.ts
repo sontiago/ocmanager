@@ -115,10 +115,20 @@ export const en: Record<MessageKey, string> = {
   "instructions.server": "Server address",
   "instructions.openStore": "Open in the app store",
 
+  "checkout.total": "Total",
+  "checkout.plan": "Plan",
+  "checkout.period": "Period",
+  "checkout.method": "Payment method",
+  "checkout.autoRenew": "Auto-renewal",
+  "checkout.autoRenewOn": "will be enabled",
+  "checkout.pay": "Go to payment",
   "checkout.opening": "Opening payment…",
+  "checkout.note":
+    "Payment opens in Tribute. The app will close — the bot will message you in the chat once access is ready. It usually takes a few seconds.",
   "checkout.hint":
     "After paying, come back to Telegram — the bot will message you once the subscription is active.",
-  "checkout.failed": "Could not open the payment page. Try again.",
+  "checkout.notFound": "Plan not found",
+  "checkout.notFoundBody": "It may no longer be on sale. Pick another one.",
 };
 
 export const enPlural: Record<

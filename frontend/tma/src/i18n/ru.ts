@@ -126,10 +126,20 @@ export const ru = {
   "instructions.openStore": "Открыть в магазине приложений",
 
   // Покупка
+  "checkout.total": "К оплате",
+  "checkout.plan": "Тариф",
+  "checkout.period": "Период",
+  "checkout.method": "Способ оплаты",
+  "checkout.autoRenew": "Автопродление",
+  "checkout.autoRenewOn": "включится",
+  "checkout.pay": "Перейти к оплате",
   "checkout.opening": "Открываем оплату…",
+  "checkout.note":
+    "Оплата откроется в Tribute. Приложение закроется — бот пришлёт сообщение в чат, когда доступ будет готов. Обычно это занимает несколько секунд.",
   "checkout.hint":
     "После оплаты вернитесь в Telegram — бот пришлёт сообщение, когда подписка активируется.",
-  "checkout.failed": "Не удалось открыть оплату. Попробуйте ещё раз.",
+  "checkout.notFound": "Тариф не найден",
+  "checkout.notFoundBody": "Возможно, он больше не продаётся. Выберите другой.",
 } as const;
 
 export const ruPlural = {
