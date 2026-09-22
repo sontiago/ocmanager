@@ -1,7 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
-import { ApiError } from "../api/errors";
-import { ErrorState } from "../ui/ErrorState";
+
 import { Skeleton } from "../ui/Skeleton";
 import { Layout } from "./Layout";
 import { PATHS, ROUTES } from "./routes";
@@ -134,17 +133,6 @@ export function AppRoutes() {
             <Suspense fallback={<ScreenFallback />}>
               <Onboarding />
             </Suspense>
-          }
-        />
-        {/* Временно: уберётся в Задаче 19, когда появится граница ошибок. */}
-        <Route
-          path="/error"
-          element={
-            <ErrorState
-              error={new ApiError("node_unavailable", 503)}
-              onRetry={() => {}}
-              onSupport={() => {}}
-            />
           }
         />
       </Route>

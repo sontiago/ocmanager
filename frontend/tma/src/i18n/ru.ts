@@ -42,7 +42,6 @@ export const ru = {
   "title.renew": "Продление",
   "title.account": "Аккаунт",
   "title.onboarding": "ocmanager",
-  "title.error": "Ошибка",
 
   // Тарифы
   "plans.title": "Тарифы",
@@ -225,6 +224,18 @@ export const ru = {
   "onboarding.step2Body": "Доступ включится сам",
   "onboarding.step3Title": "Получите ключ",
   "onboarding.step3Body": "И инструкцию под свою систему",
+
+  // Глобальные состояния
+  "gate.outsideTelegram": "Откройте приложение из Telegram",
+  "gate.outsideTelegramBody":
+    "Мини-приложение работает только внутри Telegram — вернитесь в чат с ботом и откройте его оттуда.",
+  "gate.blocked": "Доступ приостановлен",
+  "gate.blockedBody":
+    "Подписка и ключи сохранены. Напишите в поддержку, чтобы разобраться с блокировкой.",
+  "gate.crashed": "Приложение не смогло продолжить",
+  "gate.crashedBody":
+    "Это сбой приложения, а не вашего доступа: подписка и ключи не пострадали.",
+  "gate.reload": "Перезапустить",
 } as const;
 
 export const ruPlural = {

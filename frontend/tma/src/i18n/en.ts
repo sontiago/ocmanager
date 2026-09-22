@@ -39,7 +39,6 @@ export const en: Record<MessageKey, string> = {
   "title.renew": "Renewal",
   "title.account": "Account",
   "title.onboarding": "ocmanager",
-  "title.error": "Error",
 
   "plans.title": "Plans",
   "plans.subtitle": "Pick the one that fits",
@@ -212,6 +211,17 @@ export const en: Record<MessageKey, string> = {
   "onboarding.step2Body": "Access turns on by itself",
   "onboarding.step3Title": "Get your key",
   "onboarding.step3Body": "And a guide for your system",
+
+  "gate.outsideTelegram": "Open the app from Telegram",
+  "gate.outsideTelegramBody":
+    "The mini app only works inside Telegram — go back to the chat with the bot and open it from there.",
+  "gate.blocked": "Access suspended",
+  "gate.blockedBody":
+    "Your subscription and keys are intact. Contact support to sort the block out.",
+  "gate.crashed": "The app could not continue",
+  "gate.crashedBody":
+    "This is an app failure, not a problem with your access: subscription and keys are unaffected.",
+  "gate.reload": "Restart",
 };
 
 export const enPlural: Record<

@@ -19,9 +19,15 @@ import type {
   Subscription,
 } from "./types";
 
-export function useMe(): UseQueryResult<Me, ApiError> {
+export function useMe(
+  options: { enabled?: boolean } = {},
+): UseQueryResult<Me, ApiError> {
   const api = useApi();
-  return useQuery({ queryKey: queryKeys.me, queryFn: () => api.getMe() });
+  return useQuery({
+    queryKey: queryKeys.me,
+    queryFn: () => api.getMe(),
+    enabled: options.enabled ?? true,
+  });
 }
 
 export function usePlans(): UseQueryResult<Plan[], ApiError> {

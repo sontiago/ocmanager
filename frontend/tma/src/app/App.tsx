@@ -7,6 +7,8 @@ import { I18nProvider } from "../i18n/I18nProvider";
 import { AppRoutes } from "./router";
 import { ThemeProvider } from "./ThemeProvider";
 import { lazy, Suspense, useState } from "react";
+import { Gate } from "./Gate";
+import { ErrorBoundary } from "./ErrorBoundary";
 /**
  * Панель существует только в dev-сборке. Условие написано прямо на
  * import.meta.env: Vite подставляет сюда литералы при сборке, тернарник
@@ -30,14 +32,18 @@ export function App({ client }: { client: ApiClient }) {
       <ApiProvider client={client}>
         <ThemeProvider>
           <I18nProvider>
-            <BrowserRouter>
-              <AppRoutes />
-              {DevPanel && (
-                <Suspense fallback={null}>
-                  <DevPanel />
-                </Suspense>
-              )}
-            </BrowserRouter>
+            <ErrorBoundary>
+              <BrowserRouter>
+                <Gate>
+                  <AppRoutes />
+                </Gate>
+                {DevPanel && (
+                  <Suspense fallback={null}>
+                    <DevPanel />
+                  </Suspense>
+                )}
+              </BrowserRouter>
+            </ErrorBoundary>
           </I18nProvider>
         </ThemeProvider>
       </ApiProvider>

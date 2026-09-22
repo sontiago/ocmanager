@@ -57,7 +57,6 @@ export function titleFor(pathname: string): MessageKey | null {
   if (pathname === ROUTES.renew) return "title.renew";
   if (pathname === ROUTES.account) return "title.account";
   if (pathname === ROUTES.onboarding) return "title.onboarding";
-  if (pathname === "/error") return "title.error";
   return null;
 }
 
