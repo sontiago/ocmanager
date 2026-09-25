@@ -3,9 +3,19 @@ name: backend
 on:
   push:
     branches: [main]
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    paths:
+      [
+        "backend/**",
+        "deploy/docker-compose.dev.yml",
+        ".github/workflows/backend.yml",
+      ]
   pull_request:
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    paths:
+      [
+        "backend/**",
+        "deploy/docker-compose.dev.yml",
+        ".github/workflows/backend.yml",
+      ]
 
 jobs:
   check:
@@ -13,6 +23,25 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # Порты и учётные данные совпадают с deploy/docker-compose.dev.yml и
+    # значениями по умолчанию в backend/conftest.py — env задавать не нужно.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ocm
+          POSTGRES_PASSWORD: ocm
+          POSTGRES_DB: ocmanager
+        ports: ["54320:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ocm -d ocmanager"
+          --health-interval 2s --health-timeout 3s --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports: ["63790:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 3s --health-retries 15
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

@@ -46,7 +46,7 @@ ignore = ["S101", "RUF001", "RUF002", "RUF003"]  # assert в тестах; ки�
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["src"]
+files = ["src", "conftest.py", "alembic"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

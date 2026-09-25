@@ -1,7 +1,7 @@
 # Команды бэкенда. Запускать из каталога backend/.
 COMPOSE_DEV := docker compose -f ../deploy/docker-compose.dev.yml
 
-.PHONY: dev-up dev-down lint fmt typecheck test test-unit check
+.PHONY: dev-up dev-down lint fmt typecheck test test-unit check migrate revision
 
 dev-up:     ## Postgres и Redis для разработки и тестов
 	$(COMPOSE_DEV) up -d --wait
@@ -18,3 +18,7 @@ test:       ## все тесты, кроме живого ocserv (нужен mak
 test-unit:  ## тесты без Postgres и Redis
 	uv run pytest -m "not db and not ocserv"
 check: lint typecheck test ## всё, что гоняет CI
+migrate:    ## применить миграции к dev-базе
+	uv run alembic upgrade head
+revision:   ## новая миграция: make revision id=0004 m=clients
+	uv run alembic revision --autogenerate --rev-id $(id) -m $(m)
