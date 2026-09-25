@@ -7,6 +7,7 @@ import { renderWithProviders } from "../test/renderWithProviders";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Gate } from "./Gate";
 import userEvent from "@testing-library/user-event";
+
 const getInitDataRaw = vi.hoisted(() => vi.fn<() => string | undefined>());
 vi.mock("../telegram/auth", async () => {
   const actual =

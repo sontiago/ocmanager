@@ -4,3 +4,14 @@ docs/*
 .env
 .env.local
 .env.production.local
+
+
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Локальное состояние dev-окружения (PKI, allowed.list — Фаза 1)
+.dev/
