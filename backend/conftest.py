@@ -11,7 +11,7 @@ CI может переопределить любое значение пере�
 
 import asyncio
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import pytest
@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import (
 from ocmanager.core.config import Settings
 from ocmanager.core.db import make_engine
 from ocmanager.core.redis import create_redis
+from ocmanager.events import bus
 from ocmanager.models import metadata
 
 BACKEND_DIR = Path(__file__).parent
@@ -172,3 +173,10 @@ async def redis(settings: Settings) -> AsyncIterator[ArqRedis]:
     yield client
     await client.flushdb()
     await client.aclose()
+
+
+@pytest.fixture(autouse=True)
+def _isolated_event_handlers() -> Iterator[None]:
+    """Обработчики, зарегистрированные тестом, не утекают в соседние тесты."""
+    with bus.isolated_handlers():
+        yield

@@ -6,5 +6,6 @@ test_models.py падает, если какой-то models.py здесь за�
 """
 
 from ocmanager.core.db import Base
+from ocmanager.events import models as _events  # noqa: F401
 
 metadata = Base.metadata
