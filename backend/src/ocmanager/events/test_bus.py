@@ -230,3 +230,44 @@ async def test_kick_swallows_redis_errors() -> None:
 def test_registry_starts_empty_in_each_test() -> None:
     # предыдущие тесты регистрировали обработчики; фикстура conftest их убрала
     assert bus._handlers.get("client.blocked", []) == []
+
+
+async def add_event(session: AsyncSession, *, age_days: int | None, attempts: int = 0) -> None:
+    """age_days=None — не доставлено; иначе доставлено age_days дней назад."""
+    now = utcnow()
+    session.add(
+        EventOutbox(
+            name="client.blocked",
+            payload={"client_id": 1},
+            available_at=now,
+            attempts=attempts,
+            dispatched_at=None if age_days is None else now - timedelta(days=age_days),
+        )
+    )
+
+
+async def test_purge_removes_only_old_dispatched(
+    session: AsyncSession, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    await add_event(session, age_days=31)  # старое доставленное — удаляется
+    await add_event(session, age_days=29)  # свежее доставленное — остаётся
+    await add_event(session, age_days=None)  # ждёт доставки — остаётся
+    await add_event(session, age_days=None, attempts=bus.MAX_ATTEMPTS)  # мёртвое — для разбора
+    await session.commit()
+    assert await bus.purge_dispatched(sessionmaker) == 1
+    rows = await outbox(session)
+    assert [(r.dispatched_at is None, r.attempts) for r in rows] == [
+        (False, 0),
+        (True, 0),
+        (True, bus.MAX_ATTEMPTS),
+    ]
+
+
+async def test_purge_works_in_batches(
+    session: AsyncSession, sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    for _ in range(5):
+        await add_event(session, age_days=40)
+    await session.commit()
+    assert await bus.purge_dispatched(sessionmaker, batch=2) == 5
+    assert await outbox(session) == []

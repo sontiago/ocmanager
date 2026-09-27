@@ -15,7 +15,7 @@ from typing import Any
 
 import structlog
 from arq import ArqRedis
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ocmanager.core.clock import utcnow
@@ -27,6 +27,8 @@ log = structlog.get_logger(__name__)
 MAX_ATTEMPTS = 10
 MAX_BACKOFF_S = 300
 KICK_JOB_ID = "dispatch_events:kick"
+OUTBOX_RETENTION = timedelta(days=30)
+PURGE_BATCH = 5000
 
 Handler = Callable[[Any, AsyncSession], Awaitable[None]]
 
@@ -135,3 +137,36 @@ async def kick_dispatch(redis: ArqRedis) -> None:
         await redis.enqueue_job("dispatch_events", _job_id=KICK_JOB_ID)
     except Exception as exc:
         log.warning("kick_dispatch_failed", exc_info=exc)
+
+
+async def purge_dispatched(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    *,
+    older_than: timedelta = OUTBOX_RETENTION,
+    batch: int = PURGE_BATCH,
+) -> int:
+    """Удаляет доставленные события старше `older_than`, возвращает их число.
+    Недоставленные и «мёртвые» не трогает: у них dispatched_at IS NULL.
+    Удаляет пачками, каждая — своя транзакция, чтобы не держать долгих блокировок."""
+    cutoff = utcnow() - older_than
+    total = 0
+    while True:
+        async with sessionmaker() as session, session.begin():
+            oldest = (
+                select(EventOutbox.id)
+                .where(EventOutbox.dispatched_at < cutoff)
+                .order_by(EventOutbox.id)
+                .limit(batch)
+            )
+            deleted = len(
+                (
+                    await session.scalars(
+                        delete(EventOutbox)
+                        .where(EventOutbox.id.in_(oldest))
+                        .returning(EventOutbox.id)
+                    )
+                ).all()
+            )
+        total += deleted
+        if deleted < batch:
+            return total
