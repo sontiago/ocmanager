@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr
@@ -13,6 +14,11 @@ class Settings(BaseSettings):
     secret_key: SecretStr = Field(min_length=32)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_format: Literal["json", "console"] = "json"
+    # ca.key (0600) и ca.crt. Только для бэкенда: в контейнер ноды не монтируется.
+    pki_dir: Path
+    # Общий с контейнером ocserv каталог: ca.crt, crl.pem, allowed.list,
+    # в dev ещё server.crt/server.key.
+    ocserv_state_dir: Path
 
 
 def get_settings() -> Settings:

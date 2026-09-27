@@ -41,6 +41,10 @@ TEST_ENV_DEFAULTS = {
     "OCM_DATABASE_URL": "postgresql+asyncpg://ocm:ocm@127.0.0.1:54320/ocmanager",
     "OCM_REDIS_URL": "redis://127.0.0.1:63790/0",
     "OCM_SECRET_KEY": "test-secret-key-0123456789abcdef0123",
+    # Каталоги dev-стенда: их читают интеграционные тесты (tests/integration).
+    # Юнит-тесты PKI и CLI подставляют tmp_path.
+    "OCM_PKI_DIR": str(BACKEND_DIR.parent / ".dev" / "pki"),
+    "OCM_OCSERV_STATE_DIR": str(BACKEND_DIR.parent / ".dev" / "ocserv-state"),
 }
 for _key, _value in TEST_ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)

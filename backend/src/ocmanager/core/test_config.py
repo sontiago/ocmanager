@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -7,6 +9,8 @@ BASE = {
     "OCM_DATABASE_URL": "postgresql+asyncpg://ocm:ocm@127.0.0.1:54320/ocmanager",
     "OCM_REDIS_URL": "redis://127.0.0.1:63790/0",
     "OCM_SECRET_KEY": "x" * 32,
+    "OCM_PKI_DIR": "../.dev/pki",
+    "OCM_OCSERV_STATE_DIR": "../.dev/ocserv-state",
 }
 
 
@@ -45,4 +49,16 @@ def test_missing_database_url_rejected(env: pytest.MonkeyPatch) -> None:
 def test_unknown_env_rejected(env: pytest.MonkeyPatch) -> None:
     env.setenv("OCM_ENV", "staging")
     with pytest.raises(ValidationError, match="env"):
+        Settings(_env_file=None)
+
+
+def test_paths_are_path_objects(env: pytest.MonkeyPatch) -> None:
+    s = Settings(_env_file=None)
+    assert s.pki_dir == Path("../.dev/pki")
+    assert s.ocserv_state_dir.name == "ocserv-state"
+
+
+def test_missing_pki_dir_rejected(env: pytest.MonkeyPatch) -> None:
+    env.delenv("OCM_PKI_DIR")
+    with pytest.raises(ValidationError, match="pki_dir"):
         Settings(_env_file=None)
