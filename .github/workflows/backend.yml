@@ -6,6 +6,7 @@ on:
     paths:
       [
         "backend/**",
+        "ocserv/**",
         "deploy/docker-compose.dev.yml",
         ".github/workflows/backend.yml",
       ]
@@ -13,6 +14,7 @@ on:
     paths:
       [
         "backend/**",
+        "ocserv/**",
         "deploy/docker-compose.dev.yml",
         ".github/workflows/backend.yml",
       ]

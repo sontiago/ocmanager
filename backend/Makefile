@@ -1,7 +1,7 @@
 # Команды бэкенда. Запускать из каталога backend/.
 COMPOSE_DEV := docker compose -f ../deploy/docker-compose.dev.yml
 
-.PHONY: dev-up dev-down lint fmt typecheck test test-unit check migrate revision boundaries
+.PHONY: dev-up dev-down ocserv-up ocserv-down test-ocserv lint fmt typecheck test test-unit check migrate revision boundaries
 
 dev-up:     ## Postgres и Redis для разработки и тестов
 	$(COMPOSE_DEV) up -d --wait
@@ -24,3 +24,10 @@ revision:   ## новая миграция: make revision id=0004 m=clients
 	uv run alembic revision --autogenerate --rev-id $(id) -m $(m)
 boundaries: ## доменные модули не импортируют друг друга
 	uv run python scripts/check_boundaries.py
+ocserv-up:  ## нода ocserv (профиль ocserv); нужен ocmanager pki init
+	$(COMPOSE_DEV) --profile ocserv up -d --build --wait ocserv
+ocserv-down: ## остановить ноду
+	$(COMPOSE_DEV) --profile ocserv stop ocserv
+test-ocserv: ## интеграционные тесты с живым ocserv (нужен make ocserv-up)
+	uv run pytest tests/integration -m ocserv -v
+	

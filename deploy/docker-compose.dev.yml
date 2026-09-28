@@ -24,5 +24,39 @@ services:
       interval: 2s
       timeout: 3s
       retries: 15
+  # Нода ocserv (Фаза 1). Отдельный профиль: `make dev-up` её не трогает.
+  # Запуск: make ocserv-up (из backend/). Нужны `ocmanager pki init` и
+  # `ocmanager pki dev-server-cert` — иначе entrypoint объяснит, что сделать.
+  ocserv:
+    build: ../ocserv
+    container_name: ocm-ocserv
+    profiles: [ocserv]
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun"]
+    sysctls: { net.ipv4.ip_forward: 1 }
+    ports: ["127.0.0.1:4443:443/tcp", "127.0.0.1:4443:443/udp"]
+    environment:
+      OCSERV_SERVER_CERT: /var/lib/ocmanager/server.crt
+      OCSERV_SERVER_KEY: /var/lib/ocmanager/server.key
+      OCSERV_IPV4_NETWORK: 10.77.0.0/24
+      OCSERV_CAMOUFLAGE_SECRET: devsecret
+      # Тесты многократно получают отказ с одного IP — бан в dev выключен.
+      OCSERV_MAX_BAN_SCORE: 0
+      OCM_INTERNAL_TOKEN: ${OCM_INTERNAL_TOKEN:-dev-internal-token-0123456789abcdef}
+      # Бэкенд в dev работает на хосте; приёмник появится в Задаче 2.9.
+      OCM_SESSION_END_URL: http://host.docker.internal:8000/internal/session-end
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    # Только каталог состояния. .dev/pki с ca.key в ноду не монтируется.
+    volumes:
+      - ../.dev/ocserv-state:/var/lib/ocmanager
+  # Тестовый VPN-клиент: только `docker compose run`, по `up` не стартует.
+  vpn-client:
+    build: dev/vpn-client
+    profiles: [tools]
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun"]
+    volumes:
+      - ../.dev/ocserv-state/ca.crt:/ca.crt:ro
+      - ../.dev/client-certs:/certs:ro
 volumes:
   pgdata:

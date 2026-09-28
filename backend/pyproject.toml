@@ -48,13 +48,13 @@ ignore = ["S101", "RUF001", "RUF002", "RUF003"]  # assert в тестах; ки�
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["src", "conftest.py", "alembic", "scripts"]
+files = ["src", "conftest.py", "alembic", "scripts", "tests"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
-testpaths = ["src", "scripts"]
+testpaths = ["src", "scripts", "tests"]
 markers = [
     "db: нужен Postgres и Redis из deploy/docker-compose.dev.yml",
     "ocserv: нужен живой ocserv и vpn-client (tests/integration)",

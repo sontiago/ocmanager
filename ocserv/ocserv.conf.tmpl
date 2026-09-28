@@ -1,0 +1,75 @@
+# Шаблон ocserv.conf. entrypoint.sh подставляет только переменные ${OCSERV_*}
+# из явного списка; остальные $ в файле остаются как есть.
+# Основа — конфиг r4ven-me/openconnect v1.3-sid; отличия помечены «ocm:».
+
+# --- Авторизация: только сертификаты нашего CA -------------------------------
+auth = "certificate"
+# ocm: username = CN сертификата (у r4ven-me — UID, 0.9.2342.19200300.100.1.1)
+cert-user-oid = 2.5.4.3
+# ocm: всё, что нужно ноде от PKI, лежит в каталоге состояния; ca.key сюда не попадает
+ca-cert = /var/lib/ocmanager/ca.crt
+server-cert = ${OCSERV_SERVER_CERT}
+server-key = ${OCSERV_SERVER_KEY}
+# ocm: CRL публикует панель (volume состояния), не certtool внутри контейнера
+crl = /var/lib/ocmanager/crl.pem
+
+# --- Хуки доступа ---------------------------------------------------------------
+# ocm: connect.sh пускает только username из allowed.list; NAT — в entrypoint
+connect-script = /etc/ocserv/hooks/connect.sh
+disconnect-script = /etc/ocserv/hooks/disconnect.sh
+
+# --- Сеть и сокеты --------------------------------------------------------------
+tcp-port = 443
+# ocm: DTLS включён (у r4ven-me проброшен только TCP)
+udp-port = 443
+socket-file = /run/ocserv-socket
+use-occtl = true
+occtl-socket-file = /run/occtl.socket
+pid-file = /run/ocserv.pid
+# ocm: воркеры без root
+run-as-user = nobody
+run-as-group = nogroup
+isolate-workers = true
+
+# --- Лимиты и таймауты (значения r4ven-me) --------------------------------------
+# ocm: без общего лимита клиентов; одно устройство = одна сессия (решение №20)
+max-clients = 0
+max-same-clients = 1
+rate-limit-ms = 200
+server-stats-reset-time = 604800
+keepalive = 10
+dpd = 120
+mobile-dpd = 1800
+switch-to-tcp-timeout = 25
+try-mtu-discovery = false
+auth-timeout = 240
+min-reauth-time = 300
+max-ban-score = ${OCSERV_MAX_BAN_SCORE}
+ban-reset-time = 1200
+cookie-timeout = 600
+deny-roaming = false
+rekey-time = 172800
+rekey-method = ssl
+
+# --- TLS ------------------------------------------------------------------------
+# Как у r4ven-me: без TLS 1.3 — с ним не работают старые Cisco AnyConnect.
+tls-priorities = "NORMAL:%SERVER_PRECEDENCE:%COMPAT:-VERS-SSL3.0:-VERS-TLS1.0:-VERS-TLS1.1:-VERS-TLS1.3"
+cisco-client-compat = true
+dtls-legacy = true
+client-bypass-protocol = false
+
+# --- Адреса клиентов и DNS -----------------------------------------------------
+device = vpns
+predictable-ips = true
+ipv4-network = ${OCSERV_IPV4_NETWORK}
+tunnel-all-dns = true
+dns = 1.1.1.1
+dns = 8.8.8.8
+ping-leases = false
+
+# --- Камуфляж: без ?секрета в URL сервер выглядит как обычный сайт --------------
+camouflage = true
+camouflage_secret = "${OCSERV_CAMOUFLAGE_SECRET}"
+camouflage_realm = "Restricted Content"
+
+log-level = 1
