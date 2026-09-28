@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     # Общий с контейнером ocserv каталог: ca.crt, crl.pem, allowed.list,
     # в dev ещё server.crt/server.key.
     ocserv_state_dir: Path
+    # Имя контейнера ноды для docker exec/inspect/logs. Никогда не из запроса.
+    ocserv_container: str = "ocm-ocserv"
 
 
 def get_settings() -> Settings:
