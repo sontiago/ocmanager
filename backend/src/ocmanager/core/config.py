@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     ocserv_state_dir: Path
     # Имя контейнера ноды для docker exec/inspect/logs. Никогда не из запроса.
     ocserv_container: str = "ocm-ocserv"
+    # Адрес VPN для клиентов (SNI-имя в проде). Пишется в nodes.public_host.
+    vpn_host: str = "localhost"
 
 
 def get_settings() -> Settings:

@@ -9,5 +9,6 @@ from ocmanager.audit import models as _audit  # noqa: F401
 from ocmanager.core import models as _core  # noqa: F401
 from ocmanager.core.db import Base
 from ocmanager.events import models as _events  # noqa: F401
+from ocmanager.nodes import models as _nodes  # noqa: F401
 
 metadata = Base.metadata
