@@ -169,6 +169,15 @@ def expire(current: SubState, now: datetime) -> SubState:
     raise _refuse("expire", current)
 
 
+def expire_now(current: SubState, now: datetime) -> SubState:
+    """Досрочное истечение — вручную, при злоупотреблении. Срок обрезается до `now`:
+    иначе статус `expired` и `expires_at` в будущем расходились бы, а страховка
+    `expires_at > now` в списке доступа считала бы клиента живым."""
+    if current.status not in LIVE:
+        raise _refuse("expire now", current)
+    return replace(current, status=Status.EXPIRED, expires_at=min(current.expires_at, now))
+
+
 def block(current: SubState) -> SubState:
     return replace(current, status=Status.BLOCKED)
 

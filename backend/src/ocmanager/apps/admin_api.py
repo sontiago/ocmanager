@@ -14,6 +14,8 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 import ocmanager.models  # noqa: F401 — регистрирует все таблицы: без этого FK между доменами не разрешаются
 from ocmanager.admin.routers import auth as auth_router
 from ocmanager.admin.routers import clients as clients_router
+from ocmanager.admin.routers import plans as plans_router
+from ocmanager.admin.routers import subscriptions as subscriptions_router
 from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.errors import error_response, install_error_handlers
@@ -87,5 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     api.include_router(auth_router.router)
     api.include_router(clients_router.router)
+    api.include_router(subscriptions_router.router)
+    api.include_router(plans_router.router)
     app.include_router(api)
     return app

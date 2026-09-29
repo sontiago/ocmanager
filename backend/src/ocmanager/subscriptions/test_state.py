@@ -14,6 +14,7 @@ from ocmanager.subscriptions.state import (
     block,
     cancel_auto_renew,
     expire,
+    expire_now,
     extend,
     has_access,
     renew,
@@ -288,6 +289,27 @@ def test_expire_is_idempotent() -> None:
 def test_expire_refused_for_non_live(status: Status) -> None:
     with pytest.raises(InvalidTransition):
         expire(sub(status, expires_at=NOW - DAY), NOW)
+
+
+@pytest.mark.parametrize("status", sorted(LIVE))
+def test_expire_now_cuts_the_term_to_now(status: Status) -> None:
+    ended = expire_now(sub(status), NOW)
+    assert ended.status is Status.EXPIRED
+    assert ended.expires_at == NOW
+    assert not has_access(ended, client_blocked=False, now=NOW)
+
+
+def test_expire_now_never_extends_a_term_that_already_passed() -> None:
+    lapsed = sub(Status.ACTIVE, expires_at=NOW - DAY)
+    assert expire_now(lapsed, NOW).expires_at == NOW - DAY
+
+
+@pytest.mark.parametrize(
+    "status", [Status.PENDING_PAYMENT, Status.EXPIRED, Status.EXHAUSTED, Status.BLOCKED]
+)
+def test_expire_now_refused_for_non_live(status: Status) -> None:
+    with pytest.raises(InvalidTransition):
+        expire_now(sub(status), NOW)
 
 
 # --- block / unblock -------------------------------------------------------

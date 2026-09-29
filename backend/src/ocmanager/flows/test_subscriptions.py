@@ -91,3 +91,17 @@ async def test_expiry_is_audited_as_the_system(
     *_, row = await audit_rows(session)
     assert (row.actor_type, row.actor_id) == ("system", None)
     assert (row.action, row.target_id) == ("subscription.expire", str(client.id))
+
+
+async def test_forced_expiry_is_audited_as_the_admin(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan()
+    await flow.activate(session, client.id, flow.terms_from_plan(plan), ADMIN, NOW, auto_renew=True)
+    assert await flow.expire_now(session, client.id, ADMIN, NOW + DAY)
+    assert not await flow.expire_now(session, client.id, ADMIN, NOW + DAY)
+    *_, row = await audit_rows(session)
+    assert (row.actor_type, row.actor_id, str(row.ip)) == ("admin", "7", "203.0.113.5")
+    assert (row.action, row.target_id) == ("subscription.expire", str(client.id))
+    assert row.details == {"forced": True}
+    assert [r.action for r in await audit_rows(session)].count("subscription.expire") == 1

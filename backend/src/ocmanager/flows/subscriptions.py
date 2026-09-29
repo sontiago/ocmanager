@@ -127,6 +127,13 @@ async def expire_due(session: AsyncSession, now: datetime) -> list[int]:
     return client_ids
 
 
+async def expire_now(session: AsyncSession, client_id: int, actor: Actor, now: datetime) -> bool:
+    changed = await service.expire_now(session, client_id, now)
+    if changed:
+        await _record(session, actor, "subscription.expire", client_id, forced=True)
+    return changed
+
+
 async def set_blocked(
     session: AsyncSession, client_id: int, blocked: bool, actor: Actor, now: datetime
 ) -> bool:

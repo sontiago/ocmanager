@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ocmanager.nodes.models import SessionLog
 from ocmanager.provisioning.models import Device
@@ -146,6 +146,8 @@ class DailyTrafficOut(BaseModel):
 
 
 class PlanOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     code: str
     name_i18n: dict[str, str]

@@ -163,6 +163,21 @@ async def test_expire_due_touches_only_overdue_live_subscriptions(
     assert names.count("subscription.expired") == 2
 
 
+async def test_expire_now_closes_a_live_subscription_once(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(duration_days=30)
+    assert not await service.expire_now(session, client.id, NOW)  # подписки нет
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    assert await service.expire_now(session, client.id, NOW + DAY)
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert (sub.status, sub.expires_at) == ("expired", NOW + DAY)
+    assert not await service.client_has_access(session, client.id, NOW + DAY)
+    assert not await service.expire_now(session, client.id, NOW + DAY)  # повтор — ничего
+    assert [e for e, _ in await events(session)].count("subscription.expired") == 1
+
+
 async def test_expire_due_boundary_is_inclusive(
     session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
 ) -> None:

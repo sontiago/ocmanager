@@ -278,6 +278,18 @@ async def expire_due(session: AsyncSession, now: datetime) -> list[int]:
             return expired
 
 
+async def expire_now(session: AsyncSession, client_id: int, now: datetime) -> bool:
+    """Немедленно закрывает живую подписку. False — закрывать нечего (нет подписки,
+    уже истекла, заблокирована): повторное нажатие безопасно и не плодит события."""
+    _, sub = await _lock(session, client_id)
+    if sub is None or not _was_live(sub):
+        return False
+    _write(sub, state_mod.expire_now(to_state(sub), now))
+    await session.flush()
+    await bus.record(session, SubscriptionExpired(client_id=client_id))
+    return True
+
+
 async def set_blocked(session: AsyncSession, client_id: int, blocked: bool, now: datetime) -> bool:
     """Блокировка клиента вместе с его подпиской. Возвращает True, если что-то изменилось."""
     client, sub = await _lock(session, client_id)
