@@ -8,7 +8,15 @@
 **Дата:** 2026-09-03
 **Основание:** [SaaS-дизайн](../specs/2026-09-02-ocmanager-saas-design.md) ·
 [стек и структура](../specs/2026-09-02-ocmanager-stack-and-structure.md) ·
-[руководство по TMA](../../guides/tma-setup-and-development.md)
+[руководство по TMA](../../guides/tma-setup-and-development.md) ·
+[перенос прототипа](../../guides/tma-design-port.md)
+
+**Правка 2026-09-05.** После написания плана появился кликабельный прототип
+`frontend/tma/design/`, и по нему принято восемь решений (Часть C гайда
+переноса). Они затронули этот документ: палитру, шрифт, состав экранов,
+примитивы и таб-бар. Изменения внесены ниже по тексту; каждое помечено ссылкой
+на решение (C1…C8). Гайд переноса отвечает на вопрос «как это выглядит и как
+из прототипа получить компонент», этот план — «какие данные и откуда».
 
 **Goal:** Полностью работающее клиентское приложение Telegram Mini App —
 тарифы, trial, подписка, устройства, выдача `.p12`, инструкции под ОС, покупка —
@@ -37,7 +45,19 @@ Telegram.
 
 - **i18n `ru` / `en` с первого дня.** Ни одной строки, видимой пользователю,
   в JSX напрямую. Язык клиента берётся из Telegram (`language_code`), по
-  умолчанию — `ru` (`DEFAULT_LANG=ru`).
+  умолчанию — `ru` (`DEFAULT_LANG=ru`). **Ручного переключателя языка нет**
+  (C4): маппинг `ru` → `ru`, всё остальное → `en`, вычисляется один раз при
+  старте и в рантайме не меняется. Поэтому и синхронизировать выбор с
+  `clients.lang` не нужно — бот и TMA читают один и тот же источник.
+- **Цвет берётся из палитры прототипа, а не из темы Telegram** (C1).
+  `--tg-theme-*` не участвует в оформлении; из Telegram берётся только
+  `colorScheme` — им переключается `data-theme` на корне. Причина: приложение
+  оформлено как самостоятельное кошельковое, с фиксированной айдентикой;
+  подстановка цветов клиента ломает подсветки `color-mix()` и контраст карточек.
+- **Шрифт — Golos Text, self-hosted** (C2), веса 400/600/800, подмножества
+  `cyrillic` + `latin`. Не Google Fonts CDN: лишние DNS + TLS перед первым
+  кадром внутри Telegram. Archivo из прототипа не подключается — в нём нет
+  кириллицы, то есть в русском он и так не участвовал.
 - **Точные версии зависимостей в `package.json`**, без диапазонов `^` и `~`.
   Обоснование из руководства: SDK Telegram развивается быстро, и `^` однажды
   приведёт сборку в нерабочее состояние. Диапазоны в текущем scaffold —
@@ -86,6 +106,14 @@ Telegram.
 | 5 | Ошибки API — тело `{"error": {"code": "...", "message": "..."}}` с фиксированным списком кодов | `src/api/errors.ts` | Правка маппинга в `http.ts` |
 | 6 | Навигация — `BrowserRouter` (Caddyfile уже даёт `try_files`), а не `HashRouter`: Telegram кладёт `tgWebAppData` в hash, и HashRouter с ним конфликтует | `src/app/router.tsx` | — |
 | 7 | Возврат из оплаты — приложение закрывается через `miniApp.close()`, статус приходит уведомлением бота; при повторном открытии подписка перечитывается | `src/screens/Checkout` | Если Tribute даёт `return_url` — добавить экран ожидания |
+| 8 | **(C1)** Палитра прототипа вместо темы Telegram; из клиента берётся только `colorScheme` | `src/index.css` | Вернуть блок `@theme` с `--color-tg-*` — правка одного файла |
+| 9 | **(C2)** Golos Text self-hosted, три веса | `public/fonts/`, `src/index.css` | Заменить `@font-face` |
+| 10 | **(C3)** Тема из трёх состояний: «Как в Telegram / Светлая / Тёмная», выбор в `localStorage` | `src/app/ThemeProvider.tsx` | Убрать провайдер, читать `colorScheme` напрямую |
+| 11 | **(C4)** Язык только из Telegram, переключателя нет; десятая операция API не нужна | `src/i18n/I18nProvider.tsx` | Появится переключатель — понадобится запись в `clients.lang` |
+| 12 | **(C5)** Из платёжного потока прототипа переносится один экран `Checkout`; экраны ожидания и успеха не нужны (следует из допущения 7) | `src/screens/Checkout` | См. допущение 7 |
+| 13 | **(C6)** Своя кнопка «назад» и подпись `@ocmanager_bot` не переносятся: назад — нативный `backButton`, имя бота уже показывает клиент. `MainButton` не используется — внизу таб-бар | `src/app/Header.tsx` | — |
+| 14 | **(C7)** Описание тарифа собирает фронт из `duration_days` / `device_limit` / `traffic_limit_bytes` со склонениями; `description` из DTO — необязательный маркетинговый текст | `src/screens/Plans` | Начнёт приходить готовая строка — рисовать её вместо собранной |
+| 15 | **(C8)** Верхний отступ — из `--tg-content-safe-area-inset-*`, нижний — из `--tg-safe-area-inset-*`; полноэкранный режим не включается | `src/app/Layout.tsx` | Включим fullscreen — пересчитать все отступы |
 
 ---
 
@@ -128,7 +156,7 @@ src/
 │   ├── ru.ts                    каталог-эталон, из него выводится MessageKey       T3
 │   ├── en.ts                    Record<MessageKey, string> — полнота на компиляции T3
 │   ├── plural.ts                Intl.PluralRules для ru/en                         T3
-│   ├── I18nProvider.tsx         контекст, определение языка из Telegram            T3
+│   ├── I18nProvider.tsx         контекст, язык из Telegram, без переключателя      T3
 │   └── useT.ts                  t(key, params) с интерполяцией                     T3
 │
 ├── lib/                      ── чистые функции ──
@@ -136,22 +164,31 @@ src/
 │   ├── subscription.ts          производные от статуса: активна? сколько осталось? T9
 │   └── clipboard.ts             копирование с фоллбэком                            T17
 │
-├── ui/                       ── примитивы на теме Telegram ──
-│   ├── Button.tsx                                                                  T11
-│   ├── Cell.tsx  List.tsx  Section.tsx                                             T11
+├── ui/                       ── примитивы на палитре прототипа (C1) ──
+│   ├── Button.tsx               primary / secondary, ширина 100%                   T11
+│   ├── Cell.tsx  List.tsx  Section.tsx  Card.tsx                                   T11
+│   ├── CellIcon.tsx  Chevron.tsx    круг 40px; шеврон «›»                          T11
+│   ├── SectionLabel.tsx  Caption.tsx  секция КАПСОМ; мелкая подпись                T11
+│   ├── Hero.tsx                 цифра-герой с мелким хвостом                       T11
+│   ├── QuickActions.tsx         четыре круглых действия на главной                 T11
+│   ├── StatusIcon.tsx           круг 60px: ✓ / ! / + / спиннер                     T11
+│   ├── Callout.tsx  Mono.tsx    плашка-подсветка; моноширинное значение            T11
+│   ├── icons/                   восемь иконок прототипа, Lucide                    T11
 │   ├── Badge.tsx  ProgressBar.tsx                                                  T11
 │   ├── Skeleton.tsx  Spinner.tsx                                                   T11
 │   ├── EmptyState.tsx  ErrorState.tsx                                              T11
-│   ├── Sheet.tsx                модальный лист снизу                               T11
-│   ├── CopyField.tsx            значение с кнопкой «скопировать»                    T17
+│   ├── Sheet.tsx                лист снизу; нужен выбору темы (C3)                 T11
+│   ├── CopyField.tsx            значение с кнопкой «скопировать»                   T17
 │   └── QrCode.tsx               обёртка над qrcode                                 T17
 │
 ├── app/                      ── каркас ──
 │   ├── App.tsx                  провайдеры: Query → Api → I18n → Router            T12
 │   ├── routes.ts                константы путей (отдельно во избежание цикла)      T12
 │   ├── router.tsx               таблица маршрутов, ленивые экраны                  T12
-│   ├── Layout.tsx               контейнер + таб-бар + safe-area                    T12
-│   ├── TabBar.tsx                                                                  T12
+│   ├── Layout.tsx               контейнер + таб-бар + safe-area (C8)               T12
+│   ├── Header.tsx               только заголовок: без «назад» и имени бота (C6)    T12
+│   ├── ThemeProvider.tsx        «Как в Telegram / Светлая / Тёмная» (C3)           T12
+│   ├── TabBar.tsx               четыре вкладки, как в прототипе                    T12
 │   ├── DevPanel.tsx             переключатель сценариев, только DEV                T13
 │   ├── ErrorBoundary.tsx        перехват исключений рендера                        T19
 │   └── Gate.tsx                 вне Telegram / заблокирован — дальше не пускает    T19
@@ -162,7 +199,11 @@ src/
 │   ├── Devices/                 список, онлайн, трафик, отзыв                      T16
 │   ├── DeviceCreate/            выбор ОС → выпуск                                  T17
 │   ├── DeviceSecret/            пароль + одноразовая ссылка + QR (показ один раз)  T17
-│   └── Instructions/            пошагово под ОС + deep-link                        T18
+│   ├── Instructions/            пошагово под ОС + deep-link                        T18
+│   ├── Checkout/                сводка перед оплатой → openLink + close (C5)       T22
+│   ├── Renew/                   следующее списание, автопродление (C5)             T23
+│   ├── Account/                 Telegram ID, язык, тема, поддержка (C5)            T24
+│   └── Onboarding/              три шага и пробный период (C5)                     T25
 │
 ├── test/
 │   ├── setup.ts                 jest-dom и cleanup после каждого теста             T1
@@ -170,7 +211,7 @@ src/
 │   └── contract.suite.ts        общий набор тестов для обеих реализаций ApiClient  T7
 │
 ├── vite-env.d.ts                типы import.meta.env                               T1
-└── index.css                    Tailwind 4 + мост темы Telegram                    T1
+└── index.css                    Tailwind 4 + палитра прототипа + Golos Text      T1
 ```
 
 ---
@@ -182,11 +223,17 @@ src/
 | 0. Фундамент | 1–3 | Сборка, тесты, Telegram-окружение, i18n |
 | 1. Шов данных | 4–8 | `ApiClient`, мок, HTTP-реализация, хуки |
 | 2. Каркас | 9–13 | Форматтеры, примитивы, роутинг, dev-панель |
-| 3. Экраны | 14–19 | Шесть экранов и глобальные состояния, всё на моках |
+| 3. Экраны | 14–19, **22–25** | Десять экранов и глобальные состояния, всё на моках |
 | 4. Переключение | 20–21 | Реальный бэкенд, production-сборка |
 
 Фаза 3 — единственная, где работа может идти параллельно: экраны не зависят
 друг от друга, только от Фаз 0–2.
+
+**Почему номера прыгают.** Задачи 22–25 — четыре экрана, добавленные прототипом
+(C5). Они дописаны после того, как план был написан, и стоят физически в конце
+Фазы 3, перед Фазой 4. Сквозная перенумерация сломала бы каждую перекрёстную
+ссылку в документе, поэтому новые задачи получили свободные номера, а порядок
+исполнения задаёт эта таблица: **1–19, затем 22–25, затем 20–21.**
 
 ---
 
@@ -223,10 +270,30 @@ src/
 ```bash
 cd frontend/tma
 npm i -E @tailwindcss/vite@4.3.3 react-router@7.9.1 @tanstack/react-query@5.62.7 qrcode@1.5.4
-npm i -DE vitest@4.0.5 jsdom@25.0.1 @vitest/coverage-v8@4.0.5 \
+npm i -DE vitest@4.1.11 jsdom@25.0.1 @vitest/coverage-v8@4.1.11 \
   @testing-library/react@16.1.0 @testing-library/user-event@14.5.2 \
   @testing-library/jest-dom@6.6.3 @types/qrcode@1.5.5
 npm uninstall autoprefixer postcss
+```
+
+**Исправлено 2026-09-05: vitest 4.1.11, а не 4.0.5.** Здесь стояла версия
+`4.0.5`, и это ломало сборку. Причина: `vitest@4.0.5` объявляет зависимость от
+vite 6–7 и ставит **собственную копию vite 7.3.6** рядом с проектной vite 8.
+`vite.config.ts` берёт `defineConfig` из `vitest/config` (типы vite 7), а
+`plugins` — из `vite` (типы vite 8), и `tsc -b` падает на несовместимости
+`PluginOption`: у `rolldown`-контекста vite 8 есть `meta.rolldownVersion`,
+которого нет в `rollup`-контексте vite 7.
+
+Симптом: `npx vite build` проходит, а `npm run build` падает — значит,
+виноват `tsc -b`, а не сборка. `vitest@4.1.11` объявляет
+`vite: "^6.0.0 || ^7.0.0 || ^8.0.0"`, своей копии не ставит, и конфликт
+исчезает.
+
+Проверка после установки — своей vite у vitest быть не должно:
+
+```bash
+ls frontend/tma/node_modules/vitest/node_modules/vite 2>/dev/null \
+  && echo "ПЛОХО: vitest тянет свою vite" || echo "ок: общая vite"
 ```
 
 `autoprefixer` и `postcss` не нужны: Tailwind 4 через `@tailwindcss/vite`
@@ -326,34 +393,70 @@ export default defineConfig({
 `server.proxy` бьёт в бэкенд только в режиме `VITE_API_MODE=http`; в режиме
 `mock` до сети дело не доходит вовсе.
 
-- [ ] **Шаг 6: Заменить `index.css` на Tailwind и мост темы Telegram**
+- [ ] **Шаг 6: Заменить `index.css` на Tailwind и палитру прототипа**
 
-Telegram отдаёт цвета клиента как CSS-переменные `--tg-theme-*` (их ставит
-`themeParams.bindCssVars()` в Задаче 2). Блок `@theme` превращает их в
-токены Tailwind, поэтому классы вроде `bg-tg-bg` работают и в Telegram, и в
-браузере — во втором случае срабатывают фоллбэки.
+**Изменено 2026-09-05 (C1, C2, C8).** Раньше здесь строился мост к теме
+Telegram: `@theme` с токенами `--color-tg-*` поверх `--tg-theme-*`. По решению
+C1 цвет берётся из палитры прототипа, а из Telegram — только `colorScheme`,
+которым `ThemeProvider` (Задача 12) переставляет `data-theme` на корне.
+Токены ниже перенесены из `frontend/tma/design/TMA ocmanager wallet.dc.html`,
+строки 22–23; их смысл разобран в Шаге 1 гайда переноса.
+
+Шрифт — Golos Text, self-hosted (C2). Файлы `.woff2` трёх весов кладутся в
+`public/fonts/`; вес 800 дополнительно объявляется `<link rel="preload">` в
+`index.html` — им набран цифра-герой, он виден первым.
 
 ```css
 @import 'tailwindcss';
 
-@theme {
-  --color-tg-bg: var(--tg-theme-bg-color, #ffffff);
-  --color-tg-text: var(--tg-theme-text-color, #000000);
-  --color-tg-hint: var(--tg-theme-hint-color, #707579);
-  --color-tg-link: var(--tg-theme-link-color, #2481cc);
-  --color-tg-button: var(--tg-theme-button-color, #2481cc);
-  --color-tg-button-text: var(--tg-theme-button-text-color, #ffffff);
-  --color-tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
-  --color-tg-section-bg: var(--tg-theme-section-bg-color, #ffffff);
-  --color-tg-separator: var(--tg-theme-section-separator-color, #e5e5e5);
-  --color-tg-destructive: var(--tg-theme-destructive-text-color, #df3f40);
-  --color-tg-accent: var(--tg-theme-accent-text-color, #2481cc);
-}
+@font-face { font-family: 'Golos Text'; font-weight: 400; font-display: swap;
+             src: url('/fonts/golos-400.woff2') format('woff2'); }
+@font-face { font-family: 'Golos Text'; font-weight: 600; font-display: swap;
+             src: url('/fonts/golos-600.woff2') format('woff2'); }
+@font-face { font-family: 'Golos Text'; font-weight: 800; font-display: swap;
+             src: url('/fonts/golos-800.woff2') format('woff2'); }
 
 :root {
   color-scheme: light dark;
-  --safe-top: var(--tg-safe-area-inset-top, 0px);
-  --safe-bottom: var(--tg-safe-area-inset-bottom, 0px);
+
+  /* Палитра прототипа, светлая тема (C1). */
+  --color-bg: #efeff4;
+  --color-surface: #ffffff;
+  --color-text: #1c1c1e;
+  --color-divider: #e3e3e8;
+  --color-accent: #007aff;
+  --color-accent-600: #0069db;
+  --color-accent-700: #0062cc;
+
+  /* Три ступени вторичного текста вместо шести разных color-mix() прототипа. */
+  --color-text-secondary: color-mix(in srgb, var(--color-text) 55%, transparent);
+  --color-text-tertiary: color-mix(in srgb, var(--color-text) 42%, transparent);
+  --color-text-quaternary: color-mix(in srgb, var(--color-text) 30%, transparent);
+
+  --radius-card: 22px;
+  --radius-button: 16px;
+
+  /* C8: верх — от контентной safe-area клиента, низ — от safe-area устройства. */
+  --safe-top: max(var(--tg-content-safe-area-inset-top, 0px), env(safe-area-inset-top, 0px));
+  --safe-bottom: max(var(--tg-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px));
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #000000;
+  --color-surface: #1c1c1e;
+  --color-text: #ffffff;
+  --color-divider: rgba(255, 255, 255, 0.13);
+  --color-accent: #0a84ff;
+  --color-accent-600: #3d9bff;
+  --color-accent-700: #6cb6ff;
+}
+
+@theme {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-text: var(--color-text);
+  --color-divider: var(--color-divider);
+  --color-accent: var(--color-accent);
 }
 
 html,
@@ -364,14 +467,9 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-tg-secondary-bg);
-  color: var(--color-tg-text);
-  font:
-    16px / 1.4 -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: 15px / 1.4 'Golos Text', system-ui, sans-serif;
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
 }
@@ -1466,9 +1564,15 @@ export interface Me {
 
 export interface Plan {
   code: string
-  /** Уже локализовано бэкендом под язык клиента. */
+  /** Уже локализовано бэкендом под язык клиента (C7.3): в каталог i18n не попадает. */
   name: string
-  description: string
+  /**
+   * Необязательный маркетинговый текст (C7.4). Строку «30 дней · 3 устройства ·
+   * 100 ГБ» фронт собирает сам из duration_days / device_limit /
+   * traffic_limit_bytes со склонениями из plural.ts — иначе склонения пришлось
+   * бы дублировать в базе для каждого тарифа и каждого языка.
+   */
+  description?: string | null
   duration_days: number
   device_limit: number
   /** null = безлимит. */
@@ -1755,6 +1859,11 @@ export const TRIAL_PLAN: Plan = {
   sort_order: 0,
 }
 
+// Цены и лимиты — демонстрационные (C7.1). Спецификация их не фиксирует:
+// тарифы живут в таблице `plans`, в проде приходят с сервера. Числа здесь
+// намеренно отличаются от прототипа — те так же произвольны. Правило одно:
+// форма записи повторяет колонки `plans` один в один (C7.2), иначе Задача 20
+// превратится в переписывание экранов вместо сверки типов.
 export const PLANS: Plan[] = [
   {
     code: 'month_1',
@@ -2637,12 +2746,23 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-function make(fetchImpl: typeof fetch, raw: string | undefined = 'user=%7B%7D&hash=a') {
+const RAW = 'user=%7B%7D&hash=a'
+
+/**
+ * initData передаётся явно, в том числе отсутствующая. Через параметр со
+ * значением по умолчанию это выразить нельзя: JS подставляет значение и на
+ * явно переданный undefined, поэтому тест «в сеть не ходим» ушёл бы в сеть.
+ */
+function makeWithRaw(fetchImpl: typeof fetch, raw: string | undefined) {
   return createHttpClient({
     baseUrl: '/api',
     getInitDataRaw: () => raw,
     fetchImpl,
   })
+}
+
+function make(fetchImpl: typeof fetch) {
+  return makeWithRaw(fetchImpl, RAW)
 }
 
 describe('http client', () => {
@@ -2659,7 +2779,9 @@ describe('http client', () => {
 
   it('без initData не ходит в сеть, а сразу даёт unauthorized', async () => {
     const fetchImpl = vi.fn()
-    await expect(make(fetchImpl, undefined).listPlans()).rejects.toMatchObject({
+    await expect(
+      makeWithRaw(fetchImpl, undefined).listPlans(),
+    ).rejects.toMatchObject({
       code: 'unauthorized',
     })
     expect(fetchImpl).not.toHaveBeenCalled()
@@ -3870,17 +3992,46 @@ git commit -m "feat(tma): telegram back button bound to router paths"
 
 ---
 
-### Задача 11: UI-примитивы на теме Telegram
+### Задача 11: UI-примитивы на палитре прототипа
 
-Экраны Mini App выглядят как нативные списки Telegram: секции с заголовком,
-ячейки с разделителями, крупная кнопка внизу. Собрать это один раз дешевле,
-чем повторять на семи экранах. Все цвета — только токены `tg-*` из Задачи 1;
-ни одного захардкоженного `#hex`, иначе тёмная тема клиента развалится.
+Экраны выглядят как кошельковое приложение: сгруппированные карточки со
+скруглением 22px, ячейки с разделителями, круглые быстрые действия, крупная
+цифра-герой. Собрать это один раз дешевле, чем повторять на десяти экранах.
+
+**Изменено 2026-09-05 (C1).** Раньше задача называлась «UI-примитивы на теме
+Telegram» и требовала брать цвета только из токенов `tg-*`. Теперь источник —
+палитра прототипа из Задачи 1 (`--color-bg`, `--color-surface`, `--color-text`,
+`--color-divider`, `--color-accent*`, три ступени вторичного текста). Правило
+«ни одного захардкоженного `#hex`» остаётся в силе: иначе развалится тёмная
+тема, которая здесь не инверсия, а отдельный набор значений.
+
+Состав расширен: прототип принёс восемь примитивов, которых в первоначальном
+списке не было (`Card`, `CellIcon`, `Chevron`, `SectionLabel`, `Caption`,
+`Hero`, `QuickActions`, `StatusIcon`, `Callout`, `Mono`, набор иконок). Разбор
+каждого — шаги 4–7 гайда переноса.
+
+**Самый нагруженный компонент — `Cell`:** он встречается на девяти экранах из
+одиннадцати, в тридцати с лишним экземплярах, и обязан уметь быть и `<button>`
+(кликабельная строка), и `<div>` (строка-факт, как в сводке перед оплатой).
+Разделитель рисуется самой строкой через `box-shadow: inset 0 1px 0` по
+правилу `.w-row + .w-row`, а не рамкой карточки — тогда первая строка остаётся
+без линии сама собой.
 
 **Files:**
 - Create: `frontend/tma/src/ui/Button.tsx`
 - Create: `frontend/tma/src/ui/Section.tsx`
+- Create: `frontend/tma/src/ui/Card.tsx`
 - Create: `frontend/tma/src/ui/Cell.tsx`
+- Create: `frontend/tma/src/ui/CellIcon.tsx`
+- Create: `frontend/tma/src/ui/Chevron.tsx`
+- Create: `frontend/tma/src/ui/SectionLabel.tsx`
+- Create: `frontend/tma/src/ui/Caption.tsx`
+- Create: `frontend/tma/src/ui/Hero.tsx`
+- Create: `frontend/tma/src/ui/QuickActions.tsx`
+- Create: `frontend/tma/src/ui/StatusIcon.tsx`
+- Create: `frontend/tma/src/ui/Callout.tsx`
+- Create: `frontend/tma/src/ui/Mono.tsx`
+- Create: `frontend/tma/src/ui/icons/index.tsx`
 - Create: `frontend/tma/src/ui/Badge.tsx`
 - Create: `frontend/tma/src/ui/ProgressBar.tsx`
 - Create: `frontend/tma/src/ui/Skeleton.tsx`
@@ -3894,7 +4045,20 @@ git commit -m "feat(tma): telegram back button bound to router paths"
 - Consumes: `useT`, `ApiError`, `haptic`
 - Produces:
   - `<Button variant="primary"|"secondary"|"destructive" loading? disabled? onClick? type?>`
-  - `<Section title? footer?>`, `<Cell title subtitle? right? onClick? destructive?>`
+    — ширина 100%, радиус `--radius-button`; **внешний отступ задаёт экран, а не
+    кнопка** (в прототипе `margin-top` запечён в класс — не переноси его)
+  - `<Section title? footer?>`, `<Card>` — контейнер с `--radius-card` и `overflow:hidden`
+  - `<Cell as="button"|"div" icon? title subtitle? value? chevron? onClick? destructive?>`
+  - `<CellIcon>` — круг 40px, заливка `color-mix(accent 13%)`; принимает и SVG, и
+    текстовый бейдж («iOS», «mac», «01», «+», число устройств тарифа)
+  - `<Chevron>`, `<SectionLabel>`, `<Caption>`
+  - `<Hero value tail? size="xl"|"lg"|"md">` — цифра-герой; `letter-spacing:-.045em`
+    обязателен, без него цифры на весе 800 расходятся
+  - `<QuickActions items>` — четыре круглых действия
+  - `<StatusIcon tone="accent"|"success"|"muted" kind="check"|"bang"|"plus"|"spinner">`
+  - `<Callout>`, `<Mono>`
+  - `icons/` — восемь иконок прототипа: `rotate-cw`, `plus`, `layout-grid`,
+    `circle-help`, `smartphone`, `arrow-up`, `credit-card`, `ellipsis`
   - `<Badge tone="neutral"|"success"|"warning"|"danger">`
   - `<ProgressBar percent tone?>`, `<Skeleton className?>`
   - `<EmptyState icon title body? action?>`
@@ -4446,6 +4610,8 @@ git commit -m "feat(tma): telegram-themed ui primitives and test render helper"
 - Create: `frontend/tma/src/app/routes.ts`
 - Create: `frontend/tma/src/app/router.tsx`
 - Create: `frontend/tma/src/app/Layout.tsx`
+- Create: `frontend/tma/src/app/Header.tsx`
+- Create: `frontend/tma/src/app/ThemeProvider.tsx`
 - Create: `frontend/tma/src/app/TabBar.tsx`
 - Modify: `frontend/tma/src/app/App.tsx` (заменяет заглушку из Задачи 2)
 - Modify: `frontend/tma/src/main.tsx`
@@ -4457,9 +4623,18 @@ git commit -m "feat(tma): telegram-themed ui primitives and test render helper"
 - Produces:
   - `<App client>` — принимает готовый `ApiClient` (создаётся в `main.tsx`)
   - `<AppRoutes>` — таблица маршрутов
-  - `ROUTES` — константы путей из `app/routes.ts`: `home`, `plans`, `devices`,
-    `deviceNew`, `deviceSecret`, `instructions(platform)`. Реэкспортируются из
-    `app/router.tsx`, поэтому экраны могут импортировать их оттуда
+  - `ROUTES` — константы путей из `app/routes.ts`: `home`, `plans`,
+    `checkout(planCode)`, `devices`, `deviceNew`, `deviceSecret`,
+    `instructions(platform)`, `renew`, `account`, `onboarding`.
+    Реэкспортируются из `app/router.tsx`, поэтому экраны могут импортировать их
+    оттуда
+  - `<Header title>` — **только заголовок** (C6): своей кнопки «назад» нет
+    (её роль играет нативный `backButton` из Задачи 10), подписи
+    `@ocmanager_bot` нет (имя бота уже показывает клиент над вьюпортом)
+  - `<ThemeProvider>` + `useTheme()` (C3) — три значения «Как в Telegram /
+    Светлая / Тёмная», выбор в `localStorage`. При значении «Как в Telegram»
+    подписывается на `colorScheme` и переставляет `data-theme` на корне **в
+    рантайме**: пользователь может сменить тему клиента, не закрывая Mini App
 
 - [ ] **Шаг 1: Написать падающий тест маршрутизации**
 
@@ -4644,10 +4819,14 @@ import { haptic } from '../telegram/haptics'
 // Импорт из routes.ts, а не из router.tsx — иначе цикл router → Layout → TabBar.
 import { ROUTES } from './routes'
 
+// Четыре вкладки и их порядок — из прототипа (C5): подписка, устройства,
+// тарифы, ещё. Иконки — из ui/icons, не эмодзи: эмодзи рисуются по-разному
+// на разных платформах и не красятся в currentColor.
 const TABS = [
-  { to: ROUTES.home, icon: '🔑', labelKey: 'nav.subscription' },
-  { to: ROUTES.devices, icon: '📱', labelKey: 'nav.devices' },
-  { to: ROUTES.plans, icon: '💳', labelKey: 'nav.plans' },
+  { to: ROUTES.home, Icon: CreditCardIcon, labelKey: 'nav.subscription' },
+  { to: ROUTES.devices, Icon: SmartphoneIcon, labelKey: 'nav.devices' },
+  { to: ROUTES.plans, Icon: LayoutGridIcon, labelKey: 'nav.plans' },
+  { to: ROUTES.account, Icon: EllipsisIcon, labelKey: 'nav.more' },
 ] as const
 
 export function TabBar() {
@@ -4774,7 +4953,7 @@ Expected: 4 passed.
 npm run dev
 ```
 
-Открыть `localhost:5173`. Должны работать: три вкладки, переключение между
+Открыть `localhost:5173`. Должны работать: четыре вкладки, переключение между
 ними, переход по `/devices/new` без таб-бара. Данных на экранах ещё нет — это
 ожидаемо.
 
@@ -7543,6 +7722,160 @@ git commit -m "feat(tma): error boundary and access gate for blocked/no-initData
 
 ---
 
+---
+
+## Задачи, добавленные прототипом
+
+Четыре экрана из прототипа, которых не было в первоначальном плане (C5).
+Порядок исполнения — после Задачи 19 и до Фазы 4. Подробный разбор блоков,
+состояний и строк прототипа — шаги 13, 18, 19, 20 гайда переноса; здесь то, что
+относится к данным и контракту.
+
+Общее для всех четырёх: экраны собираются **только** из примитивов Задачи 11.
+Если по дороге понадобился новый CSS — примитив неполон, чинить надо его, а не
+экран.
+
+---
+
+### Задача 22: Экран оплаты — сводка перед уходом в Tribute
+
+Единственный экран, оставшийся от платёжного потока прототипа. Экранов ожидания
+и успеха нет: по допущению 7 приложение закрывается сразу после `openLink`, а о
+результате сообщает бот. Прототип рисовал их (`paying`, `paid`), их тексты
+сохранены в каталогах i18n на случай, если Tribute даст `return_url`.
+
+**Files:**
+- Create: `frontend/tma/src/screens/Checkout/CheckoutScreen.tsx`
+- Create: `frontend/tma/src/screens/Checkout/CheckoutScreen.test.tsx`
+- Modify: `frontend/tma/src/app/routes.ts`, `frontend/tma/src/app/router.tsx`
+
+**Interfaces:**
+- Consumes: `usePlans`, `useSubscription`, `useCreatePayment`, `formatMoney`,
+  `openLink`, `close` из `telegram/links.ts`
+- Produces: маршрут `ROUTES.checkout(planCode)`
+
+- [ ] **Шаг 1: Тест — на экране видна сумма, период и способ оплаты**
+
+Проверяется, что сумма отрисована через `formatMoney(price_amount, currency)`,
+а не вшитым `₽` (C7.5), и что четыре строки сводки — некликабельные `Cell`.
+
+- [ ] **Шаг 2: Тест — нажатие «Перейти к оплате» открывает ссылку и закрывает приложение**
+
+`openLink` и `close` подменяются; утверждается порядок вызовов. Это главное
+поведение экрана и единственное, что отличает его от статической страницы.
+
+- [ ] **Шаг 3: Реализовать экран**
+
+Блоки: цифра-герой с суммой; карточка-сводка из четырёх строк (Тариф, Период,
+Способ оплаты, Автопродление); абзац-объяснение; кнопка.
+
+- [ ] **Шаг 4: Переписать текст-объяснение**
+
+В прототипе он обещает «Доступ включится сразу после подтверждения» (стр. 161).
+Обещание верное, но неполное: человек уходит из приложения и должен знать, где
+увидит ответ. Текст обязан называть чат с ботом.
+
+- [ ] **Шаг 5: Коммит** — `feat(tma): экран оплаты`
+
+---
+
+### Задача 23: Экран продления
+
+Открывается с главного экрана (плитка «Продлить» и строка «Автопродление») и с
+экрана тарифов при нажатии на текущий тариф.
+
+**Files:**
+- Create: `frontend/tma/src/screens/Renew/RenewScreen.tsx`
+- Create: `frontend/tma/src/screens/Renew/RenewScreen.test.tsx`
+- Modify: `frontend/tma/src/app/routes.ts`, `frontend/tma/src/app/router.tsx`
+
+**Interfaces:**
+- Consumes: `useSubscription`, `useSetAutoRenew`, `formatMoney`, `formatDate`
+- Produces: маршрут `ROUTES.renew`
+
+- [ ] **Шаг 1: Тест — переключение автопродления вызывает мутацию и не трогает доступ**
+
+Ключевое утверждение: после выключения автопродления подписка остаётся живой.
+Это ограничение уровня проекта («`cancelled` не отключает доступ») и здесь оно
+проверяется на UI, а не только в `lib/subscription.ts`.
+
+- [ ] **Шаг 2: Реализовать экран**
+
+Блоки: герой «Следующее списание / сумма / дата · Tribute»; карточка с
+переключаемой строкой «Автопродление» и двумя строками-фактами; абзац-пояснение;
+кнопка «Продлить сейчас».
+
+- [ ] **Шаг 3: Коммит** — `feat(tma): экран продления`
+
+---
+
+### Задача 24: Экран аккаунта и выбор темы
+
+Четвёртая вкладка. Здесь же живёт единственная настройка приложения — тема.
+
+**Files:**
+- Create: `frontend/tma/src/screens/Account/AccountScreen.tsx`
+- Create: `frontend/tma/src/screens/Account/ThemePicker.tsx`
+- Create: `frontend/tma/src/screens/Account/AccountScreen.test.tsx`
+- Modify: `frontend/tma/src/app/routes.ts`, `frontend/tma/src/app/router.tsx`
+
+**Interfaces:**
+- Consumes: `getTelegramUser`, `useTheme`, `useT`, `openTelegramLink`
+- Produces: маршрут `ROUTES.account`
+
+- [ ] **Шаг 1: Тест — выбор темы сохраняется и переставляет `data-theme`**
+
+Три значения, `localStorage`, проверка что «Как в Telegram» следует за
+`colorScheme`.
+
+- [ ] **Шаг 2: Реализовать секцию «АККАУНТ»**
+
+Четыре строки: Telegram ID (печатается **без разрядных пробелов**, C7.8 — это
+идентификатор, а не количество), Язык (факт без действия и **без шеврона**, C4),
+Тема (ведёт в лист выбора, шеврон остаётся), Поддержка.
+
+Секция состоит из трёх показаний и одного действия. Это нормально: не выдумывай
+действий ради того, чтобы строки выглядели одинаково.
+
+- [ ] **Шаг 3: Секция «ДЕМО-СОСТОЯНИЯ» — только в DEV**
+
+В прототипе она нарисована рядом с настройками (стр. 307–313). В приложении это
+`DevPanel` из Задачи 13 под `import.meta.env.DEV`; в production-бандле её быть
+не должно — проверяется грепом в Задаче 21.
+
+- [ ] **Шаг 4: Коммит** — `feat(tma): экран аккаунта и выбор темы`
+
+---
+
+### Задача 25: Онбординг
+
+Показывается, когда у клиента нет подписки и trial ещё не использован.
+
+**Files:**
+- Create: `frontend/tma/src/screens/Onboarding/OnboardingScreen.tsx`
+- Create: `frontend/tma/src/screens/Onboarding/OnboardingScreen.test.tsx`
+- Modify: `frontend/tma/src/app/router.tsx`
+
+**Interfaces:**
+- Consumes: `useSubscription`, `usePlans`, `useStartTrial`
+- Produces: маршрут `ROUTES.onboarding`
+
+- [ ] **Шаг 1: Тест — условие показа**
+
+Онбординг открывается при `subscription === null` и неиспользованном trial. В
+прототипе экран открывался вручную из демо-секции, поэтому условие нужно задать
+здесь и проверить тестом, а не подсмотреть.
+
+- [ ] **Шаг 2: Реализовать экран**
+
+Блоки: герой в две строки; карточка из трёх шагов 01–03; подсвеченная плашка про
+пробный период; две кнопки, **прижатые к низу** через `flex:1` у контента — это
+единственный экран приложения с прижатым футером.
+
+- [ ] **Шаг 3: Коммит** — `feat(tma): онбординг`
+
+---
+
 # Фаза 4. Переключение на реальный бэкенд
 
 Задачи 20–21 выполняются, когда `api-public` отдаёт `/tma/*`. До этого момента
@@ -7886,20 +8219,23 @@ git commit -m "chore(tma): production build guards and deployment configuration"
 ## Определение готовности
 
 **Фаза 0 готова, когда:** `npm test`, `npm run typecheck`, `npm run lint` и
-`npm run build` проходят; `localhost:5173` открывается с применённой темой
-Telegram; пропущенный перевод ломает компиляцию.
+`npm run build` проходят; `localhost:5173` открывается на палитре прототипа в
+Golos Text, тёмная тема переключается сменой `data-theme` на корне;
+пропущенный перевод ломает компиляцию.
 
 **Фаза 1 готова, когда:** контрактный набор проходит на моке; мок отвечает
 ошибками на превышение лимита устройств, повторный trial и выпуск на
 неактивной подписке; HTTP-клиент покрыт тестами с подменённым `fetch`.
 
-**Фаза 2 готова, когда:** три вкладки переключаются, вложенные экраны без
+**Фаза 2 готова, когда:** четыре вкладки переключаются, вложенные экраны без
 таб-бара, dev-панель меняет сценарий и сбрасывает кэш, в production-сборке
 панели нет.
 
 **Фаза 3 готова, когда:** каждый из одиннадцати сценариев мока даёт
 осмысленный экран без пустых мест и без `undefined` в интерфейсе; проверено
-переключением в dev-панели по всему списку.
+переключением в dev-панели по всему списку. Дополнительно (C1): главный экран и
+список устройств в тёмной теме сверены с эталоном — вариант `3b` прототипа,
+строки 359–393; см. Шаг 21 гайда переноса.
 
 **Фаза 4 готова, когда:** контрактный набор проходит против живого бэкенда;
 ручной прогон покупки, выпуска и отзыва выполнен на реальном сервере;
@@ -7911,10 +8247,14 @@ Telegram; пропущенный перевод ломает компиляци�
 
 | Требование | Источник | Где закрыто |
 |---|---|---|
-| TMA: тарифы, покупка, устройства | дизайн §14, прил. A | Задачи 14, 16, 17 |
+| TMA: тарифы, покупка, устройства | дизайн §14, прил. A | Задачи 14, 16, 17, 22 |
 | Инструкция под ОС + QR + deep-link | дизайн §7.3 п.8, прил. A | Задачи 17, 18 |
 | Страница самообслуживания: трафик, срок | прил. A | Задача 15 |
-| Trial: один на `telegram_id`, одно устройство | дизайн §7.3 | Задачи 14 (UI), 5–6 (правило в моке) |
+| Продление и управление автопродлением | дизайн §6 | Задача 23 |
+| Настройки клиента, поддержка | прил. A | Задача 24 |
+| Первый запуск без подписки | дизайн §7.3 | Задача 25 |
+| Перенос прототипа: палитра, шрифт, примитивы | гайд переноса, C1–C8 | Задачи 1, 11, 12 |
+| Trial: один на `telegram_id`, одно устройство | дизайн §7.3 | Задачи 14 (UI), 25 (первый запуск), 5–6 (правило в моке) |
 | Одноразовая ссылка TTL 15 минут, пароль один раз | дизайн §7.3 п.8, §11 | Задача 17 |
 | `cancelled` не отключает доступ | дизайн §6 | Задачи 9 (`isLive`), 15 (тест) |
 | Жёсткое отключение по истечении | дизайн §3 | Задачи 9, 15, 16 |

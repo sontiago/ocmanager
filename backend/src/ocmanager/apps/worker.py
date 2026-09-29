@@ -14,6 +14,7 @@ from arq.connections import RedisSettings
 from arq.cron import CronJob
 from arq.worker import Function
 
+import ocmanager.models  # noqa: F401 — регистрирует все таблицы: без этого FK между доменами не разрешаются
 from ocmanager.core.clock import utcnow
 from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker

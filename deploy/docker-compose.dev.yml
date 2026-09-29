@@ -43,7 +43,8 @@ services:
       # Тесты многократно получают отказ с одного IP — бан в dev выключен.
       OCSERV_MAX_BAN_SCORE: 0
       OCM_INTERNAL_TOKEN: ${OCM_INTERNAL_TOKEN:-dev-internal-token-0123456789abcdef}
-      # Бэкенд в dev работает на хосте; приёмник появится в Задаче 2.9.
+      # Приёмник — публичный API на хосте (`POST /internal/session-end`). Интеграционные
+      # тесты поднимают его сами на порту 8000; для ручной работы: make api-public.
       OCM_SESSION_END_URL: http://host.docker.internal:8000/internal/session-end
     extra_hosts: ["host.docker.internal:host-gateway"]
     # Только каталог состояния. .dev/pki с ca.key в ноду не монтируется.

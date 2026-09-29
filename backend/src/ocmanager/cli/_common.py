@@ -6,14 +6,19 @@ from pathlib import Path
 from typing import Any
 
 import typer
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ocmanager.audit.service import Actor
+from ocmanager.core.clock import utcnow
 from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.errors import DomainError
 from ocmanager.core.logging import configure_logging
+from ocmanager.events import bus
+from ocmanager.flows import handlers
+from ocmanager.flows import revocations as revocation_flows
 from ocmanager.nodes.driver.base import NodeUnreachable
+from ocmanager.provisioning.pki.ca import load_ca
 
 # Действия из командной строки в аудите — от «оператора cli».
 CLI_ACTOR = Actor(type="admin", id="cli")
@@ -42,14 +47,34 @@ def run(coro: Callable[[], Coroutine[Any, Any, None]]) -> None:
 
 
 @asynccontextmanager
-async def db_session() -> AsyncIterator[AsyncSession]:
-    """Сессия БД на одну команду. Коммит — в команде: без него ничего не сохранится."""
+async def db_sessionmaker() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     engine = make_engine(settings().database_url)
     try:
-        async with make_sessionmaker(engine)() as session:
-            yield session
+        yield make_sessionmaker(engine)
     finally:
         await engine.dispose()
+
+
+@asynccontextmanager
+async def db_session() -> AsyncIterator[AsyncSession]:
+    """Сессия БД на одну команду. Коммит — в команде: без него ничего не сохранится."""
+    async with db_sessionmaker() as sessionmaker, sessionmaker() as session:
+        yield session
+
+
+async def sync_now(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    """Dev-удобство: сразу довести изменения до ноды, не дожидаясь воркера — доставить
+    события (allowed.list, разрыв сессий) и применить отзывы (CRL). Недоступная нода не
+    ломает команду: данные уже в БД, воркер и reconcile догонят."""
+    s = settings()
+    handlers.register(s)
+    await bus.dispatch_pending(sessionmaker)
+    try:
+        async with sessionmaker() as session:
+            await revocation_flows.apply_revocations(session, s, load_ca(s.pki_dir), utcnow())
+            await session.commit()
+    except NodeUnreachable as exc:
+        typer.echo(f"нода недоступна, синхронизация отложена: {exc}", err=True)
 
 
 def refuse_in_production(s: Settings) -> None:
