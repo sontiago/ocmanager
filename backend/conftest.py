@@ -14,6 +14,7 @@ import itertools
 import json
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ from ocmanager.core.db import make_engine
 from ocmanager.core.redis import create_redis
 from ocmanager.events import bus
 from ocmanager.models import metadata
+from ocmanager.provisioning.pki.ca import CertificateAuthority, create_ca
 from ocmanager.subscriptions import service as client_service
 from ocmanager.subscriptions.models import Client
 from ocmanager.subscriptions.schemas import TelegramIdentity
@@ -251,3 +253,9 @@ async def trial_plan(session: AsyncSession) -> Plan:
         {"name": name},
     )
     return await plan_service.get_trial_plan(session)
+
+
+@pytest.fixture(scope="session")
+def test_ca() -> CertificateAuthority:
+    """CA на весь прогон: RSA-3072 генерируется секунду, а не в каждом тесте."""
+    return create_ca("ocmanager test CA", datetime(2026, 9, 22, 12, tzinfo=UTC))
