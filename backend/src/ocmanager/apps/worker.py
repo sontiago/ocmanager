@@ -19,6 +19,7 @@ from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.logging import configure_logging
 from ocmanager.events import bus
+from ocmanager.flows import handlers
 from ocmanager.flows import subscriptions as subscription_flows
 from ocmanager.flows.nodes import check_node_health
 from ocmanager.nodes import registry
@@ -36,6 +37,7 @@ async def startup(ctx: dict[str, Any]) -> None:
     logging.getLogger("arq.worker").setLevel(logging.WARNING)
     engine = make_engine(settings.database_url)
     ctx.update(settings=settings, engine=engine, sessionmaker=make_sessionmaker(engine))
+    handlers.register(settings)
     log.info("worker_started")
 
 

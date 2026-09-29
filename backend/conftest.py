@@ -40,10 +40,12 @@ from ocmanager.core.db import make_engine
 from ocmanager.core.redis import create_redis
 from ocmanager.events import bus
 from ocmanager.models import metadata
+from ocmanager.provisioning.models import Device
 from ocmanager.provisioning.pki.ca import CertificateAuthority, create_ca
-from ocmanager.subscriptions import service as client_service
-from ocmanager.subscriptions.models import Client
+from ocmanager.subscriptions import service as subscription_service
+from ocmanager.subscriptions.models import Client, Subscription
 from ocmanager.subscriptions.schemas import TelegramIdentity
+from ocmanager.subscriptions.state import PlanTerms
 
 BACKEND_DIR = Path(__file__).parent
 
@@ -199,6 +201,8 @@ def _isolated_event_handlers() -> Iterator[None]:
 
 MakeClient = Callable[..., Awaitable[Client]]
 MakePlan = Callable[..., Awaitable[Plan]]
+MakeDevice = Callable[..., Awaitable[Device]]
+MakeSubscription = Callable[..., Awaitable[Subscription]]
 
 
 @pytest.fixture
@@ -213,7 +217,9 @@ def make_client(session: AsyncSession) -> MakeClient:
             "username": None,
             "language_code": "ru",
         } | over
-        return (await client_service.upsert_client(session, TelegramIdentity(**fields))).client
+        return (
+            await subscription_service.upsert_client(session, TelegramIdentity(**fields))
+        ).client
 
     return make
 
@@ -259,3 +265,47 @@ async def trial_plan(session: AsyncSession) -> Plan:
 def test_ca() -> CertificateAuthority:
     """CA на весь прогон: RSA-3072 генерируется секунду, а не в каждом тесте."""
     return create_ca("ocmanager test CA", datetime(2026, 9, 22, 12, tzinfo=UTC))
+
+
+@pytest.fixture
+def make_subscription(session: AsyncSession, make_plan: MakePlan) -> MakeSubscription:
+    """Живая подписка клиенту: `await make_subscription(client, days=30, now=NOW)`.
+    Начало — `now`, конец — now + days."""
+
+    async def make(client: Client, *, days: int = 30, now: datetime, **over: Any) -> Subscription:
+        plan = await make_plan(duration_days=days)
+        terms = PlanTerms(
+            plan.id, plan.duration_days, plan.device_limit, plan.traffic_limit_bytes, False
+        )
+        return await subscription_service.activate(
+            session, client.id, terms, now, auto_renew=over.pop("auto_renew", True)
+        )
+
+    return make
+
+
+@pytest.fixture
+def make_device(session: AsyncSession) -> MakeDevice:
+    """Устройство без настоящего сертификата — быстрее, чем issue_device (нужен RSA)."""
+    serials = itertools.count(1)
+
+    async def make(client: Client, *, seq: int = 1, revoked: bool = False) -> Device:
+        n = next(serials)
+        moment = datetime(2026, 9, 22, tzinfo=UTC)
+        device = Device(
+            client_id=client.id,
+            seq=seq,
+            name=f"dev{seq}",
+            platform="linux",
+            ocserv_username=f"c{client.id}-d{seq}",
+            cert_serial=f"{n:x}",
+            cert_fingerprint="00" * 32,
+            issued_at=moment,
+            cert_expires_at=moment.replace(year=2027),
+            revoked_at=moment if revoked else None,
+        )
+        session.add(device)
+        await session.flush()
+        return device
+
+    return make
