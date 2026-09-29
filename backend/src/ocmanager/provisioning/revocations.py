@@ -42,3 +42,11 @@ async def mark_applied(session: AsyncSession, ids: Sequence[int], now: datetime)
         await session.execute(
             update(Revocation).where(Revocation.id.in_(ids)).values(applied_at=now)
         )
+
+
+async def applied_serials(session: AsyncSession) -> set[int]:
+    """Серийные номера, которые уже должны быть в CRL на ноде (для сверки reconcile)."""
+    rows = await session.scalars(
+        select(Revocation.cert_serial).where(Revocation.applied_at.is_not(None))
+    )
+    return {int(serial, 16) for serial in rows}

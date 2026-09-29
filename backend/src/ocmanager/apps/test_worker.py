@@ -18,6 +18,7 @@ from ocmanager.apps.worker import (
     get_ca,
     purge_event_outbox,
     purge_traffic,
+    reconcile_nodes,
     refresh_crl,
     shutdown,
     startup,
@@ -49,6 +50,7 @@ def test_cron_registry() -> None:
         "cron:refresh_crl",
         "cron:collect_traffic",
         "cron:purge_traffic",
+        "cron:reconcile_nodes",
     }
 
 
@@ -249,3 +251,21 @@ async def test_purge_traffic_task(
     sessionmaker: async_sessionmaker[AsyncSession],
 ) -> None:
     assert await purge_traffic({"sessionmaker": sessionmaker}) == 0
+
+
+def test_reconcile_runs_every_5_minutes() -> None:
+    [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:reconcile_nodes"]
+    assert job.minute == set(range(0, 60, 5))
+    assert job.second == {40}
+
+
+async def test_reconcile_task_heals_and_reports_the_number_of_drifts(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    settings: Settings,
+    test_ca: CertificateAuthority,
+) -> None:
+    fake = FakeNodeDriver(allowlist=None, crl=None)
+    ctx: dict[str, Any] = {"settings": settings, "sessionmaker": sessionmaker, "ca": test_ca}
+    with registry.override_driver(fake):
+        assert await reconcile_nodes(ctx) == 2  # allowlist_missing + crl_missing
+        assert await reconcile_nodes(ctx) == 0

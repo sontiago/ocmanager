@@ -20,6 +20,7 @@ from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.logging import configure_logging
 from ocmanager.events import bus
 from ocmanager.flows import handlers
+from ocmanager.flows import reconcile as reconcile_flows
 from ocmanager.flows import revocations as revocation_flows
 from ocmanager.flows import subscriptions as subscription_flows
 from ocmanager.flows import traffic as traffic_flows
@@ -122,6 +123,16 @@ async def refresh_crl(ctx: dict[str, Any]) -> None:
     log.info("crl_refreshed")
 
 
+async def reconcile_nodes(ctx: dict[str, Any]) -> int:
+    """Сверка нод с БД раз в 5 минут. Возвращает число найденных дрейфов."""
+    async with ctx["sessionmaker"]() as session:
+        reports = await reconcile_flows.reconcile_all(
+            session, ctx["settings"], get_ca(ctx), utcnow()
+        )
+        await session.commit()
+    return sum(len(r.drifts) for r in reports)
+
+
 async def collect_traffic(ctx: dict[str, Any]) -> int:
     """Опрос сессий раз в 5 минут: дельты трафика и расход по подпискам."""
     async with ctx["sessionmaker"]() as session:
@@ -150,6 +161,7 @@ class WorkerSettings:
         cron(refresh_crl, hour={3}, minute={0}, keep_result=0),
         cron(collect_traffic, minute=set(range(0, 60, 5)), second={20}, keep_result=0),
         cron(purge_traffic, hour={4}, minute={30}, keep_result=0),
+        cron(reconcile_nodes, minute=set(range(0, 60, 5)), second={40}, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown
