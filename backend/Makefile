@@ -1,7 +1,7 @@
 # Команды бэкенда. Запускать из каталога backend/.
 COMPOSE_DEV := docker compose -f ../deploy/docker-compose.dev.yml
 
-.PHONY: dev-up dev-down api-public ocserv-up ocserv-down test-ocserv lint fmt typecheck test test-unit check migrate revision boundaries
+.PHONY: dev-up dev-down api-public api-admin ocserv-up ocserv-down test-ocserv lint fmt typecheck test test-unit check migrate revision boundaries
 
 dev-up:     ## Postgres и Redis для разработки и тестов
 	$(COMPOSE_DEV) up -d --wait
@@ -9,6 +9,8 @@ dev-down:   ## остановить dev-инфраструктуру (данны
 	$(COMPOSE_DEV) down
 api-public: ## публичный API на 0.0.0.0:8000: его вызывает disconnect.sh из контейнера ноды
 	uv run uvicorn ocmanager.apps.public_api:create_app --factory --host 0.0.0.0 --port 8000
+api-admin:  ## админ-API на 127.0.0.1:8080 (наружу — только через SSH-туннель)
+	uv run uvicorn ocmanager.apps.admin_api:create_app --factory --host 127.0.0.1 --port 8080
 lint:       ## ruff: линтер и формат
 	uv run ruff check . && uv run ruff format --check .
 fmt:        ## автоисправление и форматирование

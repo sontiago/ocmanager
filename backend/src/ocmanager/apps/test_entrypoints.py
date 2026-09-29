@@ -28,7 +28,13 @@ EXPECTED = {"clients", "plans", "subscriptions", "devices", "revocations", "node
 
 
 @pytest.mark.parametrize(
-    "module", ["ocmanager.apps.public_api", "ocmanager.apps.worker", "ocmanager.cli"]
+    "module",
+    [
+        "ocmanager.apps.public_api",
+        "ocmanager.apps.admin_api",
+        "ocmanager.apps.worker",
+        "ocmanager.cli",
+    ],
 )
 async def test_process_knows_every_table(module: str) -> None:
     result = await shell.run([sys.executable, "-c", PROBE.format(module=module)], timeout=60)

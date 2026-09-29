@@ -32,9 +32,13 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from ocmanager.admin import accounts
+from ocmanager.admin.models import Admin
+from ocmanager.audit.service import Actor
 from ocmanager.billing import plans as plan_service
 from ocmanager.billing.models import Plan
 from ocmanager.billing.plans import PlanCreate
+from ocmanager.core import security
 from ocmanager.core.config import Settings
 from ocmanager.core.db import make_engine
 from ocmanager.core.redis import create_redis
@@ -308,5 +312,26 @@ def make_device(session: AsyncSession) -> MakeDevice:
         session.add(device)
         await session.flush()
         return device
+
+    return make
+
+
+ADMIN_PASSWORD = "correct-horse-battery"
+MakeAdmin = Callable[..., Awaitable[Admin]]
+
+
+@pytest.fixture
+def fast_bcrypt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """bcrypt cost 12 — четверть секунды на хеш; в тестах хватает минимального."""
+    monkeypatch.setattr(security, "BCRYPT_ROUNDS", 4)
+    security._dummy_hash.cache_clear()
+
+
+@pytest.fixture
+def make_admin(session: AsyncSession, fast_bcrypt: None) -> MakeAdmin:
+    """Фабрика админов: `await make_admin("alice")`, пароль — ADMIN_PASSWORD."""
+
+    async def make(username: str = "alice", password: str = ADMIN_PASSWORD) -> Admin:
+        return await accounts.create_admin(session, username, password, Actor.system())
 
     return make

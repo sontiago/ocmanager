@@ -5,6 +5,7 @@
 test_models.py падает, если какой-то models.py здесь забыт.
 """
 
+from ocmanager.admin import models as _admin  # noqa: F401
 from ocmanager.audit import models as _audit  # noqa: F401
 from ocmanager.billing import models as _billing  # noqa: F401
 from ocmanager.core import models as _core  # noqa: F401
