@@ -1,17 +1,22 @@
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
+import pytest
 from arq import ArqRedis
-from conftest import MakeClient, MakePlan
+from conftest import MakeClient, MakeDevice, MakePlan
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ocmanager.apps.worker import (
     WorkerSettings,
+    apply_revocations,
     check_nodes,
     dispatch_events,
     expire_subscriptions,
+    get_ca,
     purge_event_outbox,
+    refresh_crl,
     shutdown,
     startup,
 )
@@ -26,6 +31,8 @@ from ocmanager.nodes import registry
 from ocmanager.nodes.driver.fake import FakeNodeDriver
 from ocmanager.nodes.models import Node
 from ocmanager.nodes.service import cached_health
+from ocmanager.provisioning import service as provisioning
+from ocmanager.provisioning.pki.ca import CertificateAuthority, save_ca
 from ocmanager.subscriptions.service import get_subscription
 
 
@@ -36,6 +43,8 @@ def test_cron_registry() -> None:
         "cron:purge_event_outbox",
         "cron:check_nodes",
         "cron:expire_subscriptions",
+        "cron:apply_revocations",
+        "cron:refresh_crl",
     }
 
 
@@ -151,3 +160,60 @@ async def test_expire_subscriptions_expires_and_kicks_the_dispatcher(
     assert sub is not None
     await session.refresh(sub)
     assert sub.status == "expired"
+
+
+def test_apply_revocations_runs_twice_a_minute() -> None:
+    [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:apply_revocations"]
+    assert job.second == {15, 45}
+
+
+def test_crl_is_refreshed_daily_at_3_utc() -> None:
+    [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:refresh_crl"]
+    assert (job.hour, job.minute, job.second) == ({3}, {0}, 0)
+
+
+def test_get_ca_loads_lazily_and_once(
+    settings: Settings, tmp_path: Path, test_ca: CertificateAuthority
+) -> None:
+    ctx: dict[str, Any] = {"settings": settings.model_copy(update={"pki_dir": tmp_path})}
+    with pytest.raises(FileNotFoundError):  # воркеру без ключа стартовать можно, а брать ключ — нет
+        get_ca(ctx)
+    save_ca(test_ca, tmp_path)
+    first = get_ca(ctx)
+    assert get_ca(ctx) is first
+
+
+async def test_apply_revocations_task_survives_an_unreachable_node(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    settings: Settings,
+    test_ca: CertificateAuthority,
+    make_client: MakeClient,
+    make_device: MakeDevice,
+) -> None:
+    device = await make_device(await make_client())
+    await provisioning.revoke_device(
+        session, device.id, owner_client_id=None, reason="x", now=utcnow()
+    )
+    await session.commit()
+    ctx: dict[str, Any] = {"settings": settings, "sessionmaker": sessionmaker, "ca": test_ca}
+    with registry.override_driver(FakeNodeDriver(occtl_ok=False)):
+        assert await apply_revocations(ctx) == 0
+    with registry.override_driver(FakeNodeDriver()):
+        assert await apply_revocations(ctx) == 1
+        assert await apply_revocations(ctx) == 0
+
+
+async def test_refresh_crl_task_publishes(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    settings: Settings,
+    test_ca: CertificateAuthority,
+) -> None:
+    fake = FakeNodeDriver()
+    ctx: dict[str, Any] = {"settings": settings, "sessionmaker": sessionmaker, "ca": test_ca}
+    async with sessionmaker() as s:
+        await registry.ensure_local_node(s, settings)
+        await s.commit()
+    with registry.override_driver(fake):
+        await refresh_crl(ctx)
+    assert fake.crl is not None
