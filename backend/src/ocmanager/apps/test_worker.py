@@ -12,10 +12,12 @@ from ocmanager.apps.worker import (
     WorkerSettings,
     apply_revocations,
     check_nodes,
+    collect_traffic,
     dispatch_events,
     expire_subscriptions,
     get_ca,
     purge_event_outbox,
+    purge_traffic,
     refresh_crl,
     shutdown,
     startup,
@@ -45,6 +47,8 @@ def test_cron_registry() -> None:
         "cron:expire_subscriptions",
         "cron:apply_revocations",
         "cron:refresh_crl",
+        "cron:collect_traffic",
+        "cron:purge_traffic",
     }
 
 
@@ -217,3 +221,31 @@ async def test_refresh_crl_task_publishes(
     with registry.override_driver(fake):
         await refresh_crl(ctx)
     assert fake.crl is not None
+
+
+def test_traffic_is_collected_every_5_minutes() -> None:
+    [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:collect_traffic"]
+    assert job.minute == set(range(0, 60, 5))
+    assert job.second == {20}
+
+
+def test_traffic_samples_are_purged_daily() -> None:
+    [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:purge_traffic"]
+    assert (job.hour, job.minute, job.second) == ({4}, {30}, 0)
+
+
+async def test_collect_traffic_task_counts_seen_sessions(
+    sessionmaker: async_sessionmaker[AsyncSession], settings: Settings
+) -> None:
+    fake = FakeNodeDriver()
+    fake.add_session("c1-d1", bytes_in=10)
+    fake.add_session("c2-d1", bytes_in=20)
+    ctx: dict[str, Any] = {"settings": settings, "sessionmaker": sessionmaker}
+    with registry.override_driver(fake):
+        assert await collect_traffic(ctx) == 2
+
+
+async def test_purge_traffic_task(
+    sessionmaker: async_sessionmaker[AsyncSession],
+) -> None:
+    assert await purge_traffic({"sessionmaker": sessionmaker}) == 0

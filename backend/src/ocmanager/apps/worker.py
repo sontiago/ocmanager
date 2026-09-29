@@ -22,6 +22,7 @@ from ocmanager.events import bus
 from ocmanager.flows import handlers
 from ocmanager.flows import revocations as revocation_flows
 from ocmanager.flows import subscriptions as subscription_flows
+from ocmanager.flows import traffic as traffic_flows
 from ocmanager.flows.nodes import check_node_health
 from ocmanager.nodes import registry
 from ocmanager.nodes.driver.base import NodeUnreachable
@@ -121,6 +122,23 @@ async def refresh_crl(ctx: dict[str, Any]) -> None:
     log.info("crl_refreshed")
 
 
+async def collect_traffic(ctx: dict[str, Any]) -> int:
+    """Опрос сессий раз в 5 минут: дельты трафика и расход по подпискам."""
+    async with ctx["sessionmaker"]() as session:
+        results = await traffic_flows.collect_traffic(session, ctx["settings"], utcnow())
+        await session.commit()
+    return sum(r.seen for r in results.values())
+
+
+async def purge_traffic(ctx: dict[str, Any]) -> int:
+    async with ctx["sessionmaker"]() as session:
+        deleted = await traffic_flows.purge_samples(session, utcnow())
+        await session.commit()
+    if deleted:
+        log.info("traffic_samples_purged", deleted=deleted)
+    return deleted
+
+
 class WorkerSettings:
     functions: ClassVar[list[Function]] = [func(dispatch_events, keep_result=0)]
     cron_jobs: ClassVar[list[CronJob]] = [
@@ -130,6 +148,8 @@ class WorkerSettings:
         cron(expire_subscriptions, second={10}, keep_result=0),
         cron(apply_revocations, second={15, 45}, keep_result=0),
         cron(refresh_crl, hour={3}, minute={0}, keep_result=0),
+        cron(collect_traffic, minute=set(range(0, 60, 5)), second={20}, keep_result=0),
+        cron(purge_traffic, hour={4}, minute={30}, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown
