@@ -14,10 +14,12 @@ from arq.connections import RedisSettings
 from arq.cron import CronJob
 from arq.worker import Function
 
+from ocmanager.core.clock import utcnow
 from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.logging import configure_logging
 from ocmanager.events import bus
+from ocmanager.flows import subscriptions as subscription_flows
 from ocmanager.flows.nodes import check_node_health
 from ocmanager.nodes import registry
 
@@ -72,12 +74,24 @@ async def check_nodes(ctx: dict[str, Any]) -> int:
     return len(nodes)
 
 
+async def expire_subscriptions(ctx: dict[str, Any]) -> int:
+    """Истёкшие подписки → expired; обработчики событий уберут доступ на ноде."""
+    async with ctx["sessionmaker"]() as session:
+        client_ids = await subscription_flows.expire_due(session, utcnow())
+        await session.commit()
+    if client_ids:
+        log.info("subscriptions_expired", count=len(client_ids))
+        await bus.kick_dispatch(ctx["redis"])
+    return len(client_ids)
+
+
 class WorkerSettings:
     functions: ClassVar[list[Function]] = [func(dispatch_events, keep_result=0)]
     cron_jobs: ClassVar[list[CronJob]] = [
         cron(dispatch_events, second=EVERY_5_SECONDS, keep_result=0),
         cron(purge_event_outbox, hour={4}, minute={0}, keep_result=0),
         cron(check_nodes, second={30}, keep_result=0),
+        cron(expire_subscriptions, second={10}, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

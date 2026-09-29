@@ -10,9 +10,12 @@ CI может переопределить любое значение пере�
 """
 
 import asyncio
+import itertools
+import json
 import os
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic import command
@@ -28,11 +31,17 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from ocmanager.billing import plans as plan_service
+from ocmanager.billing.models import Plan
+from ocmanager.billing.plans import PlanCreate
 from ocmanager.core.config import Settings
 from ocmanager.core.db import make_engine
 from ocmanager.core.redis import create_redis
 from ocmanager.events import bus
 from ocmanager.models import metadata
+from ocmanager.subscriptions import service as client_service
+from ocmanager.subscriptions.models import Client
+from ocmanager.subscriptions.schemas import TelegramIdentity
 
 BACKEND_DIR = Path(__file__).parent
 
@@ -184,3 +193,61 @@ def _isolated_event_handlers() -> Iterator[None]:
     """Обработчики, зарегистрированные тестом, не утекают в соседние тесты."""
     with bus.isolated_handlers():
         yield
+
+
+MakeClient = Callable[..., Awaitable[Client]]
+MakePlan = Callable[..., Awaitable[Plan]]
+
+
+@pytest.fixture
+def make_client(session: AsyncSession) -> MakeClient:
+    """Фабрика клиентов: telegram_id подбирается сам. `await make_client(first_name="Anna")`."""
+    counter = itertools.count(5001)
+
+    async def make(**over: Any) -> Client:
+        fields: dict[str, Any] = {
+            "telegram_id": next(counter),
+            "first_name": "Test",
+            "username": None,
+            "language_code": "ru",
+        } | over
+        return (await client_service.upsert_client(session, TelegramIdentity(**fields))).client
+
+    return make
+
+
+@pytest.fixture
+def make_plan(session: AsyncSession) -> MakePlan:
+    """Фабрика тарифов: по умолчанию месяц на 3 устройства, код подбирается сам."""
+    counter = itertools.count(1)
+
+    async def make(**over: Any) -> Plan:
+        fields: dict[str, Any] = {
+            "code": f"plan{next(counter)}",
+            "name_i18n": {"ru": "Тариф", "en": "Plan"},
+            "duration_days": 30,
+            "device_limit": 3,
+            "traffic_limit_bytes": 100 * 1024**3,
+            "price_amount": 19900,
+            "currency": "RUB",
+        } | over
+        return await plan_service.create_plan(session, PlanCreate(**fields))
+
+    return make
+
+
+@pytest.fixture
+async def trial_plan(session: AsyncSession) -> Plan:
+    """Скрытый тариф trial. Его сеет миграция, но тесты с committed_sessionmaker
+    очищают таблицы — поэтому при необходимости создаём заново."""
+    name = json.dumps({"ru": "Пробный", "en": "Trial"}, ensure_ascii=False)
+    await session.execute(
+        text(
+            "INSERT INTO plans (code, name_i18n, duration_days, device_limit, price_amount,"
+            " currency, is_active, is_trial)"
+            " VALUES ('trial', CAST(:name AS jsonb), 3, 1, 0, 'RUB', false, true)"
+            " ON CONFLICT DO NOTHING"
+        ),
+        {"name": name},
+    )
+    return await plan_service.get_trial_plan(session)
