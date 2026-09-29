@@ -58,6 +58,7 @@ TEST_ENV_DEFAULTS = {
     # Юнит-тесты PKI и CLI подставляют tmp_path.
     "OCM_PKI_DIR": str(BACKEND_DIR.parent / ".dev" / "pki"),
     "OCM_OCSERV_STATE_DIR": str(BACKEND_DIR.parent / ".dev" / "ocserv-state"),
+    "OCM_INTERNAL_TOKEN": "test-internal-token-0123456789abcdef",
 }
 for _key, _value in TEST_ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)

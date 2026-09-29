@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
+from ocmanager.apps import internal
 from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.errors import install_error_handlers
@@ -49,4 +50,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "ok"}
 
     app.include_router(api)
+    app.include_router(internal.router)
     return app

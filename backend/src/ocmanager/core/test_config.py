@@ -11,6 +11,7 @@ BASE = {
     "OCM_SECRET_KEY": "x" * 32,
     "OCM_PKI_DIR": "../.dev/pki",
     "OCM_OCSERV_STATE_DIR": "../.dev/ocserv-state",
+    "OCM_INTERNAL_TOKEN": "t" * 32,
 }
 
 
@@ -61,4 +62,15 @@ def test_paths_are_path_objects(env: pytest.MonkeyPatch) -> None:
 def test_missing_pki_dir_rejected(env: pytest.MonkeyPatch) -> None:
     env.delenv("OCM_PKI_DIR")
     with pytest.raises(ValidationError, match="pki_dir"):
+        Settings(_env_file=None)
+
+
+def test_internal_token_is_required_long_and_hidden(env: pytest.MonkeyPatch) -> None:
+    assert Settings(_env_file=None).internal_token.get_secret_value() == "t" * 32
+    assert "t" * 32 not in repr(Settings(_env_file=None))
+    env.setenv("OCM_INTERNAL_TOKEN", "short")
+    with pytest.raises(ValidationError, match="internal_token"):
+        Settings(_env_file=None)
+    env.delenv("OCM_INTERNAL_TOKEN")
+    with pytest.raises(ValidationError, match="internal_token"):
         Settings(_env_file=None)
