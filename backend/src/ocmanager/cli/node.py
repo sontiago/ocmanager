@@ -1,26 +1,21 @@
-import asyncio
-from collections.abc import AsyncIterator, Callable, Coroutine
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Annotated, Any
+from typing import Annotated
 
 import typer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ocmanager.audit.service import Actor
-from ocmanager.cli._common import fail, refuse_in_production, settings
+from ocmanager.cli._common import CLI_ACTOR, fail, refuse_in_production, run, settings
 from ocmanager.core.config import Settings
 from ocmanager.core.db import make_engine, make_sessionmaker
-from ocmanager.core.errors import DomainError
 from ocmanager.core.redis import create_redis
 from ocmanager.flows.nodes import check_node_health, run_node_action
 from ocmanager.nodes import registry
-from ocmanager.nodes.driver.base import NodeDriver, NodeUnreachable
+from ocmanager.nodes.driver.base import NodeDriver
 from ocmanager.nodes.models import Node
 
 app = typer.Typer(no_args_is_help=True)
-
-CLI_ACTOR = Actor(type="admin", id="cli")
 
 
 @dataclass
@@ -42,15 +37,6 @@ async def node_context() -> AsyncIterator[NodeContext]:
             yield NodeContext(s, session, node, registry.driver_for(node, s))
     finally:
         await engine.dispose()
-
-
-def run(coro: Callable[[], Coroutine[Any, Any, None]]) -> None:
-    try:
-        asyncio.run(coro())
-    except DomainError as exc:
-        raise fail(f"{exc.code}: {exc.message}") from None
-    except NodeUnreachable as exc:
-        raise fail(f"нода недоступна: {exc}") from None
 
 
 @app.command()
