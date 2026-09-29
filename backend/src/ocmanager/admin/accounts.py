@@ -89,3 +89,16 @@ async def set_password(
         target_id=str(admin.id),
         details={"sessions_closed": closed},
     )
+
+
+async def reset_totp(session: AsyncSession, admin: Admin, actor: Actor) -> bool:
+    """Выключает второй фактор без кода — для админа, потерявшего телефон.
+    Доступно только тому, у кого есть доступ к хосту (CLI). True — что-то изменилось."""
+    if not admin.totp_enabled and admin.totp_secret is None:
+        return False
+    admin.totp_enabled = False
+    admin.totp_secret = None
+    await audit.record(
+        session, actor, "admin.totp_disable", target_type="admin", target_id=str(admin.id)
+    )
+    return True

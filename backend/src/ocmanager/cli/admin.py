@@ -56,6 +56,22 @@ def passwd(
     run(go)
 
 
+@app.command("reset-totp")
+def reset_totp(username: Annotated[str, typer.Argument()]) -> None:
+    """Выключить TOTP админу, потерявшему телефон. Войти можно будет по одному паролю."""
+
+    async def go() -> None:
+        async with db_session() as session:
+            admin = await accounts.get_by_username(session, username)
+            if admin is None:
+                raise fail(f"админ {username!r} не найден")
+            changed = await accounts.reset_totp(session, admin, CLI_ACTOR)
+            await session.commit()
+        typer.echo(f"TOTP {username} выключен" if changed else f"у {username} TOTP не включён")
+
+    run(go)
+
+
 @app.command("list")
 def list_() -> None:
     """Все админы."""

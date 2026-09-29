@@ -94,3 +94,23 @@ async def test_list(invoke: Invoke) -> None:
     assert result.exit_code == 0
     assert "alice" in result.output
     assert "не входил" in result.output
+
+
+async def test_reset_totp_switches_the_second_factor_off(
+    invoke: Invoke, committed_sessionmaker: async_sessionmaker[AsyncSession]
+) -> None:
+    await invoke("admin", "create", "alice", "--password-stdin", stdin=ADMIN_PASSWORD + "\n")
+    async with committed_sessionmaker() as session:
+        admin = await session.scalar(select(Admin))
+        assert admin is not None
+        admin.totp_enabled, admin.totp_secret = True, "encrypted"
+        await session.commit()
+    result = await invoke("admin", "reset-totp", "alice")
+    assert result.exit_code == 0, result.output
+    async with committed_sessionmaker() as session:
+        admin = await session.scalar(select(Admin))
+        assert admin is not None
+        assert (admin.totp_enabled, admin.totp_secret) == (False, None)
+    again = await invoke("admin", "reset-totp", "alice")
+    assert "не включён" in again.output
+    assert (await invoke("admin", "reset-totp", "ghost")).exit_code == 1

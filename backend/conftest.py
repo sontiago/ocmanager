@@ -22,6 +22,8 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from arq import ArqRedis
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
@@ -34,6 +36,7 @@ from sqlalchemy.ext.asyncio import (
 
 from ocmanager.admin import accounts
 from ocmanager.admin.models import Admin
+from ocmanager.apps.admin_api import create_app as create_admin_app
 from ocmanager.audit.service import Actor
 from ocmanager.billing import plans as plan_service
 from ocmanager.billing.models import Plan
@@ -332,6 +335,50 @@ def make_admin(session: AsyncSession, fast_bcrypt: None) -> MakeAdmin:
     """Фабрика админов: `await make_admin("alice")`, пароль — ADMIN_PASSWORD."""
 
     async def make(username: str = "alice", password: str = ADMIN_PASSWORD) -> Admin:
-        return await accounts.create_admin(session, username, password, Actor.system())
+        admin = await accounts.create_admin(session, username, password, Actor.system())
+        await session.flush()  # запись аудита получает id сейчас, а не при первом чтении
+        return admin
 
     return make
+
+
+@pytest.fixture
+def admin_app(
+    settings: Settings, sessionmaker: async_sessionmaker[AsyncSession], redis: ArqRedis
+) -> FastAPI:
+    """Админ-API на соединении теста. Lifespan не запускается: сессии и Redis подставлены."""
+    app = create_admin_app(settings)
+    app.state.sessionmaker = sessionmaker
+    app.state.redis = redis
+    return app
+
+
+NewClient = Callable[[], AsyncClient]
+
+
+@pytest.fixture
+def new_client(admin_app: FastAPI) -> NewClient:
+    """Ещё один браузер: свой набор cookie. `async with new_client() as other:`."""
+
+    def make() -> AsyncClient:
+        return AsyncClient(transport=ASGITransport(app=admin_app), base_url="http://localhost")
+
+    return make
+
+
+@pytest.fixture
+async def anon_client(new_client: NewClient) -> AsyncIterator[AsyncClient]:
+    async with new_client() as client:
+        yield client
+
+
+@pytest.fixture
+async def admin_client(anon_client: AsyncClient, make_admin: MakeAdmin) -> AsyncClient:
+    """Клиент с залогиненным админом alice: cookie сохранена, X-CSRF-Token проставлен."""
+    await make_admin("alice")
+    r = await anon_client.post(
+        "/admin/auth/login", json={"username": "alice", "password": ADMIN_PASSWORD}
+    )
+    assert r.status_code == 200, r.text
+    anon_client.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+    return anon_client
