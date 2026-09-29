@@ -344,12 +344,16 @@ def make_admin(session: AsyncSession, fast_bcrypt: None) -> MakeAdmin:
 
 @pytest.fixture
 def admin_app(
-    settings: Settings, sessionmaker: async_sessionmaker[AsyncSession], redis: ArqRedis
+    settings: Settings,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    redis: ArqRedis,
+    test_ca: CertificateAuthority,
 ) -> FastAPI:
     """Админ-API на соединении теста. Lifespan не запускается: сессии и Redis подставлены."""
     app = create_admin_app(settings)
     app.state.sessionmaker = sessionmaker
     app.state.redis = redis
+    app.state.ca = test_ca  # иначе CA читался бы с диска
     return app
 
 

@@ -12,3 +12,9 @@ def derive_fernet(secret: str, *, purpose: bytes) -> Fernet:
         secret.encode()
     )
     return Fernet(urlsafe_b64encode(key))
+
+
+def p12_fernet(secret_key: str) -> Fernet:
+    """Ключ для .p12 в Redis. Один и тот же в api-admin и api-public: выпустить и скачать
+    можно в разных процессах."""
+    return derive_fernet(secret_key, purpose=b"ocmanager.p12-delivery")
