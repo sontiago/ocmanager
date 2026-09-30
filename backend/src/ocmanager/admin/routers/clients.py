@@ -7,7 +7,7 @@ from sqlalchemy import ColumnElement, func, or_, select
 
 from ocmanager.admin.deps import CaDep, CurrentAdmin, FernetDep, RedisDep, commit_and_kick
 from ocmanager.admin.pagination import BigId, Page, PageDep, like_pattern, page_of
-from ocmanager.admin.queries import online_usernames, subscription_out
+from ocmanager.admin.queries import subscription_out
 from ocmanager.admin.schemas import (
     ActionOut,
     ClientOut,
@@ -24,6 +24,7 @@ from ocmanager.core.errors import NotFound
 from ocmanager.flows import devices as device_flows
 from ocmanager.flows import subscriptions as subscription_flows
 from ocmanager.flows.grants import grant_plan
+from ocmanager.flows.nodes import online_usernames
 from ocmanager.nodes import traffic
 from ocmanager.nodes.models import SessionLog, TrafficDaily
 from ocmanager.provisioning import delivery

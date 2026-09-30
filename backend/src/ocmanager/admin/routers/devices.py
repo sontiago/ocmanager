@@ -7,12 +7,12 @@ from sqlalchemy import ColumnElement, func, or_, select
 
 from ocmanager.admin.deps import CurrentAdmin, RedisDep, commit_and_kick
 from ocmanager.admin.pagination import BigId, Page, PageDep, like_pattern, page_of
-from ocmanager.admin.queries import online_usernames
 from ocmanager.admin.schemas import SessionRowOut
 from ocmanager.core.clock import utcnow
 from ocmanager.core.db import SessionDep
 from ocmanager.core.errors import NodeUnavailable, NotFound
 from ocmanager.flows import devices as device_flows
+from ocmanager.flows.nodes import online_usernames
 from ocmanager.nodes.models import SessionLog
 from ocmanager.provisioning.models import Device
 from ocmanager.provisioning.service import MAX_REASON_LEN, Platform
