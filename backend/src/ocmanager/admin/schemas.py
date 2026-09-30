@@ -5,7 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from ocmanager.nodes.models import SessionLog
+from ocmanager.nodes.models import Node, SessionLog
+from ocmanager.nodes.service import NodeHealth
 from ocmanager.provisioning.models import Device
 from ocmanager.subscriptions.models import Client, Subscription
 
@@ -162,3 +163,50 @@ class PlanOut(BaseModel):
     is_active: bool
     is_trial: bool
     sort_order: int
+
+
+class HealthOut(BaseModel):
+    state: str
+    container_state: str
+    active_sessions: int
+    checked_at: datetime
+    error: str | None
+
+    @classmethod
+    def of(cls, h: NodeHealth) -> "HealthOut":
+        return cls(
+            state=h.state,
+            container_state=h.container_state,
+            active_sessions=h.active_sessions,
+            checked_at=h.checked_at,
+            error=h.error,
+        )
+
+
+class NodeOut(BaseModel):
+    id: int
+    name: str
+    driver: str
+    public_host: str
+    status: str
+    last_seen_at: datetime | None
+    is_active: bool
+    last_reconcile_at: datetime | None
+
+    @classmethod
+    def of(cls, n: Node) -> "NodeOut":
+        return cls(
+            id=n.id,
+            name=n.name,
+            driver=n.driver,
+            public_host=n.public_host,
+            status=n.status,
+            last_seen_at=n.last_seen_at,
+            is_active=n.is_active,
+            last_reconcile_at=n.last_reconcile_at,
+        )
+
+
+class DriftOut(BaseModel):
+    kind: str
+    details: dict[str, Any]

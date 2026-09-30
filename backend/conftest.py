@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from starlette.types import Message
 
 from ocmanager.admin import accounts
 from ocmanager.admin.models import Admin
@@ -386,3 +387,39 @@ async def admin_client(anon_client: AsyncClient, make_admin: MakeAdmin) -> Async
     assert r.status_code == 200, r.text
     anon_client.headers["X-CSRF-Token"] = r.json()["csrf_token"]
     return anon_client
+
+
+async def read_stream_then_disconnect(
+    app: FastAPI, cookie: str, *, chunks: int, path: str = "/admin/node/logs"
+) -> list[bytes]:
+    """httpx.ASGITransport отдаёт ответ только целиком, бесконечный поток он не вынесет.
+    Поэтому приложение вызывается напрямую: клиент читает `chunks` кусков и «отключается»."""
+    gone = asyncio.Event()
+    received: list[bytes] = []
+
+    async def receive() -> Message:
+        await gone.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message: Message) -> None:
+        if message["type"] == "http.response.body" and message.get("body"):
+            received.append(message["body"])
+            if len(received) >= chunks:
+                gone.set()
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"tail=5",
+        "root_path": "",
+        "headers": [(b"host", b"localhost:8080"), (b"cookie", f"ocm_admin={cookie}".encode())],
+        "client": ("127.0.0.1", 50000),
+        "server": ("localhost", 8080),
+    }
+    await asyncio.wait_for(app(scope, receive, send), timeout=5)
+    return received

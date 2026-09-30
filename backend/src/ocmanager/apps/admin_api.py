@@ -15,6 +15,7 @@ import ocmanager.models  # noqa: F401 — регистрирует все таб
 from ocmanager.admin.routers import auth as auth_router
 from ocmanager.admin.routers import clients as clients_router
 from ocmanager.admin.routers import devices as devices_router
+from ocmanager.admin.routers import node as node_router
 from ocmanager.admin.routers import plans as plans_router
 from ocmanager.admin.routers import subscriptions as subscriptions_router
 from ocmanager.core.config import Settings, get_settings
@@ -93,5 +94,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(subscriptions_router.router)
     api.include_router(plans_router.router)
     api.include_router(devices_router.router)
+    api.include_router(node_router.router)
     app.include_router(api)
     return app
