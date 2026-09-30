@@ -67,6 +67,8 @@ TEST_ENV_DEFAULTS = {
     "OCM_PKI_DIR": str(BACKEND_DIR.parent / ".dev" / "pki"),
     "OCM_OCSERV_STATE_DIR": str(BACKEND_DIR.parent / ".dev" / "ocserv-state"),
     "OCM_INTERNAL_TOKEN": "test-internal-token-0123456789abcdef",
+    "OCM_CAMOUFLAGE_SECRET": "devsecret",
+    "OCM_BOT_TOKEN": "123456:test-bot-token-not-real",
 }
 for _key, _value in TEST_ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)

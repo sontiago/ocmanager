@@ -34,6 +34,8 @@ def test_allow_rejects_bad_username(fake: FakeNodeDriver) -> None:
 
 def test_allow_refused_in_production(fake: FakeNodeDriver, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OCM_ENV", "production")
+    monkeypatch.setenv("OCM_PUBLIC_BASE_URL", "https://panel.example.com")
+    monkeypatch.setenv("OCM_TMA_ALLOW_DEV_INITDATA", "false")  # в .env разработчика он true
     assert runner.invoke(app, ["node", "allow", "c1-d1"]).exit_code == 1
 
 

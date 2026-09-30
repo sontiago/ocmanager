@@ -81,6 +81,8 @@ def test_dev_commands_refused_in_production(
 ) -> None:
     runner.invoke(app, ["pki", "init"])
     monkeypatch.setenv("OCM_ENV", "production")
+    monkeypatch.setenv("OCM_PUBLIC_BASE_URL", "https://panel.example.com")
+    monkeypatch.setenv("OCM_TMA_ALLOW_DEV_INITDATA", "false")  # в .env разработчика он true
     result = runner.invoke(app, ["pki", *args])
     assert result.exit_code == 1
     assert "только для dev" in result.output

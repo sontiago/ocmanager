@@ -208,6 +208,8 @@ async def test_dev_only_commands_are_refused_in_production(
     invoke: Invoke, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("OCM_ENV", "production")
+    monkeypatch.setenv("OCM_PUBLIC_BASE_URL", "https://panel.example.com")
+    monkeypatch.setenv("OCM_TMA_ALLOW_DEV_INITDATA", "false")  # в .env разработчика он true
     for args in (
         [
             "device",
