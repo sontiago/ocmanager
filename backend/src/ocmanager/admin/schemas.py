@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from ocmanager.audit.models import AuditLog
 from ocmanager.nodes.models import Node, SessionLog
 from ocmanager.nodes.service import NodeHealth
 from ocmanager.provisioning.models import Device
@@ -210,3 +211,29 @@ class NodeOut(BaseModel):
 class DriftOut(BaseModel):
     kind: str
     details: dict[str, Any]
+
+
+class AuditRow(BaseModel):
+    id: int
+    created_at: datetime
+    actor_type: str
+    actor_id: str | None
+    ip: str | None
+    action: str
+    target_type: str | None
+    target_id: str | None
+    details: dict[str, Any]
+
+    @classmethod
+    def of(cls, a: AuditLog) -> "AuditRow":
+        return cls(
+            id=a.id,
+            created_at=a.created_at,
+            actor_type=a.actor_type,
+            actor_id=a.actor_id,
+            ip=None if a.ip is None else str(a.ip),  # INET приходит объектом адреса
+            action=a.action,
+            target_type=a.target_type,
+            target_id=a.target_id,
+            details=a.details,
+        )

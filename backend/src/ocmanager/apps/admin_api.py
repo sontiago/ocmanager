@@ -12,11 +12,14 @@ from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 import ocmanager.models  # noqa: F401 — регистрирует все таблицы: без этого FK между доменами не разрешаются
+from ocmanager.admin.routers import audit as audit_router
 from ocmanager.admin.routers import auth as auth_router
 from ocmanager.admin.routers import clients as clients_router
 from ocmanager.admin.routers import devices as devices_router
 from ocmanager.admin.routers import node as node_router
+from ocmanager.admin.routers import overview as overview_router
 from ocmanager.admin.routers import plans as plans_router
+from ocmanager.admin.routers import settings as settings_router
 from ocmanager.admin.routers import subscriptions as subscriptions_router
 from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
@@ -95,5 +98,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(plans_router.router)
     api.include_router(devices_router.router)
     api.include_router(node_router.router)
+    api.include_router(overview_router.router)
+    api.include_router(audit_router.router)
+    api.include_router(settings_router.router)
     app.include_router(api)
     return app
