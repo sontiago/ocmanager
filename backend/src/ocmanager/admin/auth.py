@@ -4,7 +4,6 @@
 незакоммиченное, а запись о неудачной попытке нужна именно при неудаче.
 """
 
-import ipaddress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -48,14 +47,6 @@ class LoginResult:
 
 def totp_fernet(settings: Settings) -> Fernet:
     return derive_fernet(settings.secret_key.get_secret_value(), purpose=b"ocmanager.admin-totp")
-
-
-def parse_ip(host: str | None) -> str | None:
-    """Колонка ip — INET: всё, что не адрес (unix-сокет, тестовый клиент), сохраняем как NULL."""
-    try:
-        return None if host is None else str(ipaddress.ip_address(host))
-    except ValueError:
-        return None
 
 
 def actor_of(admin: Admin, ip: str | None) -> Actor:

@@ -5,13 +5,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 
 from ocmanager.admin import accounts, auth
-from ocmanager.admin.deps import CurrentAdmin, RedisDep, SettingsDep, client_ip
+from ocmanager.admin.deps import CurrentAdmin, RedisDep, SettingsDep
 from ocmanager.admin.models import Admin, AdminSession
 from ocmanager.audit import service as audit
 from ocmanager.core import ratelimit, security
 from ocmanager.core.clock import utcnow
 from ocmanager.core.db import SessionDep
 from ocmanager.core.errors import Conflict, Forbidden, InvalidInput, NotFound
+from ocmanager.flows.deps import client_ip
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
