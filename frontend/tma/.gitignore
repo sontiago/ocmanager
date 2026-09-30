@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Сгенерировано из OpenAPI бэкенда (npm run api:types); в git не хранится
+src/api/generated.d.ts

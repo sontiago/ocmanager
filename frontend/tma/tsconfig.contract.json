@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.contract.tsbuildinfo",
+    "types": []
+  },
+  "include": ["src/api/types.ts", "src/api/generated.d.ts", "src/api/types.contract.test-d.ts"]
+}

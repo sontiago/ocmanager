@@ -11,7 +11,9 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "api:types": "npx --yes openapi-typescript@7.13.0 http://localhost:8000/api/openapi.json -o src/api/generated.d.ts",
+    "api:check": "npm run api:types && tsc -p tsconfig.contract.json"
   },
   "dependencies": {
     "@tailwindcss/vite": "4.3.3",
