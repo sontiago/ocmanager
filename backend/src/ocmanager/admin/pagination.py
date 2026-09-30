@@ -36,3 +36,9 @@ PageDep = Annotated[PageParams, Depends(page_params)]
 
 def page_of[T](items: list[T], total: int, params: PageParams) -> Page[T]:
     return Page[T](items=items, total=total, limit=params.limit, offset=params.offset)
+
+
+def like_pattern(term: str) -> str:
+    """Спецсимволы LIKE — обычные символы: поиск по `%` не должен находить всех."""
+    escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"

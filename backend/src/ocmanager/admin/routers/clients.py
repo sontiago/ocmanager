@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import ColumnElement, func, or_, select
 
 from ocmanager.admin.deps import CaDep, CurrentAdmin, FernetDep, RedisDep, commit_and_kick
-from ocmanager.admin.pagination import BigId, Page, PageDep, page_of
+from ocmanager.admin.pagination import BigId, Page, PageDep, like_pattern, page_of
 from ocmanager.admin.queries import online_usernames, subscription_out
 from ocmanager.admin.schemas import (
     ActionOut,
@@ -86,12 +86,6 @@ class IssuedOut(BaseModel):
     download_expires_at: datetime
 
 
-def _like(term: str) -> str:
-    """Спецсимволы LIKE — обычные символы: поиск по `%` не должен находить всех."""
-    escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return f"%{escaped}%"
-
-
 @router.get("/clients")
 async def list_clients(
     ctx: CurrentAdmin,
@@ -104,8 +98,8 @@ async def list_clients(
     conds: list[ColumnElement[bool]] = []
     if q and (term := q.strip().removeprefix("@")):
         clauses: list[ColumnElement[bool]] = [
-            Client.username.ilike(_like(term), escape="\\"),
-            Client.first_name.ilike(_like(term), escape="\\"),
+            Client.username.ilike(like_pattern(term), escape="\\"),
+            Client.first_name.ilike(like_pattern(term), escape="\\"),
         ]
         # 18 цифр всегда влезают в BIGINT; длиннее — это не telegram_id.
         if term.isascii() and term.isdigit() and len(term) <= 18:
