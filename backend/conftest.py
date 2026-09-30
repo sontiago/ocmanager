@@ -38,6 +38,7 @@ from starlette.types import Message
 from ocmanager.admin import accounts
 from ocmanager.admin.models import Admin
 from ocmanager.apps.admin_api import create_app as create_admin_app
+from ocmanager.apps.public_api import create_app as create_public_app
 from ocmanager.audit.service import Actor
 from ocmanager.billing import plans as plan_service
 from ocmanager.billing.models import Plan
@@ -54,6 +55,7 @@ from ocmanager.subscriptions import service as subscription_service
 from ocmanager.subscriptions.models import Client, Subscription
 from ocmanager.subscriptions.schemas import TelegramIdentity
 from ocmanager.subscriptions.state import PlanTerms
+from ocmanager.tma.testing import make_init_data
 
 BACKEND_DIR = Path(__file__).parent
 
@@ -389,6 +391,65 @@ async def admin_client(anon_client: AsyncClient, make_admin: MakeAdmin) -> Async
     assert r.status_code == 200, r.text
     anon_client.headers["X-CSRF-Token"] = r.json()["csrf_token"]
     return anon_client
+
+
+TMA_TELEGRAM_ID = 7001
+TmaHeaders = Callable[..., dict[str, str]]
+
+
+@pytest.fixture
+def public_app(
+    settings: Settings,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    redis: ArqRedis,
+    test_ca: CertificateAuthority,
+) -> FastAPI:
+    """Публичный API на соединении теста. Lifespan не запускается: сессии и Redis подставлены."""
+    app = create_public_app(settings)
+    app.state.sessionmaker = sessionmaker
+    app.state.redis = redis
+    app.state.ca = test_ca
+    return app
+
+
+@pytest.fixture
+def tma_headers(settings: Settings) -> TmaHeaders:
+    """Заголовок Authorization с настоящей подписью: `tma_headers(telegram_id=5, age_s=10)`."""
+
+    def make(
+        telegram_id: int = TMA_TELEGRAM_ID,
+        first_name: str = "Anna",
+        language_code: str = "ru",
+        age_s: int = 0,
+    ) -> dict[str, str]:
+        raw = make_init_data(
+            settings.bot_token.get_secret_value(),
+            user={"id": telegram_id, "first_name": first_name, "language_code": language_code},
+            auth_date=int(datetime.now(UTC).timestamp()) - age_s,
+        )
+        return {"Authorization": f"tma {raw}"}
+
+    return make
+
+
+@pytest.fixture
+async def public_client(public_app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """Клиент публичного API без заголовков: для проверки отказов и скачивания по ссылке."""
+    async with AsyncClient(
+        transport=ASGITransport(app=public_app), base_url="http://localhost"
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def tma_client(public_app: FastAPI, tma_headers: TmaHeaders) -> AsyncIterator[AsyncClient]:
+    """Клиент TMA: Анна с telegram_id=TMA_TELEGRAM_ID, язык ru."""
+    async with AsyncClient(
+        transport=ASGITransport(app=public_app),
+        base_url="http://localhost",
+        headers=tma_headers(),
+    ) as client:
+        yield client
 
 
 async def read_stream_then_disconnect(

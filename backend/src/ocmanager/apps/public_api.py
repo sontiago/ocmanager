@@ -16,6 +16,7 @@ from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.errors import install_error_handlers
 from ocmanager.core.logging import configure_logging
 from ocmanager.core.redis import create_redis
+from ocmanager.tma.router import router as tma_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -50,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    api.include_router(tma_router)
     app.include_router(api)
     app.include_router(internal.router)
     return app
