@@ -41,9 +41,10 @@ from ocmanager.apps.admin_api import create_app as create_admin_app
 from ocmanager.apps.public_api import create_app as create_public_app
 from ocmanager.audit.service import Actor
 from ocmanager.billing import plans as plan_service
-from ocmanager.billing.models import Plan
+from ocmanager.billing.models import Payment, Plan, WebhookEvent
 from ocmanager.billing.plans import PlanCreate
 from ocmanager.core import security
+from ocmanager.core.clock import utcnow
 from ocmanager.core.config import Settings
 from ocmanager.core.db import make_engine
 from ocmanager.core.redis import create_redis
@@ -321,6 +322,57 @@ def make_device(session: AsyncSession) -> MakeDevice:
         session.add(device)
         await session.flush()
         return device
+
+    return make
+
+
+MakePayment = Callable[..., Awaitable[Payment]]
+MakeWebhook = Callable[..., Awaitable[WebhookEvent]]
+
+
+@pytest.fixture
+def make_payment(session: AsyncSession) -> MakePayment:
+    """Платёж клиенту: `await make_payment(client, amount=500, currency="USD")`."""
+    counter = itertools.count(1)
+
+    async def make(client: Client, **over: Any) -> Payment:
+        fields: dict[str, Any] = {
+            "client_id": client.id,
+            "provider": "tribute",
+            "external_id": f"pay{next(counter)}",
+            "amount": 19900,
+            "currency": "RUB",
+            "status": "succeeded",
+            "raw_payload": {},
+            "received_at": utcnow(),
+        } | over
+        payment = Payment(**fields)
+        session.add(payment)
+        await session.flush()
+        return payment
+
+    return make
+
+
+@pytest.fixture
+def make_webhook(session: AsyncSession) -> MakeWebhook:
+    """Вебхук в нужном статусе: `await make_webhook(status="dead", last_error="нет тарифа")`."""
+    counter = itertools.count(1)
+
+    async def make(**over: Any) -> WebhookEvent:
+        fields: dict[str, Any] = {
+            "provider": "tribute",
+            "external_event_id": f"evt{next(counter)}",
+            "signature_ok": True,
+            "payload": {"name": "new_subscription"},
+            "raw_body": b"{}",
+            "status": "failed",
+            "attempts": 0,
+        } | over
+        row = WebhookEvent(**fields)
+        session.add(row)
+        await session.flush()
+        return row
 
     return make
 
