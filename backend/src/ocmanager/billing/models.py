@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    ForeignKey,
     Identity,
     Index,
     LargeBinary,
@@ -86,4 +87,32 @@ class WebhookEvent(Base):
         ),
         # Подметальщик и админка ищут по статусу и давности.
         Index("ix_webhook_events_status_received", "status", "received_at"),
+    )
+
+
+class Payment(Base):
+    """Деньги, полученные от провайдера. История платежей не удаляется и не правится, кроме
+    статуса при возврате. UNIQUE(provider, external_id) — второй барьер идемпотентности."""
+
+    __tablename__ = "payments"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    subscription_id: Mapped[int | None] = mapped_column(ForeignKey("subscriptions.id"))
+    provider: Mapped[str]
+    external_id: Mapped[str]
+    plan_id: Mapped[int | None] = mapped_column(ForeignKey("plans.id"))
+    amount: Mapped[int] = mapped_column(BigInteger)  # минорные единицы
+    currency: Mapped[str]
+    status: Mapped[str]
+    raw_payload: Mapped[dict[str, Any]]
+    received_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # Доступ выдан, платёж зачтён. NULL — записан, но не зачтён (заблокированный клиент): П5-13.
+    processed_at: Mapped[datetime | None]
+
+    __table_args__ = (
+        UniqueConstraint("provider", "external_id", name="uq_payments_provider_external_id"),
+        CheckConstraint("status IN ('succeeded', 'refunded')", name="status"),
+        CheckConstraint("amount >= 0", name="amount"),
+        Index("ix_payments_client_received", "client_id", "received_at"),
     )
