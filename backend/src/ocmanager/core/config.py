@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     tma_initdata_ttl_s: int = Field(86400, ge=60, le=7 * 86400)
     # Принимать поддельную initData из frontend/tma/src/telegram/mockEnv.ts. Только для dev.
     tma_allow_dev_initdata: bool = False
+    # Ключ API Tribute (кабинет автора, раздел API): им подписаны вебхуки, заголовок trbt-signature.
+    # Не задан или пуст — /webhooks/tribute отвечает 404, как будто провайдера нет.
+    tribute_api_key: SecretStr | None = None
 
     @field_validator("public_base_url")
     @classmethod

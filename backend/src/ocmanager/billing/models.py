@@ -1,6 +1,17 @@
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, CheckConstraint, Identity, Index, text, true
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    Identity,
+    Index,
+    LargeBinary,
+    UniqueConstraint,
+    func,
+    text,
+    true,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,4 +50,40 @@ class Plan(Base, TimestampMixin):
             unique=True,
             postgresql_where=text("is_trial"),
         ),
+    )
+
+
+WEBHOOK_STATUSES = ("received", "processed", "ignored", "failed", "dead", "rejected")
+
+
+class WebhookEvent(Base):
+    """Вебхук провайдера в том виде, в каком он пришёл. Сначала сохраняется сырым и получает 200,
+    обработка идёт из воркера: любой баг в бизнес-логике не превращается в шторм повторов."""
+
+    __tablename__ = "webhook_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    provider: Mapped[str]
+    external_event_id: Mapped[str]
+    signature_ok: Mapped[bool]
+    payload: Mapped[dict[str, Any]]  # JSONB; {} — тело не JSON-объект или подпись неверна
+    raw_body: Mapped[bytes] = mapped_column(LargeBinary)  # точные байты: по ним считалась подпись
+    status: Mapped[str] = mapped_column(server_default="received")
+    attempts: Mapped[int] = mapped_column(server_default=text("0"))
+    last_error: Mapped[str | None]
+    received_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    processed_at: Mapped[datetime | None]
+
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "external_event_id",
+            name="uq_webhook_events_provider_external_event_id",
+        ),
+        CheckConstraint(
+            "status IN ('" + "', '".join(WEBHOOK_STATUSES) + "')",
+            name="status",
+        ),
+        # Подметальщик и админка ищут по статусу и давности.
+        Index("ix_webhook_events_status_received", "status", "received_at"),
     )

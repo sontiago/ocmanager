@@ -1,0 +1,1 @@
+{"name":"digital_product_refund","created_at":"2026-10-06T12:00:00.000Z","sent_at":"2026-10-06T12:00:01.000Z","payload":{"subscription_id":1001,"telegram_user_id":7001,"expires_at":"2026-10-30T10:00:00.000Z","amount":19900,"currency":"rub"}}

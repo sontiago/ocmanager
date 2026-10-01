@@ -114,3 +114,12 @@ def test_production_refuses_dev_initdata_and_plain_http(env: pytest.MonkeyPatch)
     env.setenv("OCM_PUBLIC_BASE_URL", "http://panel.example.com")
     with pytest.raises(ValidationError, match="https"):
         Settings(_env_file=None)
+
+
+def test_the_tribute_key_is_optional_and_hidden(env: pytest.MonkeyPatch) -> None:
+    env.delenv("OCM_TRIBUTE_API_KEY", raising=False)  # conftest задаёт его для остальных тестов
+    assert Settings(_env_file=None).tribute_api_key is None
+    env.setenv("OCM_TRIBUTE_API_KEY", "tribute-key-0123456789")
+    settings = Settings(_env_file=None)
+    assert settings.tribute_api_key is not None
+    assert "tribute-key-0123456789" not in repr(settings)

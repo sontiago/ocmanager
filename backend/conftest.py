@@ -71,6 +71,7 @@ TEST_ENV_DEFAULTS = {
     "OCM_INTERNAL_TOKEN": "test-internal-token-0123456789abcdef",
     "OCM_CAMOUFLAGE_SECRET": "devsecret",
     "OCM_BOT_TOKEN": "123456:test-bot-token-not-real",
+    "OCM_TRIBUTE_API_KEY": "test-tribute-api-key-not-real",
 }
 for _key, _value in TEST_ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)

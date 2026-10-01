@@ -11,6 +11,7 @@ from fastapi import APIRouter, FastAPI
 
 import ocmanager.models  # noqa: F401 — регистрирует все таблицы: без этого FK между доменами не разрешаются
 from ocmanager.apps import internal
+from ocmanager.billing.router import router as webhooks_router
 from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.errors import install_error_handlers
@@ -53,5 +54,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     api.include_router(tma_router)
     app.include_router(api)
+    app.include_router(webhooks_router)
     app.include_router(internal.router)
     return app
