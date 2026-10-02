@@ -9,6 +9,8 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": { target: "http://localhost:8000", changeOrigin: true },
+      // Вебхуки платёжных провайдеров (Tribute): один туннель к Vite обслуживает и Mini App, и вебхуки.
+      "/webhooks": { target: "http://localhost:8000", changeOrigin: true },
     },
   },
   test: {
