@@ -1,0 +1,29 @@
+name: tma
+
+on:
+  push:
+    branches: [main]
+    paths: ["frontend/tma/**", "deploy/web/**", ".github/workflows/tma.yml"]
+  pull_request:
+    paths: ["frontend/tma/**", "deploy/web/**", ".github/workflows/tma.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/tma
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/tma/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      # Сборка + защита от моков в бандле (src/build.test.ts).
+      - run: npm run build
+      - run: npm test -- src/build.test.ts

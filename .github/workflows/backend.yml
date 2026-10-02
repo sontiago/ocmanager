@@ -4,20 +4,18 @@ on:
   push:
     branches: [main]
     paths:
-      [
-        "backend/**",
-        "ocserv/**",
-        "deploy/docker-compose.dev.yml",
-        ".github/workflows/backend.yml",
-      ]
+      - "backend/**"
+      - "ocserv/**"
+      - "deploy/**"
+      - "scripts/**"
+      - ".github/workflows/backend.yml"
   pull_request:
     paths:
-      [
-        "backend/**",
-        "ocserv/**",
-        "deploy/docker-compose.dev.yml",
-        ".github/workflows/backend.yml",
-      ]
+      - "backend/**"
+      - "ocserv/**"
+      - "deploy/**"
+      - "scripts/**"
+      - ".github/workflows/backend.yml"
 
 jobs:
   check:
@@ -52,3 +50,55 @@ jobs:
           cache-dependency-glob: backend/uv.lock
       - run: uv sync --frozen
       - run: make check
+
+  images:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - name: Образ бэкенда собирается и знает роли
+        run: |
+          docker build -t ocmanager/backend:ci backend
+          docker run --rm ocmanager/backend:ci cli --help >/dev/null
+          test "$(docker run --rm ocmanager/backend:ci nonsense 2>/dev/null; echo $?)" = 64
+      - name: Образ ocserv собирается
+        run: docker build -t ocmanager/ocserv:ci ocserv
+      - name: Образ Mini App собирается (внутри — защита от моков)
+        run: docker build -f deploy/web/Dockerfile -t ocmanager/web:ci .
+      - name: Конфиги деплоя валидны
+        run: scripts/check-deploy-configs.sh
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: check
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --frozen
+      # Настройки для CLI: dev-значения совпадают с deploy/docker-compose.dev.yml.
+      - run: cp .env.example .env
+      - run: make dev-up
+      - name: PKI и серверный сертификат
+        run: |
+          uv run ocmanager pki init
+          uv run ocmanager pki dev-server-cert --host ocserv --host localhost
+      - run: make ocserv-up
+      - run: docker compose -f ../deploy/docker-compose.dev.yml --profile tools build vpn-client
+      - run: make test-ocserv
+      - name: Прокси к Docker пропускает только нужное
+        run: ../deploy/docker-proxy/check.sh
+      - name: Логи ноды при падении
+        if: failure()
+        run: docker logs ocm-ocserv > ocserv.log 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ocserv-log
+          path: backend/ocserv.log
+          if-no-files-found: ignore
