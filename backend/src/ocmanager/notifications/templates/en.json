@@ -1,0 +1,20 @@
+{
+  "payment_accepted": "Payment of {amount} received. Your “{plan}” subscription is valid until {expires}.",
+  "device_issued": "The key for “{device}” has been issued. It cannot be downloaded again — if you lose it, issue the device anew.",
+  "expiring_soon": "Your subscription ends in {days} d ({expires}). Renew it in the app so the VPN stays on.",
+  "expired": "Your subscription has ended and access is closed. Open the app to renew.",
+  "device_revoked": "Device “{device}” was revoked: its access is closed.",
+  "trial_started": "Your trial has started: {days} d, until {expires}. Open the app and add a device.",
+  "node_down": "⚠️ Node “{node}” is unavailable ({state}).",
+  "node_up": "✅ Node “{node}” is back online.",
+  "webhook_dead": "⚠️ Webhook {provider} #{id} was not processed: {reason}. Review it in the Payments section.",
+  "webhook_bad_signature": "⚠️ Webhook {provider} #{id} arrived with a bad signature. If you were not testing the integration yourself, check the API key.",
+  "payment_new": "💰 New payment {amount}: {client}, plan “{plan}”.",
+  "payment_blocked_client": "⚠️ Payment {amount} from blocked client {client} was recorded, access was not granted. Unblock the client and reprocess the webhook, or refund.",
+  "refund": "↩️ Refund {amount}: {client}. Access was not revoked — decide manually.",
+  "internal_stuck": "⚠️ Internal events stuck after 10 attempts: {count}. Check the worker logs.",
+  "bot_start": "Hi, {name}! Here you can buy a VPN subscription, issue keys for your devices and watch your traffic — all in the app.",
+  "bot_hint": "Everything is managed in the app. Tap the button below.",
+  "bot_whoami": "Your chat_id: {chat_id}. To receive alerts, add this number to admin_chat_ids in the panel settings.",
+  "bot_open_app": "Open the app"
+}
