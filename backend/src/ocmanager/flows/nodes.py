@@ -1,5 +1,10 @@
 """Склейка nodes + audit: проверка здоровья и действия над нодой с аудитом."""
 
+import asyncio
+import hashlib
+from pathlib import Path
+from typing import Literal
+
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +13,8 @@ from ocmanager.audit.service import Actor
 from ocmanager.nodes import registry, service
 from ocmanager.nodes.driver.base import NodeDriver
 from ocmanager.nodes.models import Node
+
+SERVER_CERT_FINGERPRINT_KEY = "ocm:server_cert:{node_id}"
 
 
 async def check_node_health(
@@ -60,3 +67,28 @@ async def online_usernames(db: AsyncSession, redis: Redis) -> set[str] | None:
         if online is not None:
             known.append(online)
     return set().union(*known) if known else None
+
+
+async def sync_server_cert(
+    redis: Redis, node_id: int, path: Path, driver: NodeDriver
+) -> Literal["unchanged", "reloaded", "missing"]:
+    """Серверный сертификат ocserv выпускает и продлевает Caddy; ocserv держит прочитанный при
+    старте. Смена файла без reload тихо ломает подключения через 60–90 дней, поэтому воркер
+    сверяет отпечаток с запомненным и при отличии просит ocserv перечитать сертификат.
+
+    Отпечаток запоминается только после успешного reload: сбой повторится при следующем запуске.
+    Пустой Redis даёт один лишний reload — он не обрывает сессии и дешевле пропущенного."""
+    try:
+        data = await asyncio.to_thread(path.read_bytes)
+    except FileNotFoundError:
+        return "missing"
+    fingerprint = hashlib.sha256(data).hexdigest()
+    key = SERVER_CERT_FINGERPRINT_KEY.format(node_id=node_id)
+    known = await redis.get(key)
+    if isinstance(known, bytes):
+        known = known.decode()
+    if known == fingerprint:
+        return "unchanged"
+    await driver.reload()
+    await redis.set(key, fingerprint)
+    return "reloaded"

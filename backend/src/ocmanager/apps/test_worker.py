@@ -13,6 +13,7 @@ from ocmanager.apps.worker import (
     WorkerSettings,
     apply_revocations,
     check_nodes,
+    check_server_cert,
     collect_traffic,
     dispatch_events,
     expire_subscriptions,
@@ -49,6 +50,7 @@ def test_cron_registry() -> None:
         "cron:dispatch_events",
         "cron:purge_event_outbox",
         "cron:send_outbox",
+        "cron:check_server_cert",
         "cron:expiry_reminders",
         "cron:alert_stuck_events",
         "cron:check_nodes",
@@ -191,6 +193,43 @@ async def test_expiry_reminders_job_queues_and_commits(
 def test_the_hourly_reminder_job_runs_on_the_hour() -> None:
     [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:expiry_reminders"]
     assert job.minute == {0}
+
+
+async def test_check_server_cert_is_off_without_a_path(
+    sessionmaker: async_sessionmaker[AsyncSession], redis: ArqRedis, settings: Settings
+) -> None:
+    ctx: dict[str, Any] = {"settings": settings, "sessionmaker": sessionmaker, "redis": redis}
+    assert settings.server_cert_path is None
+    assert await check_server_cert(ctx) == "disabled"
+
+
+async def test_check_server_cert_reloads_the_node_when_the_file_changes(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    redis: ArqRedis,
+    settings: Settings,
+    tmp_path: Path,
+) -> None:
+    cert = tmp_path / "server.crt"
+    cert.write_bytes(b"certificate-1")
+    configured = settings.model_copy(update={"server_cert_path": cert})
+    async with sessionmaker() as s:
+        await registry.ensure_local_node(s, configured)
+        await s.commit()
+    ctx: dict[str, Any] = {"settings": configured, "sessionmaker": sessionmaker, "redis": redis}
+    fake = FakeNodeDriver()
+
+    with registry.override_driver(fake):
+        assert await check_server_cert(ctx) == "reloaded"
+        assert await check_server_cert(ctx) == "unchanged"
+        cert.write_bytes(b"certificate-2")
+        assert await check_server_cert(ctx) == "reloaded"
+
+    assert fake.calls.count(("reload", ())) == 2
+
+
+def test_the_certificate_is_checked_every_six_hours() -> None:
+    [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:check_server_cert"]
+    assert job.hour == {0, 6, 12, 18}
 
 
 async def test_check_nodes_updates_status_and_cache(

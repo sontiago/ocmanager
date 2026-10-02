@@ -24,6 +24,7 @@ from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.logging import configure_logging
 from ocmanager.events import bus
 from ocmanager.flows import handlers
+from ocmanager.flows import nodes as node_flows
 from ocmanager.flows import notify as notify_flows
 from ocmanager.flows import purchase as purchase_flows
 from ocmanager.flows import reconcile as reconcile_flows
@@ -132,6 +133,33 @@ async def check_nodes(ctx: dict[str, Any]) -> int:
         await session.commit()
     await bus.kick_dispatch(ctx["redis"])  # NodeStatusChanged — без ожидания cron
     return len(nodes)
+
+
+async def check_server_cert(ctx: dict[str, Any]) -> str:
+    """Продлённый Caddy сертификат — в ocserv: reload при смене отпечатка файла. Раз в 6 часов."""
+    settings: Settings = ctx["settings"]
+    if settings.server_cert_path is None:
+        return "disabled"
+    outcome = "no_nodes"
+    async with ctx["sessionmaker"]() as session:
+        nodes = await registry.get_active_nodes(session)
+    for node in nodes:
+        try:
+            outcome = await node_flows.sync_server_cert(
+                ctx["redis"],
+                node.id,
+                settings.server_cert_path,
+                registry.driver_for(node, settings),
+            )
+        except NodeUnreachable as exc:
+            # Нода недоступна — не ошибка задачи: отпечаток не запомнен, повторим через 6 часов.
+            log.warning("server_cert_reload_failed", node_id=node.id, error=str(exc))
+            return "unreachable"
+        if outcome == "missing":
+            log.warning("server_cert_missing", path=str(settings.server_cert_path))
+        elif outcome == "reloaded":
+            log.info("server_cert_reloaded", node_id=node.id)
+    return outcome
 
 
 async def expire_subscriptions(ctx: dict[str, Any]) -> int:
@@ -260,6 +288,7 @@ class WorkerSettings:
         cron(expiry_reminders, minute={0}, second={5}, keep_result=0),
         cron(alert_stuck_events, hour={9}, minute={0}, second={10}, keep_result=0),
         cron(check_nodes, second={30}, keep_result=0),
+        cron(check_server_cert, hour={0, 6, 12, 18}, minute={25}, second={0}, keep_result=0),
         cron(expire_subscriptions, second={10}, keep_result=0),
         cron(apply_revocations, second={15, 45}, keep_result=0),
         cron(refresh_crl, hour={3}, minute={0}, keep_result=0),

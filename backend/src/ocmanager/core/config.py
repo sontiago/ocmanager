@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     ocserv_state_dir: Path
     # Имя контейнера ноды для docker exec/inspect/logs. Никогда не из запроса.
     ocserv_container: str = "ocm-ocserv"
+    # Серверный сертификат ocserv, который выпускает и продлевает Caddy (общий том). Воркер следит
+    # за файлом и просит ноду перечитать его при смене. Не задан — слежения нет (dev).
+    server_cert_path: Path | None = None
     # Общий секрет ноды и панели: им disconnect.sh подписывает отчёт о сессии.
     # В контейнер ноды попадает как OCM_INTERNAL_TOKEN (dev-compose, entrypoint.sh).
     internal_token: SecretStr = Field(min_length=32)
