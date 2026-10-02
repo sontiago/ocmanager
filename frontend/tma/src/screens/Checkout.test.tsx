@@ -2,18 +2,12 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Route, Routes } from "react-router";
+import { ApiError } from "../api/errors";
+import { createMockClient } from "../api/mock/client";
 import { resetStore, setFault, setLatency } from "../api/mock/store";
 import { PATHS, ROUTES } from "../app/routes";
 import { renderWithProviders } from "../test/renderWithProviders";
 import { Checkout } from "./Checkout";
-
-const links = vi.hoisted(() => ({
-  openExternal: vi.fn(),
-  closeApp: vi.fn(),
-  openInTelegram: vi.fn(),
-  isTelegramLink: vi.fn(() => false),
-}));
-vi.mock("../telegram/links", () => links);
 
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("react-router", async () => {
@@ -57,63 +51,80 @@ describe("экран оплаты", () => {
     expect(screen.getByText("Tribute")).toBeVisible();
   });
 
-  it("оплата открывает страницу провайдера и только потом закрывает приложение", async () => {
+  it("ссылка на оплату создаётся сама, а кнопка — настоящая ссылка", async () => {
     show("month_1");
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Перейти к оплате" }),
-    );
 
-    await waitFor(() => expect(links.openExternal).toHaveBeenCalledOnce());
-    expect(links.openExternal.mock.calls[0][0]).toContain(
-      "tribute.tg/checkout/month_1",
-    );
-    expect(links.closeApp).toHaveBeenCalledOnce();
-    // Порядок — суть экрана: закрытое приложение уже ничего не откроет.
-    expect(links.openExternal.mock.invocationCallOrder[0]).toBeLessThan(
-      links.closeApp.mock.invocationCallOrder[0],
-    );
-  });
-
-  it("ссылка Telegram открывается поверх приложения, и приложение не закрывается", async () => {
-    links.isTelegramLink.mockReturnValueOnce(true);
-    show("month_1");
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Перейти к оплате" }),
-    );
-
-    await waitFor(() => expect(links.openExternal).toHaveBeenCalledOnce());
-    expect(links.closeApp).not.toHaveBeenCalled();
-  });
-
-  it("после запроса оплаты на экране остаётся ссылка на случай, если автооткрытие не сработало", async () => {
-    show("month_1");
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Перейти к оплате" }),
-    );
-
-    const link = await screen.findByRole("link", {
-      name: "Оплата не открылась? Нажмите здесь",
-    });
+    const link = await screen.findByRole("link", { name: "Перейти к оплате" });
     expect(link).toHaveAttribute(
       "href",
       expect.stringContaining("tribute.tg/checkout/month_1"),
     );
+    expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    // Нажимать ничего не пришлось: приложение не закрывается и не уводит само.
+    expect(
+      screen.queryByRole("button", { name: "Перейти к оплате" }),
+    ).toBeNull();
   });
 
-  it("сбой оплаты называет причину и никуда не уводит", async () => {
+  it("пока ссылка создаётся, кнопка заблокирована и подписана", async () => {
+    setLatency(50);
     show("month_1");
-    const pay = await screen.findByRole("button", { name: "Перейти к оплате" });
+
+    const busy = await screen.findByRole("button", {
+      name: "Открываем оплату…",
+    });
+    expect(busy).toBeDisabled();
+    await screen.findByRole("link", { name: "Перейти к оплате" });
+  });
+
+  it("ссылка создаётся один раз на открытие экрана, а не на каждый рендер", async () => {
+    const client = createMockClient();
+    const create = vi.spyOn(client, "createCheckout");
+    renderWithProviders(
+      <Routes>
+        <Route path={PATHS.checkout} element={<Checkout />} />
+      </Routes>,
+      { client, route: ROUTES.checkout("month_1") },
+    );
+
+    await screen.findByRole("link", { name: "Перейти к оплате" });
+    expect(create).toHaveBeenCalledOnce();
+    expect(create).toHaveBeenCalledWith("month_1");
+  });
+
+  it("отказ по лимиту называет причину и не предлагает мгновенный повтор", async () => {
     setFault("rate_limited");
-    await userEvent.click(pay);
+    show("month_1");
 
     await waitFor(() =>
       expect(
         screen.getByText("Слишком много запросов. Подождите минуту."),
       ).toBeVisible(),
     );
-    expect(links.openExternal).not.toHaveBeenCalled();
-    expect(links.closeApp).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "Перейти к оплате" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Повторить" })).toBeNull();
+  });
+
+  it("сетевой сбой при создании ссылки даёт повторить, и повтор приводит к ссылке", async () => {
+    // Каталог читается до сбоя, поэтому ломаем только создание ссылки.
+    const client = createMockClient();
+    vi.spyOn(client, "createCheckout").mockRejectedValueOnce(
+      new ApiError("network", 0),
+    );
+    renderWithProviders(
+      <Routes>
+        <Route path={PATHS.checkout} element={<Checkout />} />
+      </Routes>,
+      { client, route: ROUTES.checkout("month_1") },
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Повторить" }),
+    );
+    expect(
+      await screen.findByRole("link", { name: "Перейти к оплате" }),
+    ).toBeVisible();
   });
 
   it("неизвестный тариф — не тупик, а выход в каталог", async () => {

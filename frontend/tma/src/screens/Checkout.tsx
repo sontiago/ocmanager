@@ -1,11 +1,9 @@
 import { useNavigate, useParams } from "react-router";
-import { useCreateCheckout, usePlans } from "../api/hooks";
+import { useCheckoutLink, usePlans } from "../api/hooks";
 import { ROUTES } from "../app/routes";
 import { useTranslation } from "../i18n/useTranslation";
 import { formatMoney } from "../lib/format";
-import { haptic } from "../telegram/haptics";
-import { closeApp, isTelegramLink, openExternal } from "../telegram/links";
-import { Button } from "../ui/Button";
+import { Button, ButtonLink } from "../ui/Button";
 import { Caption } from "../ui/Caption";
 import { Card } from "../ui/Card";
 import { Cell } from "../ui/Cell";
@@ -22,7 +20,11 @@ export function Checkout() {
   const { t, tPlural, lang } = useTranslation();
 
   const plans = usePlans();
-  const checkout = useCreateCheckout();
+  // Ссылку на оплату создаём сразу, как только выяснилось, что тариф существует.
+  const checkout = useCheckoutLink(
+    planCode,
+    plans.data?.some((p) => p.code === planCode) ?? false,
+  );
 
   if (plans.isPending) return <CheckoutSkeleton />;
 
@@ -50,21 +52,6 @@ export function Checkout() {
     );
   }
 
-  const pay = () => {
-    checkout.mutate(plan.code, {
-      onSuccess: ({ checkout_url }) => {
-        // Порядок обязателен: закрытое мини-приложение уже ничего не откроет.
-        openExternal(checkout_url);
-        // Ссылка Tribute (t.me/…) открывает его мини-приложение поверх нашего: закрыв наше
-        // сразу, мы обрываем это открытие. После оплаты человек вернётся в открытое приложение.
-        if (!isTelegramLink(checkout_url)) closeApp();
-      },
-      // Успех вибрацией не отмечаем: приложение в этот момент закрывается,
-      // и отметить её некому. Неудача, наоборот, остаётся на экране.
-      onError: () => haptic.notification("error"),
-    });
-  };
-
   return (
     <div>
       <div className="px-1 pt-3.5">
@@ -90,34 +77,33 @@ export function Checkout() {
 
       <Note className="px-1 pt-3.5">{t("checkout.note")}</Note>
 
-      <Button className="mt-[18px]" loading={checkout.isPending} onClick={pay}>
-        {checkout.isPending ? t("checkout.opening") : t("checkout.pay")}
-      </Button>
+      {checkout.isPending && (
+        <Button className="mt-[18px]" loading>
+          {t("checkout.opening")}
+        </Button>
+      )}
 
-      {/* В Telegram этого уже никто не увидит — приложение закрылось.
-          Экран виден при запуске в браузере и если close недоступен. */}
       {checkout.isSuccess && (
-        <>
-          <Note className="px-1 pt-3.5">{t("checkout.hint")}</Note>
-          {/* Запасной путь: если клиент не смог открыть ссылку из кода, обычное нажатие по
-              ссылке Telegram обработает сам. */}
-          <Note className="px-1 pt-3.5">
-            <a
-              className="underline"
-              href={checkout.data.checkout_url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("checkout.openManually")}
-            </a>
-          </Note>
-        </>
+        // Обычная ссылка: Telegram откроет Tribute сам, приложение при этом остаётся открытым.
+        <ButtonLink className="mt-[18px]" href={checkout.data.checkout_url}>
+          {t("checkout.pay")}
+        </ButtonLink>
       )}
 
       {checkout.isError && (
-        <Note tone="danger" className="px-1 pt-3.5">
-          {t(checkout.error.messageKey())}
-        </Note>
+        <>
+          <Note tone="danger" className="px-1 pt-3.5">
+            {t(checkout.error.messageKey())}
+          </Note>
+          {checkout.error.retryable && (
+            <Button
+              className="mt-[18px]"
+              onClick={() => void checkout.refetch()}
+            >
+              {t("common.retry")}
+            </Button>
+          )}
+        </>
       )}
     </div>
   );

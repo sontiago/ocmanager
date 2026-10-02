@@ -132,10 +132,7 @@ export const en: Record<MessageKey, string> = {
   "checkout.pay": "Go to payment",
   "checkout.opening": "Opening payment…",
   "checkout.note":
-    "Payment opens in Tribute. The app will close — the bot will message you in the chat once access is ready. It usually takes a few seconds.",
-  "checkout.hint":
-    "After paying, come back to Telegram — the bot will message you once the subscription is active.",
-  "checkout.openManually": "Payment didn't open? Tap here",
+    "Payment opens in Tribute. After paying, come back to the app — the subscription appears in a few seconds.",
   "checkout.notFound": "Plan not found",
   "checkout.notFoundBody": "It may no longer be on sale. Pick another one.",
 

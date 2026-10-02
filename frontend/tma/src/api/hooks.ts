@@ -115,13 +115,26 @@ export function useRevokeDevice(): UseMutationResult<void, ApiError, string> {
   });
 }
 
-export function useCreateCheckout(): UseMutationResult<
-  Checkout,
-  ApiError,
-  string
-> {
+/**
+ * Ссылка на оплату тарифа, созданная заранее — при открытии экрана оплаты, а не по нажатию.
+ * Так кнопка «Перейти к оплате» — обычная ссылка и открывается нажатием, как любая другая:
+ * вызов openLink из кода после запроса на сервер на части клиентов Telegram молча не срабатывает.
+ * Каждое получение — запись `checkout_intents` на бэкенде, поэтому ответ держим десять минут
+ * и не перезапрашиваем при возврате фокуса.
+ */
+export function useCheckoutLink(
+  planCode: string | undefined,
+  enabled: boolean,
+): UseQueryResult<Checkout, ApiError> {
   const api = useApi();
-  return useMutation({
-    mutationFn: (planCode: string) => api.createCheckout(planCode),
+  return useQuery({
+    queryKey: queryKeys.checkout(planCode ?? ""),
+    queryFn: () => api.createCheckout(planCode ?? ""),
+    enabled: enabled && !!planCode,
+    staleTime: 10 * 60_000,
+    gcTime: 10 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
