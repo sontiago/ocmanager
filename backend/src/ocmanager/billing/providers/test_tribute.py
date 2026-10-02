@@ -6,7 +6,7 @@ import pytest
 from ocmanager.billing.providers import checkout_url
 from ocmanager.billing.providers.base import ProviderEvent, ProviderPayloadError
 from ocmanager.billing.providers.tribute import SIGNATURE_HEADER, TributeProvider
-from ocmanager.billing.testing import sign, webhook_body
+from ocmanager.billing.testing import fixture_bytes, sign, webhook_body
 
 provider = TributeProvider("test-key")
 
@@ -244,3 +244,18 @@ def test_an_unknown_provider_has_no_checkout() -> None:
 def test_the_dashboard_test_ping_is_ignored_not_an_error() -> None:
     event = provider.parse({"test_event": "test_event"})
     assert (event.kind, event.raw_name) == ("ignored", "test_event")
+
+
+def test_a_live_trial_webhook_is_not_revenue() -> None:
+    """Снят с живого Tribute: у пробного периода price = 10000, но заплачено 0 (amount = 0)."""
+    raw = json.loads(fixture_bytes("live_new_subscription_trial"))["payload"]
+    assert (raw["type"], raw["price"], raw["amount"]) == ("trial", 10000, 0)
+    event = provider.parse(json.loads(fixture_bytes("live_new_subscription_trial")))
+    assert event.kind == "subscription_started"
+    assert event.product_ref == "506546"  # period_id пробного периода
+    assert event.amount == 0
+    assert event.external_payment_id == "268905:7001:2026-10-02T11:49:47.054793175Z"
+
+
+def test_a_regular_period_keeps_the_price_as_revenue() -> None:
+    assert parse("new_subscription", type="regular").amount == 19900

@@ -126,6 +126,10 @@ class TributeProvider:
         # товаров price нет — тогда берётся amount.
         gross = body.get("price")
         paid = _minor_units(gross if gross is not None else body.get("amount"))
+        if body.get("type") == "trial":
+            # Живой вебхук (5.8): у пробного периода price = цена полного периода (10000), а
+            # заплачено 0 (amount = 0). Записывать price как выручку нельзя.
+            paid = 0
         return ProviderEvent(
             kind=kind,
             telegram_id=telegram_id,
