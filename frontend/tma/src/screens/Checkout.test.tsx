@@ -85,6 +85,22 @@ describe("экран оплаты", () => {
     expect(links.closeApp).not.toHaveBeenCalled();
   });
 
+  it("после запроса оплаты на экране остаётся ссылка на случай, если автооткрытие не сработало", async () => {
+    show("month_1");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Перейти к оплате" }),
+    );
+
+    const link = await screen.findByRole("link", {
+      name: "Оплата не открылась? Нажмите здесь",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringContaining("tribute.tg/checkout/month_1"),
+    );
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
   it("сбой оплаты называет причину и никуда не уводит", async () => {
     show("month_1");
     const pay = await screen.findByRole("button", { name: "Перейти к оплате" });

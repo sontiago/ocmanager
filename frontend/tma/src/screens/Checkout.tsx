@@ -97,7 +97,21 @@ export function Checkout() {
       {/* В Telegram этого уже никто не увидит — приложение закрылось.
           Экран виден при запуске в браузере и если close недоступен. */}
       {checkout.isSuccess && (
-        <Note className="px-1 pt-3.5">{t("checkout.hint")}</Note>
+        <>
+          <Note className="px-1 pt-3.5">{t("checkout.hint")}</Note>
+          {/* Запасной путь: если клиент не смог открыть ссылку из кода, обычное нажатие по
+              ссылке Telegram обработает сам. */}
+          <Note className="px-1 pt-3.5">
+            <a
+              className="underline"
+              href={checkout.data.checkout_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("checkout.openManually")}
+            </a>
+          </Note>
+        </>
       )}
 
       {checkout.isError && (
