@@ -19,13 +19,13 @@ dependencies = [
     "bcrypt>=5.0.0",
     "pyotp>=2.10.0",
     "aiogram>=3.31.0",
+    "httpx>=0.28",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=1.0",
-    "httpx>=0.28",
     "time-machine>=2.16",
     "ruff>=0.8",
     "mypy>=1.13",
