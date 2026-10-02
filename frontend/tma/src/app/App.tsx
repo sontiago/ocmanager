@@ -10,7 +10,8 @@ import { lazy, Suspense, useState } from "react";
 import { Gate } from "./Gate";
 import { ErrorBoundary } from "./ErrorBoundary";
 /**
- * Панель существует только в dev-сборке. Условие написано прямо на
+ * Панель существует только в dev-сборке и только с моком: она переключает сценарии мока, при
+ * VITE_API_MODE=http ей нечего переключать. Условие написано прямо на
  * import.meta.env: Vite подставляет сюда литералы при сборке, тернарник
  * сворачивается в null, и динамический импорт исчезает вместе с чанком.
  * Через env.devPanel из env.ts это не работает — там значение вычисляется
@@ -18,7 +19,9 @@ import { ErrorBoundary } from "./ErrorBoundary";
  * окажется истинным.
  */
 const DevPanel =
-  import.meta.env.DEV && import.meta.env.VITE_DEV_PANEL === "true"
+  import.meta.env.DEV &&
+  import.meta.env.VITE_DEV_PANEL === "true" &&
+  import.meta.env.VITE_API_MODE !== "http"
     ? lazy(() => import("./DevPanel").then((m) => ({ default: m.DevPanel })))
     : null;
 

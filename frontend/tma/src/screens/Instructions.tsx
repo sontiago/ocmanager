@@ -2,8 +2,7 @@ import { Navigate, useNavigate, useParams } from "react-router";
 import { useConnection } from "../api/hooks";
 import { ROUTES } from "../app/routes";
 import { useTranslation } from "../i18n/useTranslation";
-import { openExternal } from "../telegram/links";
-import { Button } from "../ui/Button";
+import { Button, ButtonLink } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Cell } from "../ui/Cell";
 import { CellIcon } from "../ui/CellIcon";
@@ -65,13 +64,9 @@ export function Instructions() {
 
       {/* Под Linux клиент ставится пакетным менеджером — магазина нет. */}
       {storeLink && (
-        <Button
-          variant="secondary"
-          className="mt-[18px]"
-          onClick={() => openExternal(storeLink)}
-        >
+        <ButtonLink variant="secondary" className="mt-[18px]" href={storeLink}>
           {t("instructions.openStore")}
-        </Button>
+        </ButtonLink>
       )}
 
       <Button

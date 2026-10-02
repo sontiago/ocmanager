@@ -102,14 +102,17 @@ describe("экран выдачи ключа", () => {
     expect(screen.getByText(/01:0[01]/)).toBeVisible();
   });
 
-  it("скачивание уходит во внешний браузер, а не в мини-приложение", async () => {
+  it("скачивание — настоящая ссылка: клиент откроет её сам, снаружи мини-приложения", () => {
     stashIssued(issued());
     renderWithProviders(<DeviceSecret />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Скачать ключ" }));
-    expect(links.openExternal).toHaveBeenCalledWith(
+    const link = screen.getByRole("link", { name: "Скачать ключ" });
+    expect(link).toHaveAttribute(
+      "href",
       "https://app.example.com/download/abc",
     );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("истёкшая ссылка объясняет, что делать, и не притворяется рабочей", () => {
@@ -123,7 +126,7 @@ describe("экран выдачи ключа", () => {
     expect(
       screen.getByText("Ссылка истекла. Выпустите новое устройство."),
     ).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Скачать ключ" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Скачать ключ" })).toBeNull();
   });
 
   it("секрет не попадает ни в адрес, ни в переходы", () => {

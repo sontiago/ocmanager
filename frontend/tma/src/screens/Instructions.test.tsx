@@ -78,15 +78,17 @@ describe("экран инструкций", () => {
     await waitFor(() => expect(screen.getByText("Скопировано")).toBeVisible());
   });
 
-  it("ссылка на клиент открывается снаружи мини-приложения", async () => {
+  it("ссылка на клиент — настоящая ссылка, которую клиент открывает снаружи мини-приложения", async () => {
     renderWithProviders(<Instructions />);
-    await userEvent.click(
-      await screen.findByRole("button", {
-        name: "Открыть в магазине приложений",
-      }),
+    const link = await screen.findByRole("link", {
+      name: "Открыть в магазине приложений",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringContaining("apps.apple.com"),
     );
-    expect(links.openExternal).toHaveBeenCalledOnce();
-    expect(links.openExternal.mock.calls[0][0]).toContain("apps.apple.com");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("там, где магазина нет, кнопки тоже нет", async () => {
@@ -96,7 +98,7 @@ describe("экран инструкций", () => {
       expect(screen.getByText(/apt install openconnect/)).toBeVisible(),
     );
     expect(
-      screen.queryByRole("button", { name: "Открыть в магазине приложений" }),
+      screen.queryByRole("link", { name: "Открыть в магазине приложений" }),
     ).toBeNull();
   });
 

@@ -3,8 +3,7 @@ import { useNavigate } from "react-router";
 import { ROUTES } from "../app/routes";
 import { useTranslation } from "../i18n/useTranslation";
 import { formatCountdown } from "../lib/format";
-import { openExternal } from "../telegram/links";
-import { Button } from "../ui/Button";
+import { Button, ButtonLink } from "../ui/Button";
 import { Callout } from "../ui/Callout";
 import { Card } from "../ui/Card";
 import { CopyButton } from "../ui/CopyButton";
@@ -76,12 +75,9 @@ export function DeviceSecret() {
             <Note>{t("deviceSecret.qrHint")}</Note>
           </Card>
 
-          <Button
-            className="mt-[18px]"
-            onClick={() => openExternal(issued.download_url)}
-          >
+          <ButtonLink className="mt-[18px]" href={issued.download_url}>
             {t("deviceSecret.download")}
-          </Button>
+          </ButtonLink>
 
           <Note className="px-1 pt-2 text-center">
             {t("deviceSecret.expiresIn", { time: formatCountdown(msLeft) })}
