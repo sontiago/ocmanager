@@ -14,6 +14,17 @@ die() {
 : "${OCSERV_SERVER_CERT:?}" "${OCSERV_SERVER_KEY:?}" "${OCSERV_IPV4_NETWORK:?}"
 : "${OCSERV_CAMOUFLAGE_SECRET:?}" "${OCM_INTERNAL_TOKEN:?}" "${OCM_SESSION_END_URL:?}"
 export OCSERV_MAX_BAN_SCORE="${OCSERV_MAX_BAN_SCORE:-100}"
+export OCSERV_PROXY_PROTOCOL="${OCSERV_PROXY_PROTOCOL:-false}"
+case "$OCSERV_PROXY_PROTOCOL" in true | false) ;; *) die "OCSERV_PROXY_PROTOCOL: true или false" ;; esac
+
+# В проде серверный сертификат выпускает Caddy и он появляется спустя минуты после старта.
+waited=0
+until [ -r "$OCSERV_SERVER_CERT" ] && [ -r "$OCSERV_SERVER_KEY" ]; do
+    [ "$waited" -ge "${OCSERV_CERT_WAIT_S:-0}" ] && break
+    [ "$waited" -eq 0 ] && echo "entrypoint: жду сертификат $OCSERV_SERVER_CERT…" >&2
+    sleep 1
+    waited=$((waited + 1))
+done
 
 for f in "$STATE_DIR/ca.crt" "$OCSERV_SERVER_CERT" "$OCSERV_SERVER_KEY"; do
     [ -r "$f" ] || die "нет $f — выполните: uv run ocmanager pki init && uv run ocmanager pki dev-server-cert --host ocserv --host localhost"
@@ -45,7 +56,7 @@ INTERNAL_TOKEN_FILE='$RUNTIME_DIR/internal_token'
 ENV
 
 # Явный список: иначе envsubst съест любой другой $ в конфиге.
-envsubst '${OCSERV_SERVER_CERT} ${OCSERV_SERVER_KEY} ${OCSERV_IPV4_NETWORK} ${OCSERV_CAMOUFLAGE_SECRET} ${OCSERV_MAX_BAN_SCORE}' \
+envsubst '${OCSERV_SERVER_CERT} ${OCSERV_SERVER_KEY} ${OCSERV_IPV4_NETWORK} ${OCSERV_CAMOUFLAGE_SECRET} ${OCSERV_MAX_BAN_SCORE} ${OCSERV_PROXY_PROTOCOL}' \
     </etc/ocserv/ocserv.conf.tmpl >/etc/ocserv/ocserv.conf
 
 # NAT для всей подсети клиентов; -C делает правило идемпотентным.

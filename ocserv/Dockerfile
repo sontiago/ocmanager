@@ -14,9 +14,8 @@ RUN apt-get update \
 COPY ocserv.conf.tmpl /etc/ocserv/ocserv.conf.tmpl
 COPY --chmod=0755 hooks/connect.sh hooks/disconnect.sh /etc/ocserv/hooks/
 COPY --chmod=0755 entrypoint.sh /entrypoint.sh
+COPY --chmod=0755 healthcheck.sh /healthcheck.sh
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]
 
-# Любой HTTP-ответ (даже страница камуфляжа) = TLS-слушатель жив.
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
-    CMD curl -ks -o /dev/null https://localhost:443/ || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD ["/healthcheck.sh"]

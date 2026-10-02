@@ -22,6 +22,10 @@ disconnect-script = /etc/ocserv/hooks/disconnect.sh
 tcp-port = 443
 # ocm: DTLS включён (у r4ven-me проброшен только TCP)
 udp-port = 443
+# ocm: за nginx (прод) на TCP первым приходит PROXY-заголовок с настоящим адресом клиента.
+# Без него max-ban-score начислялся бы адресу nginx — то есть всем клиентам сразу.
+# UDP (DTLS) идёт мимо nginx и в PROXY не нуждается.
+listen-proxy-proto = ${OCSERV_PROXY_PROTOCOL}
 socket-file = /run/ocserv-socket
 use-occtl = true
 occtl-socket-file = /run/occtl.socket
