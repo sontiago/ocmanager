@@ -39,6 +39,31 @@ describe("openExternal", () => {
     expect(open).not.toHaveBeenCalled();
   });
 
+  it.each([
+    "https://t.me/tribute/app?startapp=s17Xb",
+    "https://telegram.me/tribute/app?startapp=p456",
+  ])("ссылку Telegram %s отдаёт клиенту, а не браузеру", (url) => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    openExternal(url);
+
+    expect(sdk.openTelegramLink).toHaveBeenCalledWith(url);
+    expect(sdk.openLink).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "https://web.tribute.tg/p/456",
+    "https://t.me.evil.example/x",
+    "http://t.me/tribute",
+    "not a url",
+  ])("похожую на Telegram, но чужую ссылку %s открывает как внешнюю", (url) => {
+    vi.spyOn(window, "open").mockReturnValue(null);
+    openExternal(url);
+
+    expect(sdk.openTelegramLink).not.toHaveBeenCalled();
+    expect(sdk.openLink).toHaveBeenCalledOnce();
+  });
+
   it("вне Telegram открывает вкладку и рвёт связь с opener", () => {
     sdk.available.link = false;
     const open = vi.spyOn(window, "open").mockReturnValue(null);
