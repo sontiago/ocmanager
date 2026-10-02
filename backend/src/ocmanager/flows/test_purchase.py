@@ -25,7 +25,8 @@ from ocmanager.subscriptions import service as subscriptions
 
 NOW = datetime(2026, 10, 1, 12, tzinfo=UTC)
 ADMIN = Actor("admin", "1")
-PRODUCT = {"tribute": {"product_ref": "1001", "link": "https://t.me/tribute/app?startapp=s1"}}
+REFUNDED_PURCHASE = "purchase:78901"  # как в фикстуре digital_product_refund
+PRODUCT = {"tribute": {"product_ref": "2001", "link": "https://t.me/tribute/app?startapp=s1"}}
 TELEGRAM_ID = 7001  # как в фикстурах вебхуков
 
 
@@ -229,6 +230,10 @@ async def test_a_refund_marks_the_payment_and_leaves_the_access_to_a_human(
 ) -> None:
     await make_plan(provider_product_ids=PRODUCT)
     await deliver(session, tribute, providers, "new_subscription")
+    # Возврат Tribute относится к покупке цифрового товара (purchase_id), а не к подписке.
+    paid = (await payments(session))[0]
+    paid.external_id = REFUNDED_PURCHASE
+    await session.flush()
     assert await deliver(session, tribute, providers, "digital_product_refund") == "processed"
 
     [payment] = await payments(session)
@@ -320,7 +325,7 @@ async def test_an_unknown_product_goes_dead_and_creates_nobody(
     await make_plan(provider_product_ids={"tribute": {"product_ref": "9999"}})
     event_id = await intake(session, tribute, webhook_body("new_subscription"))
     assert await run(session, providers, event_id) == "dead"
-    assert "product '1001'" in ((await row_of(session, event_id)).last_error or "")
+    assert "product '2001'" in ((await row_of(session, event_id)).last_error or "")
     assert await payments(session) == []
     assert await subscriptions.find_client_by_telegram_id(session, TELEGRAM_ID) is None
 
@@ -329,7 +334,7 @@ async def test_an_unknown_product_goes_dead_and_creates_nobody(
     ("overrides", "reason"),
     [
         ({"telegram_user_id": None}, "telegram user id"),
-        ({"amount": None}, "payment fields"),
+        ({"price": None, "amount": None}, "payment fields"),
         ({"currency": None}, "payment fields"),
         ({"subscription_id": None}, "payment fields"),
     ],
@@ -365,7 +370,7 @@ async def test_a_fractional_amount_is_not_guessed_at(
     make_plan: MakePlan,
 ) -> None:
     await make_plan(provider_product_ids=PRODUCT)
-    body = webhook_body("new_subscription", amount=199.5)
+    body = webhook_body("new_subscription", price=199.5)
     event_id = await intake(session, tribute, body)
     assert await run(session, providers, event_id) == "dead"
     assert await payments(session) == []

@@ -24,7 +24,7 @@ from ocmanager.events.models import EventOutbox
 from ocmanager.flows import subscriptions as subscription_flows
 from ocmanager.subscriptions import service as subscriptions
 
-PRODUCT = {"tribute": {"product_ref": "1001"}}
+PRODUCT = {"tribute": {"product_ref": "2001"}}
 
 
 @pytest.fixture

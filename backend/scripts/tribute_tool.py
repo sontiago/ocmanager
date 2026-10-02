@@ -75,8 +75,12 @@ def inspect_body(body: bytes) -> list[str]:
         mark = "  ! НЕ НАЙДЕНО" if value is None else ""
         lines.append(f"  {name} = {value!r}{mark}")
     if isinstance(inner, Mapping):
-        lines.append(f"  сырое amount в теле: {inner.get('amount')!r} (минорные единицы?)")
-        used = {"telegram_user_id", "subscription_id", "expires_at", "amount", "currency"}
+        lines.append(
+            f"  в теле: price={inner.get('price')!r} (платит клиент → выручка), "
+            f"amount={inner.get('amount')!r} (после комиссии), period_id={inner.get('period_id')!r}"
+        )
+        used = {"telegram_user_id", "subscription_id", "period_id", "expires_at", "price"}
+        used |= {"amount", "currency", "purchase_id"}
         spare = [k for k in inner if k not in used and any(w in k.lower() for w in HINT_WORDS)]
         if spare:
             lines.append(f"  поля-идентификаторы, которые разбор не использует: {spare}")

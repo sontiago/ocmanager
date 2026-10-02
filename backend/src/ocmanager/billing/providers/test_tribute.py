@@ -54,7 +54,7 @@ def test_new_subscription() -> None:
         telegram_id=7001,
         external_payment_id=PAID_ID,
         external_subscription_id="1001",
-        product_ref="1001",
+        product_ref="2001",
         amount=19900,
         currency="RUB",
         raw_name="new_subscription",
@@ -66,7 +66,7 @@ def test_renewed_subscription_is_a_new_payment_of_the_same_subscription() -> Non
     assert renewed.kind == "subscription_renewed"
     assert renewed.external_payment_id == "1001:7001:2026-11-29T10:00:00.000Z"
     assert renewed.external_payment_id != PAID_ID  # другой период — другой платёж
-    assert renewed.product_ref == "1001"
+    assert renewed.product_ref == "2001"
 
 
 def test_cancelled_subscription() -> None:
@@ -74,10 +74,36 @@ def test_cancelled_subscription() -> None:
     assert (cancelled.kind, cancelled.telegram_id) == ("subscription_cancelled", 7001)
 
 
-def test_a_refund_points_at_the_payment_it_refunds() -> None:
-    refund = parse("digital_product_refund")
-    assert refund.kind == "refund"
-    assert refund.external_payment_id == PAID_ID
+def test_a_refund_points_at_the_purchase_it_refunds() -> None:
+    refund = parse("digital_product_refund")  # в вебхуке он называется digital_product_refunded
+    assert (refund.kind, refund.raw_name) == ("refund", "digital_product_refunded")
+    assert refund.external_payment_id == "purchase:78901"
+    assert (refund.amount, refund.currency) == (500, "USD")  # у цифровых товаров price нет
+
+
+def test_both_refund_names_are_understood() -> None:
+    for name in ("digital_product_refunded", "digitalProductRefund"):
+        body = event(name, purchase_id=1, telegram_user_id=5, amount=100, currency="usd")
+        assert provider.parse(body).kind == "refund"
+
+
+def test_a_digital_product_purchase_is_not_handled_yet_and_is_ignored() -> None:
+    assert parse("new_digital_product").kind == "ignored"
+
+
+def test_the_revenue_is_what_the_client_paid_not_what_is_left_after_the_commission() -> None:
+    body = json.loads(webhook_body("new_subscription"))["payload"]
+    assert (body["price"], body["amount"]) == (19900, 15920)  # гросс и нетто в фикстуре
+    assert parse("new_subscription").amount == 19900
+    assert parse("new_subscription", price=None).amount == 15920  # нет price — берётся amount
+
+
+def test_the_plan_is_matched_by_the_period_not_by_the_subscription() -> None:
+    monthly = parse("new_subscription", period_id=2001)
+    yearly = parse("new_subscription", period_id=2002)
+    assert (monthly.product_ref, yearly.product_ref) == ("2001", "2002")
+    assert monthly.external_subscription_id == yearly.external_subscription_id == "1001"
+    assert parse("new_subscription", period_id=None).product_ref is None
 
 
 def test_an_event_we_do_not_need_is_ignored_not_an_error() -> None:

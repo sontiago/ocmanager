@@ -1,6 +1,7 @@
 """Tribute: подпись вебхуков и разбор событий в ProviderEvent. Вся специфика Tribute — здесь.
 
-Имена полей — гипотеза до Задачи 5.8 (см. tests/fixtures/webhooks/tribute/README.md)."""
+Схема payload — по OpenAPI Tribute (tribute.tg/api/v1/openapi/en); подтверждение живым
+вебхуком — Задача 5.8 (см. tests/fixtures/webhooks/tribute/README.md)."""
 
 import hashlib
 import hmac
@@ -20,6 +21,8 @@ _KINDS: Final[dict[str, ProviderEventKind]] = {
     "newsubscription": "subscription_started",
     "renewedsubscription": "subscription_renewed",
     "cancelledsubscription": "subscription_cancelled",
+    # Настоящее имя в OpenAPI Tribute — digital_product_refunded; короткое — про запас.
+    "digitalproductrefunded": "refund",
     "digitalproductrefund": "refund",
 }
 
@@ -105,19 +108,28 @@ class TributeProvider:
             raise ProviderPayloadError("event has no payload object")
         telegram_id = _telegram_id(body.get("telegram_user_id"))
         subscription_id = _text(body.get("subscription_id"))
+        period_id = _text(body.get("period_id"))
+        purchase_id = _text(body.get("purchase_id"))
         period_end = _text(body.get("expires_at")) or _text(payload.get("sent_at"))
-        external_payment_id = (
-            f"{subscription_id}:{telegram_id}:{period_end}"
-            if subscription_id and telegram_id and period_end
-            else None
-        )
+        if purchase_id:
+            # Цифровой товар: purchase_id уникален на покупку (так советует Tribute).
+            external_payment_id = f"purchase:{purchase_id}"
+        elif subscription_id and telegram_id and period_end:
+            external_payment_id = f"{subscription_id}:{telegram_id}:{period_end}"
+        else:
+            external_payment_id = None
+        # price — сколько заплатил клиент (выручка); amount — то, что осталось после комиссии
+        # Tribute. Платёж фиксирует price, чистая сумма остаётся в raw_payload. У цифровых
+        # товаров price нет — тогда берётся amount.
+        gross = body.get("price")
+        paid = _minor_units(gross if gross is not None else body.get("amount"))
         return ProviderEvent(
             kind=kind,
             telegram_id=telegram_id,
             external_payment_id=external_payment_id,
             external_subscription_id=subscription_id,
-            product_ref=subscription_id,
-            amount=_minor_units(body.get("amount")),
+            product_ref=period_id,  # период (месяц/год) определяет срок и цену — по нему и тариф
+            amount=paid,
             currency=_currency(body.get("currency")),
             raw_name=raw_name,
         )

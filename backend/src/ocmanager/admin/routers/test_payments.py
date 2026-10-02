@@ -168,7 +168,7 @@ async def test_a_dead_payment_is_fixed_by_linking_the_plan_and_reprocessing(
     dead = (await admin_client.get("/admin/webhooks")).json()
     assert ids(dead) == [event_id]
 
-    plan.provider_product_ids = {"tribute": {"product_ref": "1001"}}
+    plan.provider_product_ids = {"tribute": {"product_ref": "2001"}}
     await session.flush()
     assert (await admin_client.post(f"/admin/webhooks/{event_id}/reprocess")).status_code == 200
     assert await process_webhook(ctx, event_id) == "processed"
