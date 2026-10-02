@@ -6,21 +6,24 @@
 """
 
 import logging
+from datetime import timedelta
 from typing import Any, ClassVar
 
 import structlog
-from arq import cron, func, run_worker
+from arq import Retry, cron, func, run_worker
 from arq.connections import RedisSettings
 from arq.cron import CronJob
 from arq.worker import Function
 
 import ocmanager.models  # noqa: F401 — регистрирует все таблицы: без этого FK между доменами не разрешаются
+from ocmanager.billing.providers import build_providers
 from ocmanager.core.clock import utcnow
 from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.logging import configure_logging
 from ocmanager.events import bus
 from ocmanager.flows import handlers
+from ocmanager.flows import purchase as purchase_flows
 from ocmanager.flows import reconcile as reconcile_flows
 from ocmanager.flows import revocations as revocation_flows
 from ocmanager.flows import subscriptions as subscription_flows
@@ -33,6 +36,8 @@ from ocmanager.provisioning.pki.ca import CertificateAuthority, load_ca
 log = structlog.get_logger(__name__)
 
 EVERY_5_SECONDS = set(range(0, 60, 5))
+WEBHOOK_MAX_TRIES = 8
+WEBHOOK_MAX_DELAY = timedelta(hours=1)
 
 
 async def startup(ctx: dict[str, Any]) -> None:
@@ -151,8 +156,65 @@ async def purge_traffic(ctx: dict[str, Any]) -> int:
     return deleted
 
 
+def webhook_retry_delay(job_try: int) -> timedelta:
+    """1, 2, 4, 8, 16, 32 минуты, дальше — час: Tribute сам ретраит около суток, нам хватает
+    окна, чтобы пережить недоступность БД или баг, исправленный релизом."""
+    return min(timedelta(minutes=2 ** (job_try - 1)), WEBHOOK_MAX_DELAY)
+
+
+async def process_webhook(ctx: dict[str, Any], webhook_event_id: int) -> str:
+    """Обработка принятого вебхука. Сбой откатывает всё, учитывает попытку и просит arq
+    повторить; после последней попытки вебхук становится dead (событие уходит админу)."""
+    job_try: int = ctx.get("job_try", 1)
+    providers = build_providers(ctx["settings"])
+    try:
+        async with ctx["sessionmaker"]() as session:
+            outcome = await purchase_flows.process_webhook_event(
+                session, webhook_event_id, utcnow(), providers
+            )
+            await session.commit()
+    except Exception as exc:
+        final = job_try >= WEBHOOK_MAX_TRIES
+        async with ctx["sessionmaker"]() as session:
+            await purchase_flows.record_failure(
+                session, webhook_event_id, f"{type(exc).__name__}: {exc}", final=final
+            )
+            await session.commit()
+        log.warning(
+            "webhook_failed",
+            webhook_event_id=webhook_event_id,
+            job_try=job_try,
+            dead=final,
+            exc_info=exc,
+        )
+        if final:
+            await bus.kick_dispatch(ctx["redis"])
+            return "dead"
+        raise Retry(defer=webhook_retry_delay(job_try)) from exc
+    log.info("webhook_processed", webhook_event_id=webhook_event_id, outcome=outcome)
+    await bus.kick_dispatch(ctx["redis"])  # события subscription.* / payment.* — без ожидания cron
+    return outcome
+
+
+async def sweep_webhooks(ctx: dict[str, Any]) -> int:
+    """Принятые вебхуки, которые минуту спустя всё ещё не в работе (Redis лёг между записью и
+    постановкой в очередь), ставятся в очередь заново. `_job_id` не даёт копить дубли."""
+    async with ctx["sessionmaker"]() as session:
+        stale = await purchase_flows.stale_received(session, utcnow())
+    for webhook_event_id in stale:
+        await ctx["redis"].enqueue_job(
+            "process_webhook", webhook_event_id, _job_id=f"webhook:{webhook_event_id}"
+        )
+    if stale:
+        log.warning("webhooks_requeued", count=len(stale))
+    return len(stale)
+
+
 class WorkerSettings:
-    functions: ClassVar[list[Function]] = [func(dispatch_events, keep_result=0)]
+    functions: ClassVar[list[Function]] = [
+        func(dispatch_events, keep_result=0),
+        func(process_webhook, max_tries=WEBHOOK_MAX_TRIES, keep_result=0),
+    ]
     cron_jobs: ClassVar[list[CronJob]] = [
         cron(dispatch_events, second=EVERY_5_SECONDS, keep_result=0),
         cron(purge_event_outbox, hour={4}, minute={0}, keep_result=0),
@@ -163,6 +225,7 @@ class WorkerSettings:
         cron(collect_traffic, minute=set(range(0, 60, 5)), second={20}, keep_result=0),
         cron(purge_traffic, hour={4}, minute={30}, keep_result=0),
         cron(reconcile_nodes, minute=set(range(0, 60, 5)), second={40}, keep_result=0),
+        cron(sweep_webhooks, second={50}, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

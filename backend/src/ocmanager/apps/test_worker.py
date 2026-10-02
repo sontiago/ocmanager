@@ -51,6 +51,7 @@ def test_cron_registry() -> None:
         "cron:collect_traffic",
         "cron:purge_traffic",
         "cron:reconcile_nodes",
+        "cron:sweep_webhooks",
     }
 
 
