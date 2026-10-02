@@ -239,3 +239,8 @@ def test_a_product_without_a_safe_link_has_no_checkout(product: Any) -> None:
 
 def test_an_unknown_provider_has_no_checkout() -> None:
     assert checkout_url("stars", {"link": "https://t.me/x"}) is None
+
+
+def test_the_dashboard_test_ping_is_ignored_not_an_error() -> None:
+    event = provider.parse({"test_event": "test_event"})
+    assert (event.kind, event.raw_name) == ("ignored", "test_event")

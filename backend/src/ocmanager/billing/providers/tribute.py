@@ -97,6 +97,9 @@ class TributeProvider:
 
     def parse(self, payload: Mapping[str, Any]) -> ProviderEvent:
         raw_name = payload.get("name")
+        if "test_event" in payload and "name" not in payload:
+            # Кнопка «проверить вебхук» в кабинете Tribute шлёт {"test_event": "test_event"}.
+            return ProviderEvent("ignored", None, None, None, None, None, None, "test_event")
         if not isinstance(raw_name, str) or not raw_name.strip():
             raise ProviderPayloadError("event has no name")
         kind: ProviderEventKind = _KINDS.get(_normalize(raw_name), "ignored")
