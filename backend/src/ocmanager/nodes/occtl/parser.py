@@ -87,7 +87,15 @@ def parse_users(text: str) -> list[OcSession]:
     data = _load(text)
     if not isinstance(data, list):
         raise OcctlParseError(f"show users: expected array, got {type(data).__name__}")
-    return [_session(item) for item in data]
+    return [_session(item) for item in data if not _is_pre_auth(item)]
+
+
+def _is_pre_auth(obj: Any) -> bool:
+    """Клиент, который ещё авторизуется: occtl показывает его без username и счётчиков.
+    Это не сессия — разбирать нечего. Остальные записи разбираются строго."""
+    if not isinstance(obj, dict):
+        return False
+    return obj.get("State") == "pre-auth" or obj.get("Username") == "(none)"
 
 
 def parse_status(text: str) -> OcStatus:

@@ -35,6 +35,29 @@ def test_users_two_distinct() -> None:
     assert len({s.session_id for s in sessions}) == 2
 
 
+def test_a_session_still_in_pre_auth_is_not_a_session_yet() -> None:
+    # Так occtl показывает подключающегося клиента до конца авторизации: без username и
+    # счётчиков. Вылетел в CI, пока клиент ещё подключался (OcctlParseError: 'RX').
+    text = (
+        '[{"ID": 46, "Username": "(none)", "Groupname": "(none)", "State": "pre-auth",'
+        ' "Remote IP": "172.18.0.3"},'
+        ' {"ID": 47, "Username": "c1-d1", "State": "connected", "Remote IP": "1.2.3.4",'
+        ' "RX": "10", "TX": "20", "raw_connected_at": 1790000000}]'
+    )
+    assert [s.username for s in parse_users(text)] == ["c1-d1"]
+
+
+def test_only_pre_auth_sessions_means_nobody_is_online() -> None:
+    text = '[{"ID": 46, "Username": "(none)", "State": "pre-auth", "Remote IP": "172.18.0.3"}]'
+    assert parse_users(text) == []
+
+
+def test_a_connected_session_without_counters_is_still_an_error() -> None:
+    text = '[{"ID": 5, "Username": "c1-d1", "State": "connected", "Remote IP": "1.2.3.4"}]'
+    with pytest.raises(OcctlParseError, match="RX"):
+        parse_users(text)
+
+
 def test_status() -> None:
     st = parse_status(load("status.json"))
     assert st.up is True
