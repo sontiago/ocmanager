@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 import structlog
-from conftest import MakeClient
+from conftest import MakeClient, TmaHeaders
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select
@@ -133,3 +133,15 @@ async def test_the_init_data_reaches_neither_the_response_nor_the_logs(
     assert r.status_code == 401
     assert raw not in r.text
     assert raw not in repr(logs)
+
+
+async def test_a_rejected_request_leaves_the_reason_in_the_log_but_not_the_data(
+    public_client: AsyncClient, tma_headers: TmaHeaders
+) -> None:
+    secret = tma_headers()["Authorization"]
+    with structlog.testing.capture_logs() as logs:
+        await public_client.get("/api/tma/me")  # заголовка нет
+        await public_client.get("/api/tma/me", headers={"Authorization": secret[:-4] + "0000"})
+    reasons = [e["reason"] for e in logs if e["event"] == "tma_auth_rejected"]
+    assert reasons == ["no initData in Authorization", "bad hash"]
+    assert secret[10:60] not in repr(logs)  # сама initData в лог не попадает

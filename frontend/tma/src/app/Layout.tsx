@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 import { Header } from "./Header";
 import { TabBar } from "./TabBar";
 import { useTranslation } from "../i18n/useTranslation";
@@ -7,15 +7,21 @@ import { useBackButton } from "../telegram/backButton";
 
 export function Layout() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const showTabBar = hasTabBar(pathname);
   const titleKey = titleFor(pathname);
 
-  useBackButton(backTargetFor(pathname));
+  const backTarget = backTargetFor(pathname);
+  useBackButton(backTarget);
 
   return (
     <div className="flex h-full flex-col bg-bg text-ink">
-      <Header title={titleKey ? t(titleKey) : ""} />
+      <Header
+        title={titleKey ? t(titleKey) : ""}
+        onBack={backTarget ? () => void navigate(backTarget) : undefined}
+        backLabel={t("common.back")}
+      />
 
       {/* Скроллит именно эта область, а не body: скролл на body
           внутри Telegram срабатывает как жест закрытия приложения. */}

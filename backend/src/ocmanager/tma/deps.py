@@ -3,12 +3,13 @@
 from dataclasses import dataclass
 from typing import Annotated, Literal
 
+import structlog
 from fastapi import Depends, Request
 
 from ocmanager.audit.service import Actor
 from ocmanager.core.clock import utcnow
 from ocmanager.core.db import SessionDep
-from ocmanager.core.errors import Unauthorized
+from ocmanager.core.errors import DomainError, Unauthorized
 from ocmanager.flows import clients as client_flows
 from ocmanager.flows.deps import SettingsDep, client_ip
 from ocmanager.subscriptions import service as subscriptions
@@ -17,6 +18,8 @@ from ocmanager.subscriptions.schemas import TelegramIdentity
 from ocmanager.tma.auth import validate_init_data
 
 SCHEME = "tma"
+
+log = structlog.get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -42,14 +45,23 @@ async def current_client(request: Request, db: SessionDep, settings: SettingsDep
     TMA показала экран блокировки. Действия, которым блокировка мешает, проверяют её сами."""
     scheme, _, raw = request.headers.get("authorization", "").partition(" ")
     if scheme.lower() != SCHEME or not raw.strip():
+        # Причину отказа в лог: без неё «401 после перезагрузки» не разобрать. Сами данные
+        # (initData, подпись) не пишем — только факт и текст ошибки проверки.
+        log.warning(
+            "tma_auth_rejected", reason="no initData in Authorization", path=request.url.path
+        )
         raise Unauthorized("Authorization: tma <initData> required")
-    init = validate_init_data(
-        raw.strip(),
-        settings.bot_token.get_secret_value(),
-        ttl_s=settings.tma_initdata_ttl_s,
-        now=utcnow(),
-        allow_dev=settings.tma_allow_dev_initdata,
-    )
+    try:
+        init = validate_init_data(
+            raw.strip(),
+            settings.bot_token.get_secret_value(),
+            ttl_s=settings.tma_initdata_ttl_s,
+            now=utcnow(),
+            allow_dev=settings.tma_allow_dev_initdata,
+        )
+    except DomainError as exc:
+        log.warning("tma_auth_rejected", reason=exc.message, path=request.url.path)
+        raise
     client = await subscriptions.find_client_by_telegram_id(db, init.user.telegram_id)
     if client is None or _needs_refresh(client, init.user):
         client = (await client_flows.register_client(db, init.user)).client
