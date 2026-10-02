@@ -1,0 +1,9 @@
+.git
+.dev
+docs
+backend
+ocserv
+**/node_modules
+**/dist
+**/.env
+**/.venv
