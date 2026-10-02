@@ -1,5 +1,6 @@
 import type { components } from "./generated";
 import type {
+  Checkout,
   ConnectionInfo,
   CreateDeviceInput,
   Device,
@@ -22,3 +23,4 @@ export const deviceMatches: AssertSame<Device, Schemas["DeviceOut"]> = true;
 export const issuedMatches: AssertSame<IssuedDevice, Schemas["IssuedDeviceOut"]> = true;
 export const connectionMatches: AssertSame<ConnectionInfo, Schemas["ConnectionOut"]> = true;
 export const createInputMatches: AssertSame<CreateDeviceInput, Schemas["CreateDeviceIn"]> = true;
+export const checkoutMatches: AssertSame<Checkout, Schemas["CheckoutOut"]> = true;
