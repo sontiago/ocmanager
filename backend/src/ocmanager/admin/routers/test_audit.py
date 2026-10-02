@@ -12,7 +12,9 @@ from ocmanager.audit.service import Actor
 
 
 async def seed(session: AsyncSession) -> None:
-    """Пять записей с известными временами: 1-е .. 5-е октября 2026."""
+    """Пять записей с известными временами: 1-е .. 5-е октября 2001 года. Год далеко в
+    прошлом: записи, которые тесты создают реальными часами (вход админа и т. п.), в эти окна
+    попасть не должны."""
     rows = [
         (Actor("admin", "1", "203.0.113.5"), "client.block", "client", "10"),
         (Actor("admin", "1", "203.0.113.5"), "device.revoke", "device", "20"),
@@ -35,14 +37,14 @@ async def seed(session: AsyncSession) -> None:
         await session.execute(
             update(AuditLog)
             .where(AuditLog.id == row.id)
-            .values(created_at=datetime(2026, 10, day, 12, tzinfo=UTC))
+            .values(created_at=datetime(2001, 10, day, 12, tzinfo=UTC))
         )
 
 
 async def actions(admin_client: AsyncClient, **params: str | int) -> list[str]:
     r = await admin_client.get("/admin/audit", params=params)
     assert r.status_code == 200, r.text
-    return [row["action"] for row in r.json()["items"] if row["created_at"].startswith("2026-10")]
+    return [row["action"] for row in r.json()["items"] if row["created_at"].startswith("2001-10")]
 
 
 async def test_a_session_is_required(anon_client: AsyncClient) -> None:
@@ -78,13 +80,13 @@ async def test_filters_combine_with_and(admin_client: AsyncClient, session: Asyn
 
 async def test_the_period_is_half_open(admin_client: AsyncClient, session: AsyncSession) -> None:
     await seed(session)
-    got = await actions(admin_client, since="2026-10-02T12:00:00Z", until="2026-10-04T12:00:00Z")
+    got = await actions(admin_client, since="2001-10-02T12:00:00Z", until="2001-10-04T12:00:00Z")
     assert got == ["subscription.expire", "device.revoke"]  # since включительно, until — нет
-    offset = await actions(admin_client, since="2026-10-02T15:00:00+03:00")
+    offset = await actions(admin_client, since="2001-10-02T15:00:00+03:00")
     assert offset[-1] == "device.revoke"  # часовой пояс учитывается
 
 
-@pytest.mark.parametrize("value", ["2026-10-02T12:00:00", "2026-10-02", "yesterday", "9" * 40])
+@pytest.mark.parametrize("value", ["2001-10-02T12:00:00", "2001-10-02", "yesterday", "9" * 40])
 async def test_a_time_without_a_zone_or_garbage_is_422_not_500(
     admin_client: AsyncClient, value: str
 ) -> None:
