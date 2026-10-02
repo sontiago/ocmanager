@@ -33,6 +33,7 @@ EXPECTED = {"clients", "plans", "subscriptions", "devices", "revocations", "node
         "ocmanager.apps.public_api",
         "ocmanager.apps.admin_api",
         "ocmanager.apps.worker",
+        "ocmanager.apps.bot",
         "ocmanager.cli",
     ],
 )
