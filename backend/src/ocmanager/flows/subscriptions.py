@@ -141,3 +141,15 @@ async def set_blocked(
     if changed:
         await _record(session, actor, "client.block" if blocked else "client.unblock", client_id)
     return changed
+
+
+async def sync_period_end(
+    session: AsyncSession, client_id: int, until: datetime, actor: Actor, now: datetime
+) -> bool:
+    """Доступ не короче оплаченного периода провайдера. Пишет в аудит, только если срок вырос."""
+    changed = await service.extend_to(session, client_id, until, now)
+    if changed:
+        await _record(
+            session, actor, "subscription.sync_period", client_id, until=until.isoformat()
+        )
+    return changed

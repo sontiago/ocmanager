@@ -222,6 +222,10 @@ async def _pay(
             session, row, f"payment {payment.id} recorded, access not granted: {exc.message}"
         )
 
+    if event.period_end is not None:
+        # Месяц Tribute — календарный, а тариф выдаёт фиксированные дни: без этого между
+        # концом нашего доступа и следующим списанием оставался бы пропуск.
+        await subscription_flows.sync_period_end(session, client.id, event.period_end, ACTOR, now)
     payment.subscription_id = sub.id
     payment.processed_at = now
     await bus.record(session, PaymentReceived(payment_id=payment.id, client_id=client.id))

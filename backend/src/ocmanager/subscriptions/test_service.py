@@ -16,7 +16,7 @@ from ocmanager.core.errors import (
 from ocmanager.events.models import EventOutbox
 from ocmanager.subscriptions import service
 from ocmanager.subscriptions.models import Client
-from ocmanager.subscriptions.state import PlanTerms
+from ocmanager.subscriptions.state import MAX_DAYS, PlanTerms
 
 NOW = datetime(2026, 9, 22, 12, tzinfo=UTC)
 DAY = timedelta(days=1)
@@ -329,3 +329,41 @@ async def test_expiry_does_not_swallow_a_concurrent_renewal(
         sub = await service.get_subscription(s, client_id)
         assert sub is not None
         assert (sub.status, sub.expires_at) == ("active", later + DAY)
+
+
+async def test_extend_to_moves_the_end_forward_only(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client = await make_client()
+    plan = await make_plan(duration_days=30)
+    terms = PlanTerms(plan.id, 30, 3, None, False)
+    now = datetime(2026, 10, 1, 12, tzinfo=UTC)
+    sub = await service.activate(session, client.id, terms, now, auto_renew=True)
+    assert sub.expires_at == now + timedelta(days=30)
+
+    later = now + timedelta(days=31)
+    assert await service.extend_to(session, client.id, later, now) is True
+    assert sub.expires_at == later
+    assert await service.extend_to(session, client.id, now + timedelta(days=5), now) is False
+    assert await service.extend_to(session, client.id, later, now) is False  # то же — не изменение
+    assert sub.expires_at == later
+
+
+async def test_extend_to_ignores_nonsense_and_dead_subscriptions(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client = await make_client()
+    now = datetime(2026, 10, 1, 12, tzinfo=UTC)
+    assert (
+        await service.extend_to(session, client.id, now + timedelta(days=40), now) is False
+    )  # нет подписки
+
+    plan = await make_plan(duration_days=30)
+    terms = PlanTerms(plan.id, 30, 3, None, False)
+    sub = await service.activate(session, client.id, terms, now, auto_renew=True)
+    far = now + timedelta(days=MAX_DAYS + 1)
+    assert await service.extend_to(session, client.id, far, now) is False  # дальше потолка
+    assert sub.expires_at == now + timedelta(days=30)
+
+    await service.expire_now(session, client.id, now)
+    assert await service.extend_to(session, client.id, now + timedelta(days=40), now) is False

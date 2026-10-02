@@ -3,6 +3,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal, Protocol
 
 ProviderEventKind = Literal[
@@ -31,6 +32,9 @@ class ProviderEvent:
     amount: int | None  # минорные единицы
     currency: str | None  # ISO 4217, верхний регистр
     raw_name: str  # исходное имя события — для логов и разбора
+    # Конец оплаченного периода по часам провайдера (aware UTC). Доступ выдаётся не короче него:
+    # календарный месяц Tribute длиннее и короче «30 дней» тарифа.
+    period_end: datetime | None = None
 
 
 class PaymentProvider(Protocol):

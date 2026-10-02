@@ -525,3 +525,73 @@ async def test_two_workers_taking_the_same_webhook_pay_once(
     assert sorted(results) == ["processed", "skipped"]
     async with committed_sessionmaker() as s:
         assert await s.scalar(select(func.count()).select_from(Payment)) == 1
+
+
+# --- доступ не короче оплаченного периода провайдера -------------------------------------
+
+
+async def test_access_lasts_until_the_end_of_the_period_tribute_charged_for(
+    session: AsyncSession,
+    providers: dict[str, PaymentProvider],
+    tribute: TributeProvider,
+    make_plan: MakePlan,
+) -> None:
+    """Календарный месяц Tribute длиннее 30 дней тарифа: без этого — сутки без доступа."""
+    await make_plan(provider_product_ids=PRODUCT)
+    end = "2026-11-02T12:10:29.764107373Z"  # NOW + 32 дня
+    assert (
+        await deliver(session, tribute, providers, "new_subscription", expires_at=end)
+        == "processed"
+    )
+
+    sub = await sub_of(session)
+    assert sub.expires_at == datetime(2026, 11, 2, 12, 10, 29, 764107, tzinfo=UTC)
+    actions = list(await session.scalars(select(AuditLog.action).order_by(AuditLog.id)))
+    assert "subscription.sync_period" in actions
+
+
+async def test_a_period_that_ends_sooner_than_the_plan_never_shortens_the_access(
+    session: AsyncSession,
+    providers: dict[str, PaymentProvider],
+    tribute: TributeProvider,
+    make_plan: MakePlan,
+) -> None:
+    await make_plan(provider_product_ids=PRODUCT)
+    await deliver(
+        session, tribute, providers, "new_subscription", expires_at="2026-10-05T00:00:00Z"
+    )
+    assert (await sub_of(session)).expires_at == NOW + timedelta(days=30)
+    actions = list(await session.scalars(select(AuditLog.action)))
+    assert "subscription.sync_period" not in actions
+
+
+async def test_a_renewal_also_follows_the_calendar_month(
+    session: AsyncSession,
+    providers: dict[str, PaymentProvider],
+    tribute: TributeProvider,
+    make_plan: MakePlan,
+) -> None:
+    await make_plan(provider_product_ids=PRODUCT)
+    await deliver(session, tribute, providers, "new_subscription")  # конец у нас — NOW + 30 дн
+    later = NOW + timedelta(days=30)  # платёж пришёл ровно в конце нашего доступа
+    end = later + timedelta(days=31)  # у Tribute месяц длиннее
+    assert (
+        await deliver(
+            session, tribute, providers, "renewed_subscription", later, expires_at=end.isoformat()
+        )
+        == "processed"
+    )
+    assert (await sub_of(session)).expires_at == end
+
+
+async def test_a_nonsense_period_end_is_ignored_and_the_plan_term_applies(
+    session: AsyncSession,
+    providers: dict[str, PaymentProvider],
+    tribute: TributeProvider,
+    make_plan: MakePlan,
+) -> None:
+    await make_plan(provider_product_ids=PRODUCT)
+    await deliver(
+        session, tribute, providers, "new_subscription", expires_at="2999-01-01T00:00:00Z"
+    )
+    assert (await sub_of(session)).expires_at == NOW + timedelta(days=30)

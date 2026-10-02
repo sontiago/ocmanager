@@ -2,7 +2,7 @@
 домен audit (граница модулей) — его пишут функции из flows/."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Literal
 
 from sqlalchemy import Boolean, literal_column, select, text
@@ -318,3 +318,17 @@ async def client_has_access(session: AsyncSession, client_id: int, now: datetime
         client_blocked=client.is_blocked,
         now=now,
     )
+
+
+async def extend_to(session: AsyncSession, client_id: int, until: datetime, now: datetime) -> bool:
+    """Продлевает живую подписку до `until`, если это позже нынешнего конца: оплаченный
+    провайдером период — нижняя граница доступа. Никогда не сокращает. False — менять нечего
+    (нет подписки, конец уже не раньше, срок вне разумных пределов или подписка не живая)."""
+    _, sub = await _lock(session, client_id)
+    if sub is None or not _was_live(sub):
+        return False
+    if until <= sub.expires_at or until > now + timedelta(days=state_mod.MAX_DAYS):
+        return False
+    sub.expires_at = until
+    await session.flush()
+    return True

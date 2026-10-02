@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -58,6 +59,7 @@ def test_new_subscription() -> None:
         amount=19900,
         currency="RUB",
         raw_name="new_subscription",
+        period_end=datetime(2026, 10, 30, 10, 0, tzinfo=UTC),
     )
 
 
@@ -271,3 +273,22 @@ def test_a_live_renewal_after_the_trial_is_a_regular_monthly_payment() -> None:
     assert event.external_subscription_id == "268905"
     assert (event.amount, event.currency) == (10000, "RUB")
     assert event.external_payment_id == "268905:7001:2026-11-02T12:10:29.764107373Z"
+
+
+def test_the_period_end_keeps_the_nanoseconds_out_and_the_timezone_in() -> None:
+    end = parse("new_subscription", expires_at="2026-11-02T12:10:29.764107373Z").period_end
+    assert end == datetime(2026, 11, 2, 12, 10, 29, 764107, tzinfo=UTC)
+    moscow = parse("new_subscription", expires_at="2026-11-02T15:10:29+03:00").period_end
+    assert moscow == datetime(2026, 11, 2, 12, 10, 29, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    "raw", [None, "", "yesterday", "2026-11-02T12:10:29", 5, "2026-13-45T00:00:00Z"]
+)
+def test_a_period_end_we_cannot_trust_is_none(raw: Any) -> None:
+    assert parse("new_subscription", expires_at=raw).period_end is None
+
+
+def test_the_live_renewal_ends_on_the_calendar_month_not_after_thirty_days() -> None:
+    event = provider.parse(json.loads(fixture_bytes("live_renewed_subscription")))
+    assert event.period_end == datetime(2026, 11, 2, 12, 10, 29, 764107, tzinfo=UTC)

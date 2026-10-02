@@ -6,6 +6,7 @@
 import hashlib
 import hmac
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
 
@@ -58,6 +59,19 @@ def _currency(value: Any) -> str | None:
         return None
     code = value.strip().upper()
     return code if len(code) == 3 and code.isascii() and code.isalpha() else None
+
+
+def _datetime(value: Any) -> datetime | None:
+    """Момент времени из ISO 8601 с часовым поясом. Tribute шлёт наносекунды
+    (`2026-11-02T12:10:29.764107373Z`): fromisoformat Python 3.12 лишние знаки отбрасывает.
+    Время без пояса — не доверяем: неясно, чьё оно."""
+    if not isinstance(value, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(value.strip())
+    except ValueError:
+        return None
+    return moment.astimezone(UTC) if moment.tzinfo is not None else None
 
 
 def _minor_units(value: Any) -> int | None:
@@ -113,12 +127,12 @@ class TributeProvider:
         subscription_id = _text(body.get("subscription_id"))
         period_id = _text(body.get("period_id"))
         purchase_id = _text(body.get("purchase_id"))
-        period_end = _text(body.get("expires_at")) or _text(payload.get("sent_at"))
+        end_text = _text(body.get("expires_at")) or _text(payload.get("sent_at"))
         if purchase_id:
             # Цифровой товар: purchase_id уникален на покупку (так советует Tribute).
             external_payment_id = f"purchase:{purchase_id}"
-        elif subscription_id and telegram_id and period_end:
-            external_payment_id = f"{subscription_id}:{telegram_id}:{period_end}"
+        elif subscription_id and telegram_id and end_text:
+            external_payment_id = f"{subscription_id}:{telegram_id}:{end_text}"
         else:
             external_payment_id = None
         # price — сколько заплатил клиент (выручка); amount — то, что осталось после комиссии
@@ -139,6 +153,7 @@ class TributeProvider:
             amount=paid,
             currency=_currency(body.get("currency")),
             raw_name=raw_name,
+            period_end=_datetime(body.get("expires_at")),
         )
 
 
