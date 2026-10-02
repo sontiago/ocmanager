@@ -21,6 +21,7 @@ from ocmanager.cli import app
 from ocmanager.core.config import Settings
 from ocmanager.nodes import registry
 from ocmanager.nodes.driver.fake import FakeNodeDriver
+from ocmanager.notifications.models import OutboxMessage
 from ocmanager.provisioning.models import Device
 from ocmanager.provisioning.pki.ca import CertificateAuthority, save_ca
 from ocmanager.subscriptions.models import Subscription
@@ -114,6 +115,33 @@ async def test_the_whole_operator_path(
         "device.issue",
         "device.revoke",
         "revocation.apply",
+    ]
+
+
+async def test_cli_commands_queue_the_same_notifications_as_the_worker(
+    invoke: Invoke,
+    committed_sessionmaker: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    # CLI сам доставляет события (sync_now). Без обработчиков уведомлений он «съедал» событие,
+    # и клиент не узнавал о выданном и отозванном устройстве, если его выпустили из консоли.
+    await ok(invoke, *PLAN)
+    await ok(invoke, "client", "add", "--telegram-id", "5001", "--first-name", "Анна")
+    await ok(invoke, "client", "grant", "5001", "m1")
+    issued = await ok(
+        invoke,
+        *("device", "issue", "5001", "--name", "laptop", "--platform", "linux"),
+        *("--out", str(tmp_path / "laptop.p12")),
+    )
+    device_id = re.search(r"device:\s+(\d+)", issued)
+    assert device_id is not None
+    await ok(invoke, "device", "revoke", device_id.group(1))
+
+    async with committed_sessionmaker() as session:
+        rows = (await session.scalars(select(OutboxMessage).order_by(OutboxMessage.id))).all()
+    assert [(m.chat_id, m.template_key) for m in rows] == [
+        (5001, "device_issued"),
+        (5001, "device_revoked"),
     ]
 
 

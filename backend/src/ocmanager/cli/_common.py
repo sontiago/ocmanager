@@ -16,6 +16,7 @@ from ocmanager.core.errors import DomainError
 from ocmanager.core.logging import configure_logging
 from ocmanager.events import bus
 from ocmanager.flows import handlers
+from ocmanager.flows import notify as notify_flows
 from ocmanager.flows import revocations as revocation_flows
 from ocmanager.nodes.driver.base import NodeUnreachable
 from ocmanager.provisioning.pki.ca import load_ca
@@ -68,6 +69,9 @@ async def sync_now(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
     ломает команду: данные уже в БД, воркер и reconcile догонят."""
     s = settings()
     handlers.register(s)
+    # События доставляет этот процесс, а не воркер: без обработчиков уведомлений он «съел» бы
+    # их без сообщения. Сообщения лишь встают в очередь — отправит воркер.
+    notify_flows.register()
     await bus.dispatch_pending(sessionmaker)
     try:
         async with sessionmaker() as session:
