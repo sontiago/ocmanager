@@ -116,3 +116,19 @@ class Payment(Base):
         CheckConstraint("amount >= 0", name="amount"),
         Index("ix_payments_client_received", "client_id", "received_at"),
     )
+
+
+class CheckoutIntent(Base):
+    """Нажатие «Купить» в Mini App. Связывает клиента с выбранным тарифом до ухода в Tribute;
+    вебхук пока связывается с клиентом по telegram_user_id, а намерение — задел на случай, если
+    ссылка Tribute примет собственный параметр (риск №2 спецификации)."""
+
+    __tablename__ = "checkout_intents"
+
+    id: Mapped[str] = mapped_column(primary_key=True)  # "ci_" + token_urlsafe(12)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"))
+    provider: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    __table_args__ = (Index("ix_checkout_intents_client_created", "client_id", "created_at"),)

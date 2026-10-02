@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+from ocmanager.billing.providers import checkout_url
 from ocmanager.billing.providers.base import ProviderEvent, ProviderPayloadError
 from ocmanager.billing.providers.tribute import SIGNATURE_HEADER, TributeProvider
 from ocmanager.billing.testing import sign, webhook_body
@@ -185,3 +186,30 @@ def test_the_currency_is_a_three_letter_code_or_nothing(raw: Any, expected: str 
 def test_a_body_of_the_wrong_shape_is_a_payload_error(body: dict[str, Any]) -> None:
     with pytest.raises(ProviderPayloadError):
         provider.parse(body)
+
+
+def test_the_checkout_link_comes_from_the_plan_product() -> None:
+    link = "https://t.me/tribute/app?startapp=s1"
+    assert checkout_url("tribute", {"product_ref": "1", "link": link}) == link
+    assert checkout_url("tribute", {"link": f"  {link}  "}) == link
+
+
+@pytest.mark.parametrize(
+    "product",
+    [
+        None,
+        {},
+        {"link": ""},
+        {"link": "http://t.me/x"},
+        {"link": "javascript:alert(1)"},
+        {"link": 5},
+        {"link": "https://" + "a" * 3000},
+    ],
+    ids=["none", "empty", "blank", "plain-http", "javascript", "not-str", "too-long"],
+)
+def test_a_product_without_a_safe_link_has_no_checkout(product: Any) -> None:
+    assert checkout_url("tribute", product) is None
+
+
+def test_an_unknown_provider_has_no_checkout() -> None:
+    assert checkout_url("stars", {"link": "https://t.me/x"}) is None

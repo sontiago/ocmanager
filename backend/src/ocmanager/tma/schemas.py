@@ -162,3 +162,14 @@ class IssuedDeviceOut(BaseModel):
 class ConnectionOut(BaseModel):
     server_host: str
     gateway_url: str
+
+
+class CheckoutIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    plan_code: str = Field(min_length=1, max_length=64)
+
+
+class CheckoutOut(BaseModel):
+    checkout_url: str
+    payment_id: str  # id намерения покупки; платёж появится после вебхука

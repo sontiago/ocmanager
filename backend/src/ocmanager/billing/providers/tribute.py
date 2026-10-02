@@ -121,3 +121,19 @@ class TributeProvider:
             currency=_currency(body.get("currency")),
             raw_name=raw_name,
         )
+
+
+MAX_LINK_LEN = 2048
+
+
+def checkout_url(product: object) -> str | None:
+    """Ссылка на оплату из `provider_product_ids["tribute"]["link"]`. Только https: значение
+    вводит админ, но попадает в кнопку Mini App — `javascript:` и `//host` туда попасть не должны.
+    Ключ API не нужен: кнопка «Купить» работает и там, где вебхуки ещё не настроены."""
+    if not isinstance(product, Mapping):
+        return None
+    link = product.get("link")
+    if not isinstance(link, str):
+        return None
+    link = link.strip()
+    return link if link.startswith("https://") and len(link) <= MAX_LINK_LEN else None

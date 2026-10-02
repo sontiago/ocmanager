@@ -1,6 +1,7 @@
 """Платежи: запись, возврат, поиск тарифа по продукту провайдера. Аудит здесь не пишется
 (граница модулей) — его пишет flows/purchase.py."""
 
+import secrets
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -10,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ocmanager.billing.models import Payment, Plan
+from ocmanager.billing.models import CheckoutIntent, Payment, Plan
 from ocmanager.core.errors import NotFound
 
 
@@ -96,3 +97,16 @@ async def find_plan_by_product(
         .limit(1)
     )
     return plan
+
+
+def new_intent_id() -> str:
+    return f"ci_{secrets.token_urlsafe(12)}"
+
+
+async def create_intent(
+    session: AsyncSession, *, intent_id: str, client_id: int, plan_id: int, provider: str
+) -> CheckoutIntent:
+    intent = CheckoutIntent(id=intent_id, client_id=client_id, plan_id=plan_id, provider=provider)
+    session.add(intent)
+    await session.flush()
+    return intent

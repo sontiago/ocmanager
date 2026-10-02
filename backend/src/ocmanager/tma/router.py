@@ -14,6 +14,7 @@ from ocmanager.core.errors import (
     SubscriptionInactive,
     TrialAlreadyUsed,
 )
+from ocmanager.flows import checkout as checkout_flow
 from ocmanager.flows import devices as device_flows
 from ocmanager.flows import trial as trial_flow
 from ocmanager.flows.deps import CaDep, FernetDep, RedisDep, SettingsDep, commit_and_kick
@@ -25,6 +26,8 @@ from ocmanager.subscriptions import service as subscriptions
 from ocmanager.subscriptions.models import Subscription
 from ocmanager.tma.deps import CurrentClient, TmaContext
 from ocmanager.tma.schemas import (
+    CheckoutIn,
+    CheckoutOut,
     ConnectionOut,
     CreateDeviceIn,
     DeviceOut,
@@ -40,6 +43,7 @@ router = APIRouter(prefix="/tma", tags=["tma"])
 # Лимиты на действия, которые создают строки и ключи (решение об анти-абьюзе, дорожная карта 4.3).
 TRIAL_LIMIT, TRIAL_WINDOW_S = 3, 3600
 DEVICE_LIMIT, DEVICE_WINDOW_S = 10, 3600
+CHECKOUT_LIMIT, CHECKOUT_WINDOW_S = 20, 3600
 MAX_ID_DIGITS = 18  # 18 цифр всегда влезают в BIGINT
 MIN_TOKEN_LEN, MAX_TOKEN_LEN = 16, 128
 
@@ -83,6 +87,22 @@ async def start_trial(ctx: CurrentClient, db: SessionDep, redis: RedisDep) -> Su
     out = await subscription_out(db, sub, ctx)
     await commit_and_kick(db, redis)
     return out
+
+
+@router.post("/checkout")
+async def create_checkout(
+    body: CheckoutIn, ctx: CurrentClient, db: SessionDep, redis: RedisDep
+) -> CheckoutOut:
+    """Ссылка на оплату выбранного тарифа. Деньги примет Tribute, подписку выдаст вебхук:
+    здесь ничего не активируется."""
+    await ratelimit.hit(
+        redis, f"checkout:{ctx.client.id}", limit=CHECKOUT_LIMIT, window_s=CHECKOUT_WINDOW_S
+    )
+    result = await checkout_flow.create_checkout(
+        db, client=ctx.client, plan_code=body.plan_code, actor=ctx.actor
+    )
+    await db.commit()
+    return CheckoutOut(checkout_url=result.url, payment_id=result.intent_id)
 
 
 @router.get("/connection")

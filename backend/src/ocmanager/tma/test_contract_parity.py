@@ -27,7 +27,7 @@ KNOWN_UNMAPPED = {
 ADMIN_ONLY = {"forbidden", "conflict", "invalid_transition", "csrf_failed", "totp_required"}
 # Есть во фронтенде, но бэкенд их сам не порождает: сеть — на стороне клиента, internal — запасной.
 CLIENT_SIDE = {"network", "internal"}
-# Запас: TMA-эндпоинты пока не ходят на ноду (Фаза 5 — платежи, Фаза 6 — уведомления).
+# Запас: TMA-эндпоинты пока не ходят на ноду (Фаза 6 — уведомления).
 RESERVED = {"node_unavailable"}
 
 
@@ -69,7 +69,7 @@ def test_the_frontend_expects_no_code_the_backend_never_sends() -> None:
     assert not dead, f"фронтенд ждёт коды, которых нет в бэкенде: {sorted(dead)}"
 
 
-async def test_the_public_api_exposes_the_eight_contract_operations_and_the_download(
+async def test_the_public_api_exposes_the_nine_contract_operations_and_the_download(
     public_client: AsyncClient,
 ) -> None:
     schema = (await public_client.get("/api/openapi.json")).json()
@@ -84,12 +84,13 @@ async def test_the_public_api_exposes_the_eight_contract_operations_and_the_down
         ("GET", "/api/tma/plans"),
         ("GET", "/api/tma/subscription"),
         ("POST", "/api/tma/subscription/trial"),
+        ("POST", "/api/tma/checkout"),
         ("GET", "/api/tma/devices"),
         ("POST", "/api/tma/devices"),
         ("DELETE", "/api/tma/devices/{device_id}"),
         ("GET", "/api/tma/connection"),
         ("GET", "/api/tma/download/{token}"),
-    }  # createCheckout (POST /api/tma/checkout) — Фаза 5
+    }
     names = set(schema["components"]["schemas"])
     # По этим именам frontend сверяет свои типы со схемой (Задача 20 плана TMA).
     assert {
@@ -101,6 +102,8 @@ async def test_the_public_api_exposes_the_eight_contract_operations_and_the_down
         "CreateDeviceIn",
         "IssuedDeviceOut",
         "ConnectionOut",
+        "CheckoutIn",
+        "CheckoutOut",
     } <= names
 
 

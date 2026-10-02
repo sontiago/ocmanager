@@ -1,5 +1,9 @@
+from collections.abc import Mapping
+from typing import Any
+
 from ocmanager.billing.providers.base import PaymentProvider
 from ocmanager.billing.providers.tribute import TributeProvider
+from ocmanager.billing.providers.tribute import checkout_url as _tribute_checkout_url
 from ocmanager.core.config import Settings
 
 PROVIDER_NAMES = ("tribute",)
@@ -20,3 +24,10 @@ def build_providers(settings: Settings) -> dict[str, PaymentProvider]:
         for name in PROVIDER_NAMES
         if (provider := get_provider(name, settings)) is not None
     }
+
+
+def checkout_url(provider: str, product: Mapping[str, Any] | None) -> str | None:
+    """Ссылка на оплату продукта у провайдера; None — продукта нет или ссылка небезопасна (П5-2)."""
+    if provider == "tribute":
+        return _tribute_checkout_url(product)
+    return None
