@@ -1,0 +1,259 @@
+# Боевой стек (спека §2.5). Запуск из этого каталога: docker compose up -d
+# Порядок первого запуска и обслуживание — в README.md.
+name: ocmanager
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+x-backend-env: &backend-env
+  OCM_ENV: production
+  OCM_LOG_FORMAT: json
+  OCM_DATABASE_URL: postgresql+asyncpg://ocm:${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD}@postgres:5432/ocmanager
+  OCM_REDIS_URL: redis://:${REDIS_PASSWORD:?задайте REDIS_PASSWORD}@redis:6379/0
+  OCM_SECRET_KEY: ${OCM_SECRET_KEY:?задайте OCM_SECRET_KEY}
+  OCM_INTERNAL_TOKEN: ${OCM_INTERNAL_TOKEN:?задайте OCM_INTERNAL_TOKEN}
+  OCM_CAMOUFLAGE_SECRET: ${OCM_CAMOUFLAGE_SECRET:?задайте OCM_CAMOUFLAGE_SECRET}
+  OCM_BOT_TOKEN: ${OCM_BOT_TOKEN:?задайте OCM_BOT_TOKEN}
+  OCM_TRIBUTE_API_KEY: ${OCM_TRIBUTE_API_KEY:-}
+  OCM_PUBLIC_BASE_URL: https://${DOMAIN_APP:?задайте DOMAIN_APP}
+  OCM_VPN_HOST: ${DOMAIN_VPN:?задайте DOMAIN_VPN}
+  OCM_PKI_DIR: /var/lib/ocmanager-pki
+  OCM_OCSERV_STATE_DIR: /var/lib/ocmanager
+  OCM_OCSERV_CONTAINER: ocm-ocserv
+
+x-backend: &backend
+  image: ocmanager/backend:${OCM_VERSION:-latest}
+  restart: unless-stopped
+  logging: *logging
+
+x-after-migrate: &after-migrate
+  postgres: { condition: service_healthy }
+  redis: { condition: service_healthy }
+  volume-init: { condition: service_completed_successfully }
+  migrate: { condition: service_completed_successfully }
+
+services:
+  # Права на тома. Именованный том наследует владельца от первого смонтировавшего контейнера,
+  # а ocserv и бэкенд делят ocserv-state — без этого результат зависел бы от порядка запуска.
+  volume-init:
+    image: alpine:3.20
+    command: ["chown", "-R", "10001:10001", "/state", "/pki"]
+    volumes:
+      - ocserv-state:/state
+      - pki:/pki
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: ocm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ocmanager
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [app]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ocm -d ocmanager"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    logging: *logging
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD}" }
+    volumes: [redisdata:/data]
+    networks: [app]
+    healthcheck:
+      test: ["CMD-SHELL", 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  # Единственный путь к Docker API для worker и api-admin (решение П7-1).
+  docker-proxy:
+    image: haproxy:3.0-alpine
+    restart: unless-stopped
+    logging: *logging
+    user: "0:0" # читает /var/run/docker.sock (root:docker, 0660)
+    volumes:
+      - ./docker-proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [docker]
+
+  migrate:
+    <<: *backend
+    build: ../backend
+    restart: "no"
+    command: ["migrate"]
+    environment: *backend-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [app]
+
+  api-public:
+    <<: *backend
+    command: ["api-public"]
+    environment: *backend-env
+    # ca.key только на чтение: выпуск .p12 идёт в запросе (открытый вопрос №5 дорожной карты).
+    volumes:
+      - pki:/var/lib/ocmanager-pki:ro
+      - ocserv-state:/var/lib/ocmanager:ro
+    depends_on: *after-migrate
+    networks: [web, hooks, app]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  api-admin:
+    <<: *backend
+    command: ["api-admin"]
+    environment:
+      <<: *backend-env
+      DOCKER_HOST: tcp://docker-proxy:2375
+    # Только loopback хоста: доступ по SSH-туннелю (дизайн §9).
+    ports: ["127.0.0.1:8080:8080"]
+    volumes:
+      - pki:/var/lib/ocmanager-pki:ro
+      - ocserv-state:/var/lib/ocmanager
+    depends_on:
+      <<: *after-migrate
+      docker-proxy: { condition: service_started }
+    networks: [app, docker]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8080/admin/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    environment:
+      <<: *backend-env
+      DOCKER_HOST: tcp://docker-proxy:2375
+      OCM_SERVER_CERT_PATH: /caddy-data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/${DOMAIN_VPN}/${DOMAIN_VPN}.crt
+    volumes:
+      - pki:/var/lib/ocmanager-pki:ro
+      - ocserv-state:/var/lib/ocmanager
+      - caddy-data:/caddy-data:ro
+    depends_on:
+      <<: *after-migrate
+      docker-proxy: { condition: service_started }
+    networks: [app, docker]
+
+  bot:
+    <<: *backend
+    command: ["bot"]
+    environment: *backend-env
+    depends_on: *after-migrate
+    networks: [app]
+
+  # Разовые команды: docker compose run --rm cli pki init
+  cli:
+    <<: *backend
+    restart: "no"
+    profiles: [tools]
+    # Без роли образа: docker compose run cli <аргументы> подменяет command целиком.
+    entrypoint: ["ocmanager"]
+    command: ["--help"]
+    environment: *backend-env
+    volumes:
+      - pki:/var/lib/ocmanager-pki
+      - ocserv-state:/var/lib/ocmanager
+    depends_on: *after-migrate
+    networks: [app]
+
+  ocserv:
+    build: ../ocserv
+    image: ocmanager/ocserv:${OCM_VERSION:-latest}
+    container_name: ocm-ocserv # зашито в docker-proxy/haproxy.cfg
+    restart: unless-stopped
+    logging: *logging
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun"]
+    sysctls: { net.ipv4.ip_forward: 1 }
+    # TCP 443 принимает nginx; DTLS (UDP) идёт прямо в ocserv.
+    ports: ["443:443/udp"]
+    environment:
+      OCSERV_SERVER_CERT: /caddy-data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/${DOMAIN_VPN}/${DOMAIN_VPN}.crt
+      OCSERV_SERVER_KEY: /caddy-data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/${DOMAIN_VPN}/${DOMAIN_VPN}.key
+      OCSERV_IPV4_NETWORK: ${OCSERV_IPV4_NETWORK:-10.77.0.0/24}
+      OCSERV_CAMOUFLAGE_SECRET: ${OCM_CAMOUFLAGE_SECRET}
+      OCSERV_PROXY_PROTOCOL: "true"
+      OCSERV_CERT_WAIT_S: "900" # Caddy выпускает сертификат спустя минуты после первого старта
+      OCM_INTERNAL_TOKEN: ${OCM_INTERNAL_TOKEN}
+      OCM_SESSION_END_URL: http://api-public:8000/internal/session-end
+    volumes:
+      - ocserv-state:/var/lib/ocmanager:ro
+      - caddy-data:/caddy-data:ro
+    depends_on:
+      volume-init: { condition: service_completed_successfully }
+      caddy: { condition: service_started }
+    networks: [edge, hooks]
+
+  caddy:
+    build:
+      context: ..
+      dockerfile: deploy/web/Dockerfile
+      args:
+        VITE_SUPPORT_HANDLE: ${VITE_SUPPORT_HANDLE:-@ocmanager_help}
+    image: ocmanager/web:${OCM_VERSION:-latest}
+    restart: unless-stopped
+    logging: *logging
+    # Порт 80 — ACME HTTP-01 и редирект на https; 443 принимает nginx, Caddy слушает 8443.
+    ports: ["80:80"]
+    environment:
+      DOMAIN_APP: ${DOMAIN_APP}
+      DOMAIN_VPN: ${DOMAIN_VPN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge, web]
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    logging: *logging
+    ports: ["443:443/tcp"]
+    environment: { DOMAIN_VPN: "${DOMAIN_VPN}" }
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
+    command:
+      - sh
+      - -c
+      - "envsubst '$${DOMAIN_VPN}' </etc/nginx/nginx.conf.template >/etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"
+    depends_on:
+      caddy: { condition: service_started }
+      ocserv: { condition: service_started }
+    networks: [edge]
+
+networks:
+  # Фиксированная подсеть: Caddy принимает PROXY-заголовок только отсюда (решение П7-3).
+  edge:
+    ipam:
+      config: [{ subnet: 172.29.10.0/24 }]
+  web: {}
+  # ocserv ↔ api-public: только POST /internal/session-end; наружу из этой сети выхода нет.
+  hooks: { internal: true }
+  app: {}
+  # Прокси к Docker: без выхода наружу, в ней только прокси, worker и api-admin.
+  docker: { internal: true }
+
+volumes:
+  pgdata:
+  redisdata:
+  pki:
+  ocserv-state:
+  caddy-data:
+  caddy-config:
