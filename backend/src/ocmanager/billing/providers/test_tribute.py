@@ -259,3 +259,15 @@ def test_a_live_trial_webhook_is_not_revenue() -> None:
 
 def test_a_regular_period_keeps_the_price_as_revenue() -> None:
     assert parse("new_subscription", type="regular").amount == 19900
+
+
+def test_a_live_renewal_after_the_trial_is_a_regular_monthly_payment() -> None:
+    """Снят с живого Tribute после часового триала: тот же subscription_id, период месячный."""
+    body = json.loads(fixture_bytes("live_renewed_subscription"))
+    assert (body["payload"]["type"], body["payload"]["period"]) == ("regular", "monthly")
+    event = provider.parse(body)
+    assert event.kind == "subscription_renewed"
+    assert event.product_ref == "506545"  # period_id месяца — не пробного периода (506546)
+    assert event.external_subscription_id == "268905"
+    assert (event.amount, event.currency) == (10000, "RUB")
+    assert event.external_payment_id == "268905:7001:2026-11-02T12:10:29.764107373Z"
