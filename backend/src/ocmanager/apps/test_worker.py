@@ -2,10 +2,11 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from arq import ArqRedis
-from conftest import MakeClient, MakeDevice, MakePlan
-from sqlalchemy import select
+from conftest import MakeClient, MakeDevice, MakePlan, MakeSubscription
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ocmanager.apps.worker import (
@@ -15,11 +16,13 @@ from ocmanager.apps.worker import (
     collect_traffic,
     dispatch_events,
     expire_subscriptions,
+    expiry_reminders,
     get_ca,
     purge_event_outbox,
     purge_traffic,
     reconcile_nodes,
     refresh_crl,
+    send_outbox,
     shutdown,
     startup,
 )
@@ -34,6 +37,7 @@ from ocmanager.nodes import registry
 from ocmanager.nodes.driver.fake import FakeNodeDriver
 from ocmanager.nodes.models import Node
 from ocmanager.nodes.service import cached_health
+from ocmanager.notifications.models import OutboxMessage
 from ocmanager.provisioning import service as provisioning
 from ocmanager.provisioning.pki.ca import CertificateAuthority, save_ca
 from ocmanager.subscriptions.service import get_subscription
@@ -44,6 +48,9 @@ def test_cron_registry() -> None:
     assert names == {
         "cron:dispatch_events",
         "cron:purge_event_outbox",
+        "cron:send_outbox",
+        "cron:expiry_reminders",
+        "cron:alert_stuck_events",
         "cron:check_nodes",
         "cron:expire_subscriptions",
         "cron:apply_revocations",
@@ -113,6 +120,77 @@ async def test_startup_and_shutdown(settings: Settings, db_engine: object) -> No
     await startup(ctx)
     assert await dispatch_events(ctx) == 0
     await shutdown(ctx)
+
+
+async def test_startup_registers_the_notification_handlers(
+    settings: Settings, db_engine: object
+) -> None:
+    ctx: dict[str, Any] = {"settings": settings}
+    await startup(ctx)
+    for name in ("payment.received", "node.status_changed", "device.issued"):
+        assert bus._handlers.get(name), name
+    await shutdown(ctx)
+
+
+async def test_send_outbox_delivers_through_the_bot_api(
+    session: AsyncSession, sessionmaker: async_sessionmaker[AsyncSession], settings: Settings
+) -> None:
+    session.add(
+        OutboxMessage(
+            recipient_type="client",
+            chat_id=42,
+            template_key="expired",
+            lang="ru",
+            payload={},
+            send_after=utcnow(),
+        )
+    )
+    await session.commit()
+    token = settings.bot_token.get_secret_value()
+    paths: list[str] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        return httpx.Response(200, json={"ok": True})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http:
+        ctx: dict[str, Any] = {"settings": settings, "sessionmaker": sessionmaker, "http": http}
+        assert await send_outbox(ctx) == 1
+    assert paths == [f"/bot{token}/sendMessage"]
+
+
+async def test_startup_opens_and_shutdown_closes_the_http_client(
+    settings: Settings, db_engine: object
+) -> None:
+    ctx: dict[str, Any] = {"settings": settings}
+    await startup(ctx)
+    http = ctx["http"]
+    assert not http.is_closed
+    await shutdown(ctx)
+    assert http.is_closed
+
+
+async def test_expiry_reminders_job_queues_and_commits(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_subscription: MakeSubscription,
+) -> None:
+    now = utcnow()
+    client = await make_client()
+    sub = await make_subscription(client, days=30, now=now, auto_renew=False)
+    sub.auto_renew = False
+    sub.expires_at = now + timedelta(days=1) - timedelta(minutes=10)
+    sub.started_at = now - timedelta(days=29)
+    await session.commit()
+
+    assert await expiry_reminders({"sessionmaker": sessionmaker}) == 1
+    assert await session.scalar(select(func.count()).select_from(OutboxMessage)) == 1
+
+
+def test_the_hourly_reminder_job_runs_on_the_hour() -> None:
+    [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:expiry_reminders"]
+    assert job.minute == {0}
 
 
 async def test_check_nodes_updates_status_and_cache(

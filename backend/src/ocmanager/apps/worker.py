@@ -9,6 +9,7 @@ import logging
 from datetime import timedelta
 from typing import Any, ClassVar
 
+import httpx
 import structlog
 from arq import Retry, cron, func, run_worker
 from arq.connections import RedisSettings
@@ -23,6 +24,7 @@ from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.logging import configure_logging
 from ocmanager.events import bus
 from ocmanager.flows import handlers
+from ocmanager.flows import notify as notify_flows
 from ocmanager.flows import purchase as purchase_flows
 from ocmanager.flows import reconcile as reconcile_flows
 from ocmanager.flows import revocations as revocation_flows
@@ -31,6 +33,7 @@ from ocmanager.flows import traffic as traffic_flows
 from ocmanager.flows.nodes import check_node_health
 from ocmanager.nodes import registry
 from ocmanager.nodes.driver.base import NodeUnreachable
+from ocmanager.notifications import tasks as notification_tasks
 from ocmanager.provisioning.pki.ca import CertificateAuthority, load_ca
 
 log = structlog.get_logger(__name__)
@@ -47,12 +50,19 @@ async def startup(ctx: dict[str, Any]) -> None:
     # ошибки задач он логирует уровнем выше и их мы видим.
     logging.getLogger("arq.worker").setLevel(logging.WARNING)
     engine = make_engine(settings.database_url)
-    ctx.update(settings=settings, engine=engine, sessionmaker=make_sessionmaker(engine))
+    ctx.update(
+        settings=settings,
+        engine=engine,
+        sessionmaker=make_sessionmaker(engine),
+        http=httpx.AsyncClient(timeout=httpx.Timeout(10.0)),
+    )
     handlers.register(settings)
+    notify_flows.register()
     log.info("worker_started")
 
 
 async def shutdown(ctx: dict[str, Any]) -> None:
+    await ctx["http"].aclose()
     await ctx["engine"].dispose()
     log.info("worker_stopped")
 
@@ -78,6 +88,34 @@ async def purge_event_outbox(ctx: dict[str, Any]) -> int:
     if deleted:
         log.info("event_outbox_purged", deleted=deleted)
     return deleted
+
+
+async def send_outbox(ctx: dict[str, Any]) -> int:
+    """Уведомления из очереди — в Telegram. Раз в 5 секунд, не больше 50 за запуск."""
+    sent = await notification_tasks.send_pending(
+        ctx["sessionmaker"], ctx["http"], ctx["settings"].bot_token.get_secret_value()
+    )
+    if sent:
+        log.info("notifications_sent", count=sent)
+    return sent
+
+
+async def expiry_reminders(ctx: dict[str, Any]) -> int:
+    """Напоминания об истечении — раз в час."""
+    async with ctx["sessionmaker"]() as session:
+        queued = await notify_flows.enqueue_expiry_reminders(session, utcnow())
+        await session.commit()
+    if queued:
+        log.info("expiry_reminders_queued", count=queued)
+    return queued
+
+
+async def alert_stuck_events(ctx: dict[str, Any]) -> int:
+    """Недоставленные события доменной шины — алерт админу раз в сутки."""
+    async with ctx["sessionmaker"]() as session:
+        queued = await notify_flows.alert_stuck_events(session, utcnow())
+        await session.commit()
+    return queued
 
 
 async def check_nodes(ctx: dict[str, Any]) -> int:
@@ -218,6 +256,9 @@ class WorkerSettings:
     cron_jobs: ClassVar[list[CronJob]] = [
         cron(dispatch_events, second=EVERY_5_SECONDS, keep_result=0),
         cron(purge_event_outbox, hour={4}, minute={0}, keep_result=0),
+        cron(send_outbox, second=EVERY_5_SECONDS, keep_result=0),
+        cron(expiry_reminders, minute={0}, second={5}, keep_result=0),
+        cron(alert_stuck_events, hour={9}, minute={0}, second={10}, keep_result=0),
         cron(check_nodes, second={30}, keep_result=0),
         cron(expire_subscriptions, second={10}, keep_result=0),
         cron(apply_revocations, second={15, 45}, keep_result=0),
