@@ -1,4 +1,25 @@
-import { emitEvent, mockTelegramEnv } from "@telegram-apps/sdk-react";
+import {
+  emitEvent,
+  mockTelegramEnv,
+  retrieveRawLaunchParams,
+} from "@telegram-apps/sdk-react";
+
+/** Подпись, по которой подделку отличают от настоящих параметров запуска. */
+const MOCK_HASH = "dev-mock-hash";
+
+/**
+ * Настоящие параметры запуска уже есть (открыто из Telegram, пусть и через туннель к dev-серверу).
+ * mockTelegramEnv каждый раз записывает свои, фальшивые, в хранилище сессии; а после перезагрузки
+ * страницы хэша `#tgWebAppData` в адресе уже нет, и SDK берёт параметры из хранилища — то есть
+ * подделку: бэкенд отвечает 401 «bad hash». Поэтому поверх настоящих мок не включаем.
+ */
+export function hasRealLaunchParams(): boolean {
+  try {
+    return !retrieveRawLaunchParams().includes(MOCK_HASH);
+  } catch {
+    return false; // параметров нет вовсе — обычный браузер
+  }
+}
 
 /**
  * ВНИМАНИЕ. Здесь подделывается окружение Telegram, включая подпись initData.
@@ -23,7 +44,7 @@ const initDataRaw = new URLSearchParams([
   ["chat_instance", "-1234567890123456789"],
   ["chat_type", "private"],
   ["signature", "dev-mock-signature"],
-  ["hash", "dev-mock-hash"],
+  ["hash", MOCK_HASH],
 ]).toString();
 
 const themeParams = {
@@ -41,48 +62,52 @@ const themeParams = {
   text_color: "#000000",
 } as const;
 
-mockTelegramEnv({
-  launchParams: {
-    tgWebAppVersion: "8.0",
-    tgWebAppPlatform: "tdesktop",
-    tgWebAppThemeParams: themeParams,
-    tgWebAppData: initDataRaw,
-  },
+if (!hasRealLaunchParams()) {
+  mockTelegramEnv({
+    launchParams: {
+      tgWebAppVersion: "8.0",
+      tgWebAppPlatform: "tdesktop",
+      tgWebAppThemeParams: themeParams,
+      tgWebAppData: initDataRaw,
+    },
 
-  // Часть методов SDK — это запрос к клиенту с ожиданием ответного события.
-  // В браузере клиента нет, и viewport.mount() висит в isMounting вечно:
-  // не срабатывают ни bindCssVars(), ни expand(). Отвечаем за клиента сами.
-  onEvent([name]) {
-    switch (name) {
-      case "web_app_request_viewport":
-        return emitEvent("viewport_changed", {
-          height: window.innerHeight,
-          width: window.innerWidth,
-          is_expanded: true,
-          is_state_stable: true,
-        });
-      case "web_app_request_safe_area":
-        return emitEvent("safe_area_changed", {
-          top: 0,
-          bottom: 0,
-          left: 0,
-          right: 0,
-        });
-      case "web_app_request_content_safe_area":
-        // Поставь top: 56, чтобы увидеть в браузере реальный отступ под
-        // шапкой клиента — так это выглядит на телефоне.
-        return emitEvent("content_safe_area_changed", {
-          top: 0,
-          bottom: 0,
-          left: 0,
-          right: 0,
-        });
-      case "web_app_request_theme":
-        return emitEvent("theme_changed", { theme_params: themeParams });
-    }
-  },
-});
+    // Часть методов SDK — это запрос к клиенту с ожиданием ответного события.
+    // В браузере клиента нет, и viewport.mount() висит в isMounting вечно:
+    // не срабатывают ни bindCssVars(), ни expand(). Отвечаем за клиента сами.
+    onEvent([name]) {
+      switch (name) {
+        case "web_app_request_viewport":
+          return emitEvent("viewport_changed", {
+            height: window.innerHeight,
+            width: window.innerWidth,
+            is_expanded: true,
+            is_state_stable: true,
+          });
+        case "web_app_request_safe_area":
+          return emitEvent("safe_area_changed", {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+          });
+        case "web_app_request_content_safe_area":
+          // Поставь top: 56, чтобы увидеть в браузере реальный отступ под
+          // шапкой клиента — так это выглядит на телефоне.
+          return emitEvent("content_safe_area_changed", {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+          });
+        case "web_app_request_theme":
+          return emitEvent("theme_changed", { theme_params: themeParams });
+      }
+    },
+  });
 
-console.warn(
-  "[tma] окружение Telegram замокано — только для разработки, в production этот модуль не собирается",
-);
+  console.warn(
+    "[tma] окружение Telegram замокано — только для разработки, в production этот модуль не собирается",
+  );
+} else {
+  console.info("[tma] открыто из Telegram: мок окружения не включается");
+}
