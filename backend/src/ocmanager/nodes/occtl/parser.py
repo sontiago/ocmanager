@@ -87,15 +87,18 @@ def parse_users(text: str) -> list[OcSession]:
     data = _load(text)
     if not isinstance(data, list):
         raise OcctlParseError(f"show users: expected array, got {type(data).__name__}")
-    return [_session(item) for item in data if not _is_pre_auth(item)]
+    return [_session(item) for item in data if not _not_a_session(item)]
 
 
-def _is_pre_auth(obj: Any) -> bool:
-    """Клиент, который ещё авторизуется: occtl показывает его без username и счётчиков.
-    Это не сессия — разбирать нечего. Остальные записи разбираются строго."""
+def _not_a_session(obj: Any) -> bool:
+    """Сессия — только подключённый клиент (State "connected"). Остальное occtl тоже перечисляет:
+    "pre-auth" (ещё авторизуется, без username и счётчиков) и "auth failed" (connect-script
+    отказал, но запись с username и адресом висит мгновение). Это не сессии: считать их онлайном
+    нельзя. Записи без поля State разбираются как раньше, остальные — строго."""
     if not isinstance(obj, dict):
         return False
-    return obj.get("State") == "pre-auth" or obj.get("Username") == "(none)"
+    state = obj.get("State")
+    return (state is not None and state != "connected") or obj.get("Username") == "(none)"
 
 
 def parse_status(text: str) -> OcStatus:

@@ -47,6 +47,19 @@ def test_a_session_still_in_pre_auth_is_not_a_session_yet() -> None:
     assert [s.username for s in parse_users(text)] == ["c1-d1"]
 
 
+def test_a_refused_client_is_not_online() -> None:
+    # connect-script отказал, но occtl ещё мгновение показывает запись с username, адресом
+    # и нулевыми счётчиками в состоянии "auth failed". Снято с живого ocserv. Раньше такой
+    # клиент считался подключённым: тест «после истечения не подключается» не падал.
+    text = (
+        '[{"ID": 9, "Username": "c1-d1", "State": "auth failed", "Remote IP": "1.2.3.4",'
+        ' "IPv4": "10.77.0.192", "RX": "0", "TX": "0", "raw_connected_at": 1790970289},'
+        ' {"ID": 10, "Username": "c2-d1", "State": "connected", "Remote IP": "1.2.3.5",'
+        ' "RX": "1", "TX": "2", "raw_connected_at": 1790970290}]'
+    )
+    assert [s.username for s in parse_users(text)] == ["c2-d1"]
+
+
 def test_only_pre_auth_sessions_means_nobody_is_online() -> None:
     text = '[{"ID": 46, "Username": "(none)", "State": "pre-auth", "Remote IP": "172.18.0.3"}]'
     assert parse_users(text) == []
