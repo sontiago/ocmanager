@@ -1,0 +1,26 @@
+# L4-мультиплексор по SNI (спека §1.7, §4.4). Трафик не расшифровывается.
+worker_processes auto;
+error_log /dev/stderr warn;
+pid /tmp/nginx.pid;
+
+events { worker_connections 4096; }
+
+stream {
+    # Docker-DNS: имена резолвятся при каждом соединении, поэтому пересоздание ocserv или caddy
+    # (новый IP) не требует перезапуска nginx (решение П7-5).
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
+    map $ssl_preread_server_name $backend {
+        "${DOMAIN_VPN}"  ocserv:443;
+        default          caddy:8443;   # включая соединения без SNI (решение П7-6)
+    }
+
+    server {
+        listen 443;
+        ssl_preread on;
+        proxy_pass $backend;
+        # Настоящий адрес клиента для ocserv и Caddy (решение П7-2).
+        proxy_protocol on;
+        proxy_connect_timeout 5s;
+    }
+}

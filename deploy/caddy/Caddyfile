@@ -1,0 +1,61 @@
+# Caddy: сертификаты обоих доменов (HTTP-01 на :80), прокси панели и статика Mini App.
+# TLS на 443 для APP терминирует Caddy на :8443 (за nginx), для VPN — сам ocserv.
+{
+	email {$ACME_EMAIL}
+
+	# Снаружи 443 принимает nginx; Caddy слушает 8443.
+	https_port 8443
+	# Автоматический редирект подставил бы :8443 в Location (решение П7-4) — делаем свой.
+	auto_https disable_redirects
+
+	servers :8443 {
+		listener_wrappers {
+			# Настоящий адрес клиента от nginx; принимаем заголовок только из сети edge (П7-3).
+			proxy_protocol {
+				timeout 5s
+				allow 172.29.10.0/24
+			}
+			tls
+		}
+	}
+}
+
+http:// {
+	redir https://{host}{uri} permanent
+}
+
+# Сертификат этого домена нужен ocserv. Для него nginx направляет соединения мимо Caddy,
+# так что блок существует ради выпуска и продления сертификата.
+{$DOMAIN_VPN} {
+	respond 404
+}
+
+{$DOMAIN_APP} {
+	encode gzip
+
+	header {
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Content-Type-Options nosniff
+		# Mini App открывается в iframe веб-клиента Telegram: заголовок даёт белый экран без ошибок.
+		-X-Frame-Options
+	}
+
+	handle /api/* {
+		reverse_proxy api-public:8000
+	}
+
+	handle /webhooks/* {
+		reverse_proxy api-public:8000
+	}
+
+	# Явный 404: иначе SPA-фоллбэк ниже ответил бы 200 страницей Mini App (Review Focus №6).
+	handle /internal/* {
+		respond 404
+	}
+
+	handle {
+		root * /srv/tma
+		try_files {path} /index.html
+		file_server
+	}
+}
