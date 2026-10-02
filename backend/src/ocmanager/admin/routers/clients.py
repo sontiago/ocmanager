@@ -13,11 +13,12 @@ from ocmanager.admin.schemas import (
     ClientOut,
     DailyTrafficOut,
     DeviceOut,
+    PaymentOut,
     SessionRowOut,
     SubscriptionOut,
 )
 from ocmanager.audit import service as audit
-from ocmanager.billing.models import Plan
+from ocmanager.billing.models import Payment, Plan
 from ocmanager.core.clock import utcnow
 from ocmanager.core.db import SessionDep
 from ocmanager.core.errors import NotFound
@@ -42,6 +43,7 @@ ClientStatus = Literal[
 ]  # none — подписки нет вовсе
 SESSIONS_IN_CARD = 50
 TRAFFIC_DAYS = 30
+PAYMENTS_IN_CARD = 50
 
 
 class ClientRow(ClientOut):
@@ -57,7 +59,7 @@ class ClientCard(BaseModel):
     devices: list[DeviceOut]  # все, включая отозванные
     traffic_daily: list[DailyTrafficOut]  # за 30 дней по дням, по возрастанию
     sessions: list[SessionRowOut]  # последние 50
-    payments: list[object]  # появится вместе с платежами (Фаза 5)
+    payments: list[PaymentOut]  # последние 50, новые первыми
 
 
 class GrantBody(BaseModel):
@@ -180,6 +182,12 @@ async def client_card(
         .order_by(SessionLog.started_at.desc(), SessionLog.id.desc())
         .limit(SESSIONS_IN_CARD)
     )
+    payments = await db.scalars(
+        select(Payment)
+        .where(Payment.client_id == client_id)
+        .order_by(Payment.received_at.desc(), Payment.id.desc())
+        .limit(PAYMENTS_IN_CARD)
+    )
     return ClientCard(
         client=ClientOut.of(client),
         subscription=None if sub is None else await subscription_out(db, sub),
@@ -195,7 +203,7 @@ async def client_card(
             DailyTrafficOut(day=day, bytes_in=int(rx), bytes_out=int(tx)) for day, rx, tx in daily
         ],
         sessions=[SessionRowOut.of(s) for s in sessions],
-        payments=[],
+        payments=[PaymentOut.of(p) for p in payments],
     )
 
 

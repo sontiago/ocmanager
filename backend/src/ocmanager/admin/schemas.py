@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from ocmanager.audit.models import AuditLog
+from ocmanager.billing.models import Payment
 from ocmanager.nodes.models import Node, SessionLog
 from ocmanager.nodes.service import NodeHealth
 from ocmanager.provisioning.models import Device
@@ -236,4 +237,34 @@ class AuditRow(BaseModel):
             target_type=a.target_type,
             target_id=a.target_id,
             details=a.details,
+        )
+
+
+class PaymentOut(BaseModel):
+    id: int
+    client_id: int
+    subscription_id: int | None
+    provider: str
+    external_id: str
+    plan_id: int | None
+    amount: int  # минорные единицы
+    currency: str
+    status: str  # succeeded | refunded
+    received_at: datetime
+    processed_at: datetime | None  # None — платёж записан, но доступ не выдан
+
+    @classmethod
+    def of(cls, p: Payment) -> "PaymentOut":
+        return cls(
+            id=p.id,
+            client_id=p.client_id,
+            subscription_id=p.subscription_id,
+            provider=p.provider,
+            external_id=p.external_id,
+            plan_id=p.plan_id,
+            amount=p.amount,
+            currency=p.currency,
+            status=p.status,
+            received_at=p.received_at,
+            processed_at=p.processed_at,
         )

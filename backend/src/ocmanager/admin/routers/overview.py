@@ -6,8 +6,9 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from ocmanager.admin.deps import CurrentAdmin, RedisDep
-from ocmanager.admin.schemas import AuditRow, HealthOut, NodeOut
+from ocmanager.admin.schemas import AuditRow, HealthOut, NodeOut, PaymentOut
 from ocmanager.audit.models import AuditLog
+from ocmanager.billing.models import Payment, WebhookEvent
 from ocmanager.core.clock import utcnow
 from ocmanager.core.db import SessionDep
 from ocmanager.nodes import registry, service
@@ -19,6 +20,8 @@ router = APIRouter(tags=["overview"])
 
 EXPIRING_DAYS = 3
 RECENT_AUDIT = 20
+REVENUE_DAYS = 30
+RECENT_PAYMENTS = 10
 
 
 class TrafficOut(BaseModel):
@@ -37,7 +40,9 @@ class OverviewOut(BaseModel):
     expiring_soon: int  # живые подписки, что закончатся за EXPIRING_DAYS суток
     recent_audit: list[AuditRow]
     last_reconcile: dict[str, Any] | None  # отчёт последней сверки как есть
-    revenue: None = None  # выручка — Фаза 5
+    revenue: dict[str, int]  # валюта → минорные единицы; успешные платежи за 30 дней
+    recent_payments: list[PaymentOut]
+    webhooks_needing_attention: int  # failed + dead: ждут человека
 
 
 @router.get("/overview")
@@ -76,6 +81,27 @@ async def overview(ctx: CurrentAdmin, db: SessionDep, redis: RedisDep) -> Overvi
         .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
         .limit(RECENT_AUDIT)
     )
+    revenue = {
+        currency: int(total)
+        for currency, total in await db.execute(
+            select(Payment.currency, func.sum(Payment.amount))
+            .where(
+                Payment.status == "succeeded",
+                Payment.received_at >= now - timedelta(days=REVENUE_DAYS),
+            )
+            .group_by(Payment.currency)
+        )
+    }
+    recent_payments = await db.scalars(
+        select(Payment)
+        .order_by(Payment.received_at.desc(), Payment.id.desc())
+        .limit(RECENT_PAYMENTS)
+    )
+    attention = await db.scalar(
+        select(func.count())
+        .select_from(WebhookEvent)
+        .where(WebhookEvent.status.in_(("failed", "dead")))
+    )
     return OverviewOut(
         node=None if node is None else NodeOut.of(node),
         health=None if cached is None else HealthOut.of(cached),
@@ -87,4 +113,7 @@ async def overview(ctx: CurrentAdmin, db: SessionDep, redis: RedisDep) -> Overvi
         expiring_soon=int(expiring or 0),
         recent_audit=[AuditRow.of(a) for a in recent],
         last_reconcile=None if node is None else node.last_reconcile_report,
+        revenue=revenue,
+        recent_payments=[PaymentOut.of(p) for p in recent_payments],
+        webhooks_needing_attention=int(attention or 0),
     )

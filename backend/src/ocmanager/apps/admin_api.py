@@ -18,6 +18,7 @@ from ocmanager.admin.routers import clients as clients_router
 from ocmanager.admin.routers import devices as devices_router
 from ocmanager.admin.routers import node as node_router
 from ocmanager.admin.routers import overview as overview_router
+from ocmanager.admin.routers import payments as payments_router
 from ocmanager.admin.routers import plans as plans_router
 from ocmanager.admin.routers import settings as settings_router
 from ocmanager.admin.routers import subscriptions as subscriptions_router
@@ -95,6 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(auth_router.router)
     api.include_router(clients_router.router)
     api.include_router(subscriptions_router.router)
+    api.include_router(payments_router.router)
     api.include_router(plans_router.router)
     api.include_router(devices_router.router)
     api.include_router(node_router.router)

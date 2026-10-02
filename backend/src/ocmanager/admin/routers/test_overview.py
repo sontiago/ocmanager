@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 from arq import ArqRedis
-from conftest import MakeClient, MakeSubscription
+from conftest import MakeClient, MakePayment, MakeSubscription, MakeWebhook
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,7 +30,9 @@ async def test_an_empty_system_gives_zeros_not_errors(admin_client: AsyncClient)
     assert (body["traffic"]["bytes_in"], body["traffic"]["bytes_out"]) == (0, 0)
     assert body["expiring_soon"] == 0
     assert body["last_reconcile"] is None
-    assert body["revenue"] is None
+    assert body["revenue"] == {}
+    assert body["recent_payments"] == []
+    assert body["webhooks_needing_attention"] == 0
     assert body["subscriptions_by_status"] == {
         "pending_payment": 0,
         "trial": 0,
@@ -112,3 +114,27 @@ async def test_nothing_secret_leaks_through_the_read_endpoints(
 
 async def test_the_body_is_json(admin_client: AsyncClient) -> None:
     assert json.loads((await admin_client.get("/admin/overview")).text)
+
+
+async def test_revenue_is_summed_per_currency_over_thirty_days(
+    admin_client: AsyncClient,
+    make_client: MakeClient,
+    make_payment: MakePayment,
+    make_webhook: MakeWebhook,
+) -> None:
+    client = await make_client()
+    await make_payment(client, amount=19900, currency="RUB")
+    await make_payment(client, amount=10000, currency="RUB")
+    await make_payment(client, amount=500, currency="USD")
+    await make_payment(client, amount=99999, currency="RUB", status="refunded")
+    await make_payment(
+        client, amount=7777, currency="RUB", received_at=utcnow() - timedelta(days=31)
+    )
+    await make_webhook(status="dead")
+    await make_webhook(status="failed")
+    await make_webhook(status="processed")
+
+    body = (await admin_client.get("/admin/overview")).json()
+    assert body["revenue"] == {"RUB": 29900, "USD": 500}  # возврат и старый платёж не считаются
+    assert [p["amount"] for p in body["recent_payments"]] == [99999, 500, 10000, 19900, 7777]
+    assert body["webhooks_needing_attention"] == 2
