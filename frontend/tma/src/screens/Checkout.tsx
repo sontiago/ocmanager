@@ -4,7 +4,7 @@ import { ROUTES } from "../app/routes";
 import { useTranslation } from "../i18n/useTranslation";
 import { formatMoney } from "../lib/format";
 import { haptic } from "../telegram/haptics";
-import { closeApp, openExternal } from "../telegram/links";
+import { closeApp, isTelegramLink, openExternal } from "../telegram/links";
 import { Button } from "../ui/Button";
 import { Caption } from "../ui/Caption";
 import { Card } from "../ui/Card";
@@ -55,7 +55,9 @@ export function Checkout() {
       onSuccess: ({ checkout_url }) => {
         // Порядок обязателен: закрытое мини-приложение уже ничего не откроет.
         openExternal(checkout_url);
-        closeApp();
+        // Ссылка Tribute (t.me/…) открывает его мини-приложение поверх нашего: закрыв наше
+        // сразу, мы обрываем это открытие. После оплаты человек вернётся в открытое приложение.
+        if (!isTelegramLink(checkout_url)) closeApp();
       },
       // Успех вибрацией не отмечаем: приложение в этот момент закрывается,
       // и отметить её некому. Неудача, наоборот, остаётся на экране.

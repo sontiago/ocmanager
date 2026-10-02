@@ -2,7 +2,7 @@ import { miniApp, openLink, openTelegramLink } from "@telegram-apps/sdk-react";
 
 const TELEGRAM_HOSTS = new Set(["t.me", "telegram.me"]);
 
-function isTelegramLink(url: string): boolean {
+export function isTelegramLink(url: string): boolean {
   try {
     const { protocol, hostname } = new URL(url);
     return protocol === "https:" && TELEGRAM_HOSTS.has(hostname);

@@ -11,6 +11,7 @@ const links = vi.hoisted(() => ({
   openExternal: vi.fn(),
   closeApp: vi.fn(),
   openInTelegram: vi.fn(),
+  isTelegramLink: vi.fn(() => false),
 }));
 vi.mock("../telegram/links", () => links);
 
@@ -71,6 +72,17 @@ describe("экран оплаты", () => {
     expect(links.openExternal.mock.invocationCallOrder[0]).toBeLessThan(
       links.closeApp.mock.invocationCallOrder[0],
     );
+  });
+
+  it("ссылка Telegram открывается поверх приложения, и приложение не закрывается", async () => {
+    links.isTelegramLink.mockReturnValueOnce(true);
+    show("month_1");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Перейти к оплате" }),
+    );
+
+    await waitFor(() => expect(links.openExternal).toHaveBeenCalledOnce());
+    expect(links.closeApp).not.toHaveBeenCalled();
   });
 
   it("сбой оплаты называет причину и никуда не уводит", async () => {
