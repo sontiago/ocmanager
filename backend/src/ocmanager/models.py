@@ -12,6 +12,7 @@ from ocmanager.core import models as _core  # noqa: F401
 from ocmanager.core.db import Base
 from ocmanager.events import models as _events  # noqa: F401
 from ocmanager.nodes import models as _nodes  # noqa: F401
+from ocmanager.notifications import models as _notifications  # noqa: F401
 from ocmanager.provisioning import models as _provisioning  # noqa: F401
 from ocmanager.subscriptions import models as _subscriptions  # noqa: F401
 
