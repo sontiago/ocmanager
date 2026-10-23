@@ -5,6 +5,8 @@ import { useT } from "../i18n";
 import { formatBytes, formatDateTime, formatMoney, relativeTime } from "../lib/format";
 import { Card } from "../ui/Card";
 import { SmallBox } from "../ui/SmallBox";
+import { TrafficChart } from "../ui/charts";
+import { useTrafficStats } from "../api/hooks/stats";
 import { StatusBadge, type Tone } from "../ui/StatusBadge";
 
 const STATE_TONE: Record<string, Tone> = { online: "ok", degraded: "warn", offline: "danger" };
@@ -15,6 +17,23 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-muted">{label}</span>
       <span className="font-medium">{children}</span>
     </div>
+  );
+}
+
+const DYNAMICS_DAYS = 7;
+
+/** Неделя трафика под обзором. Не получилось загрузить — карточки просто нет: страница важнее. */
+function Dynamics() {
+  const { t } = useT();
+  const traffic = useTrafficStats(DYNAMICS_DAYS);
+  if (!traffic.data) return null;
+  return (
+    <Card title={t("overview.dynamics")}>
+      <TrafficChart data={traffic.data.days} inLabel={t("stats.rx")} outLabel={t("stats.tx")} />
+      <Link to="/stats" className="mt-2 inline-block text-accent">
+        {t("overview.moreStats")} →
+      </Link>
+    </Card>
   );
 }
 
@@ -138,7 +157,7 @@ export function OverviewPage() {
                   to={`/subscriptions?status=${status}`}
                   className="flex justify-between py-0.5 hover:text-accent"
                 >
-                  <span>{status}</span>
+                  <span>{t(`sub.status.${status}`)}</span>
                   <span className="font-medium">{count}</span>
                 </Link>
               ))}
@@ -168,6 +187,7 @@ export function OverviewPage() {
           </div>
         </Card>
       </div>
+      <Dynamics />
     </div>
   );
 }

@@ -26,6 +26,9 @@ export const useCreatePromo = () =>
     queryKeys.promo.all,
   ]);
 
+export const useDeletePromo = () =>
+  useApiMutation<number, void>((c, id) => c.delete(`/promo-codes/${id}`), [queryKeys.promo.all]);
+
 export const usePatchPromo = () =>
   useApiMutation<{ id: number; patch: S<"PromoPatch"> }, S<"PromoOut">>(
     (c, { id, patch }) => c.patch(`/promo-codes/${id}`, patch),

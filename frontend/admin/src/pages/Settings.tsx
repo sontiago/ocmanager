@@ -3,7 +3,7 @@ import { useSettings, usePatchSettings } from "../api/hooks/settings";
 import type { S } from "../api/types";
 import { useT } from "../i18n";
 import { errorText } from "../lib/errors";
-import { toForm, toPatch, type SettingsForm } from "../lib/settingsForm";
+import { hasInvalidNumbers, toForm, toPatch, type SettingsForm } from "../lib/settingsForm";
 import { Card } from "../ui/Card";
 import { Field, inputClass, primaryButtonClass } from "../ui/Field";
 import { Notice } from "../ui/Notice";
@@ -13,6 +13,10 @@ function Form({ settings }: { settings: S<"SettingsOut"> }) {
   const patch = usePatchSettings();
   const [form, setForm] = useState<SettingsForm>(toForm(settings.runtime));
   const [notice, setNotice] = useState<string | null>(null);
+  const [invalid, setInvalid] = useState(false);
+  // С чем сравнивать: то, из чего форма была заполнена, а не последний ответ сервера. Иначе чужая
+  // правка другого поля, пришедшая при обновлении, ушла бы обратно старым значением.
+  const [baseline, setBaseline] = useState(settings.runtime);
 
   const bind = (key: keyof SettingsForm) => ({
     value: form[key],
@@ -22,10 +26,13 @@ function Form({ settings }: { settings: S<"SettingsOut"> }) {
   function submit(e: FormEvent) {
     e.preventDefault();
     setNotice(null);
-    const changes = toPatch(settings.runtime, form);
+    setInvalid(hasInvalidNumbers(form));
+    if (hasInvalidNumbers(form)) return;
+    const changes = toPatch(baseline, form);
     if (Object.keys(changes).length === 0) return;
     patch.mutate(changes, {
       onSuccess: (saved) => {
+        setBaseline(saved.runtime);
         setForm(toForm(saved.runtime));
         setNotice(t("settings.saved"));
       },
@@ -58,6 +65,7 @@ function Form({ settings }: { settings: S<"SettingsOut"> }) {
       <Field label={t("settings.retentionDays")}>
         <input className={inputClass} type="number" {...bind("traffic_retention_days")} />
       </Field>
+      {invalid && <Notice tone="danger" text={t("settings.fillNumbers")} />}
       {patch.error && <Notice tone="danger" text={errorText(patch.error, t)} />}
       <Notice text={notice} />
       <button type="submit" className={primaryButtonClass} disabled={patch.isPending}>

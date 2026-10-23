@@ -104,7 +104,11 @@ function TotpCard() {
             <input className={inputClass} inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} required />
           </Field>
           {failing && <Notice tone="danger" text={errorText(failing, t)} />}
-          <button type="submit" className={enabled ? buttonClass : primaryButtonClass}>
+          <button
+            type="submit"
+            className={enabled ? buttonClass : primaryButtonClass}
+            disabled={(enabled ? disable : confirm).isPending}
+          >
             {enabled ? t("profile.totpDisable") : t("profile.totpConfirm")}
           </button>
         </form>

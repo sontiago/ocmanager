@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { useDevices, useDeviceSessions, useRevokeDevice } from "../api/hooks/devices";
+import { isApiError } from "../api/errors";
 import type { S } from "../api/types";
 import { useT } from "../i18n";
 import { errorText } from "../lib/errors";
@@ -76,6 +77,10 @@ export function DevicesPage() {
   const { values, set, limit, offset, setOffset } = useUrlFilters(KEYS);
   const [text, setText] = useState(values.q ?? "");
   const debounced = useDebounced(text, 300);
+  // Адрес меняется и не от ввода («Назад», пункт меню): поле должно показывать то, что в URL.
+  useEffect(() => {
+    setText(values.q ?? "");
+  }, [values.q]);
   useEffect(() => {
     if (debounced !== (values.q ?? "")) set({ q: debounced });
   }, [debounced]);
@@ -185,7 +190,14 @@ export function DevicesPage() {
         rows={query.data?.items}
         rowKey={(d) => d.id}
         loading={query.isPending}
-        error={query.error ? t("common.error") : null}
+        error={
+          !query.error
+            ? null
+            : // Фильтр «онлайн» считается по кэшу ноды: нет кэша — честный отказ бэкенда, не сбой.
+              values.online !== undefined && isApiError(query.error) && query.error.status === 503
+              ? t("devices.noNodeData")
+              : t("common.error")
+        }
       />
       {query.data && <Pagination total={query.data.total} limit={limit} offset={offset} onChange={setOffset} />}
       {toRevoke && <RevokeDialog device={toRevoke} onClose={() => setToRevoke(null)} />}

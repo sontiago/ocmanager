@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderRoutes } from "../test/utils";
 import { ClientsPage } from "./Clients";
@@ -72,4 +72,30 @@ test("export_link_carries_current_filters", async () => {
   page("/clients?status=active&blocked=false");
   const link = await screen.findByRole("link", { name: "Экспорт CSV" });
   expect(link).toHaveAttribute("href", "/admin/export/clients.csv?status=active&blocked=false");
+});
+
+test("search_box_follows_the_url_on_back_navigation", async () => {
+  const user = userEvent.setup();
+  const { router } = page("/clients?q=bob");
+  const box = await screen.findByPlaceholderText("Поиск по имени, @username или Telegram ID");
+  expect(box).toHaveValue("bob");
+  await act(async () => {
+    await router.navigate("/clients");
+  });
+  expect(box).toHaveValue("");
+  await act(async () => {
+    await router.navigate("/clients?q=anna");
+  });
+  expect(box).toHaveValue("anna");
+  expect(user).toBeDefined();
+});
+
+test("typing_still_wins_over_a_stale_url", async () => {
+  const user = userEvent.setup();
+  const { calls } = page("/clients?q=bob");
+  const box = await screen.findByPlaceholderText("Поиск по имени, @username или Telegram ID");
+  await user.clear(box);
+  await user.type(box, "eve");
+  await waitFor(() => expect(lastQuery(calls).get("q")).toBe("eve"), { timeout: 2000 });
+  expect(box).toHaveValue("eve");
 });

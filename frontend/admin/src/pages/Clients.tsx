@@ -31,6 +31,10 @@ export function ClientsPage() {
 
   const [text, setText] = useState(values.q ?? "");
   const debounced = useDebounced(text, 300);
+  // Адрес меняется и не от ввода («Назад», пункт меню): поле должно показывать то, что в URL.
+  useEffect(() => {
+    setText(values.q ?? "");
+  }, [values.q]);
   useEffect(() => {
     if (debounced !== (values.q ?? "")) set({ q: debounced });
     // values.q намеренно вне зависимостей: иначе правка URL извне перезаписывалась бы старым текстом

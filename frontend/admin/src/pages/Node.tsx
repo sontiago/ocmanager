@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   useNode,
@@ -9,6 +9,7 @@ import {
   type NodeAction,
 } from "../api/hooks/node";
 import { isApiError } from "../api/errors";
+import { useApiClient } from "../api/session";
 import type { S } from "../api/types";
 import { useT } from "../i18n";
 import { errorText } from "../lib/errors";
@@ -33,9 +34,28 @@ interface Pending {
 function Logs() {
   const { t } = useT();
   const [running, setRunning] = useState(false);
+  const client = useApiClient();
   const stream = useEventSource(running ? `/admin/node/logs?tail=${TAIL}` : null, {
     max: MAX_LOG_LINES,
   });
+
+  // EventSource не сообщает код ответа: «голый» обрыв может быть и недоступной нодой (503), и
+  // истёкшей сессией (401). Уточняем обычным запросом: 401 клиент API сам превратит в выход на
+  // логин, а 503 даст честное «нода недоступна» вместо «соединение потеряно».
+  const [nodeDown, setNodeDown] = useState(false);
+  useEffect(() => {
+    if (stream.state !== "error" || stream.error) {
+      setNodeDown(false);
+      return;
+    }
+    let alive = true;
+    client.get("/node/sessions").catch((err: unknown) => {
+      if (alive && isApiError(err) && err.status === 503) setNodeDown(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [client, stream.state, stream.error]);
 
   return (
     <Card
@@ -54,7 +74,10 @@ function Logs() {
       }
     >
       {stream.state === "error" && (
-        <Notice tone="danger" text={stream.error ? t("node.unavailable") : t("node.logsLost")} />
+        <Notice
+          tone="danger"
+          text={stream.error || nodeDown ? t("node.unavailable") : t("node.logsLost")}
+        />
       )}
       <pre className="mt-2 h-80 overflow-auto rounded-md border border-border bg-bg p-2 text-xs">
         {stream.lines.map((line, i) => (
@@ -62,6 +85,32 @@ function Logs() {
         ))}
       </pre>
     </Card>
+  );
+}
+
+interface SavedReportShape {
+  drifts?: { kind: string; details?: unknown }[];
+  error?: string | null;
+}
+
+/** Отчёт последней сверки как его сохранил воркер: форма словаря задана бэкендом свободно. */
+function SavedReport({ report, at }: { report: Record<string, unknown>; at: string | null }) {
+  const { t } = useT();
+  const { drifts = [], error } = report as SavedReportShape;
+  return (
+    <div className="space-y-2">
+      {at && <p className="text-muted">{formatDateTime(at)}</p>}
+      {error && <Notice tone="danger" text={error} />}
+      {drifts.length === 0 && !error && <p className="text-ok">{t("node.noDrifts")}</p>}
+      <ul className="space-y-1">
+        {drifts.map((d, i) => (
+          <li key={i}>
+            <code>{d.kind}</code>{" "}
+            {d.details !== undefined && <span className="text-muted">{JSON.stringify(d.details)}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -163,6 +212,12 @@ export function NodePage() {
               </li>
             ))}
           </ul>
+        </Card>
+      )}
+
+      {node.data.last_reconcile_report && (
+        <Card title={t("node.lastReconcile")}>
+          <SavedReport report={node.data.last_reconcile_report} at={n.last_reconcile_at} />
         </Card>
       )}
 

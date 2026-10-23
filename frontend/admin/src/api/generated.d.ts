@@ -951,7 +951,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Promo Code */
+        delete: operations["delete_promo_code_admin_promo_codes__promo_id__delete"];
         options?: never;
         head?: never;
         /** Update Promo Code */
@@ -3703,6 +3704,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PromoOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_promo_code_admin_promo_codes__promo_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                promo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

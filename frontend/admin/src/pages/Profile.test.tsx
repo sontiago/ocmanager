@@ -63,3 +63,19 @@ test("current_session_has_no_close_button", async () => {
   expect(screen.getAllByRole("button", { name: "Закрыть сессию" })).toHaveLength(1);
   expect(screen.getByText("текущая")).toBeInTheDocument();
 });
+
+test("the_totp_confirm_button_is_locked_while_the_request_is_in_flight", async () => {
+  const user = userEvent.setup();
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  page({
+    "POST /admin/auth/totp/setup": { otpauth_uri: "otpauth://totp/x?secret=ABCDEF", secret: "ABCDEF" },
+    "POST /admin/auth/totp/confirm": () => gate.then(() => undefined),
+  });
+  await user.click(await screen.findByRole("button", { name: "Включить 2FA" }));
+  await user.type(await screen.findByLabelText("Код из приложения"), "123456");
+  const confirm = screen.getByRole("button", { name: "Подтвердить код" });
+  await user.click(confirm);
+  await waitFor(() => expect(confirm).toBeDisabled());
+  release();
+});

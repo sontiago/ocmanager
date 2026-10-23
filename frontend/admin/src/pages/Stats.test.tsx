@@ -140,3 +140,28 @@ test("export_link_follows_the_period", async () => {
     ),
   );
 });
+
+test("the_referral_block_shows_the_funnel_and_links_to_the_page", async () => {
+  page({
+    "GET /admin/referrals/stats": {
+      invited: 40,
+      paying: 10,
+      conversion_percent: 25,
+      days_given: 120,
+      devices_given: 2,
+      traffic_bytes_given: 0,
+      tiers: [],
+    },
+  });
+  const block = await screen.findByRole("region", { name: "Рефералы" });
+  expect(await within(block).findByText("40")).toBeInTheDocument();
+  expect(within(block).getByText("10")).toBeInTheDocument();
+  expect(within(block).getByText("25%")).toBeInTheDocument();
+  expect(within(block).getByRole("link", { name: /Подробнее/ })).toHaveAttribute("href", "/referrals");
+});
+
+test("a_failed_referral_request_does_not_blank_the_statistics", async () => {
+  page({ "GET /admin/referrals/stats": apiError(500, "internal") });
+  expect(await screen.findByRole("region", { name: "Ключевые показатели" })).toBeInTheDocument();
+  expect(await screen.findByRole("region", { name: "Топ клиентов по трафику" })).toBeInTheDocument();
+});

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   useClientsStats,
   useEconomics,
@@ -10,6 +10,7 @@ import type { S } from "../api/types";
 import { useT } from "../i18n";
 import { formatBytes, formatMoney } from "../lib/format";
 import { useUrlFilters } from "../lib/useUrlFilters";
+import { useReferralStats } from "../api/hooks/referrals";
 import { Card } from "../ui/Card";
 import { CountChart, RevenueChart, TrafficChart } from "../ui/charts";
 import { DataTable, type Column } from "../ui/DataTable";
@@ -37,6 +38,7 @@ export function StatsPage() {
   const revenue = useRevenueStats(days);
   const clients = useClientsStats(days);
   const economics = useEconomics();
+  const referrals = useReferralStats();
   const [pickedCurrency, setPickedCurrency] = useState<string | null>(null);
 
   const currencies = revenue.data?.totals.map((x) => x.currency) ?? [];
@@ -153,6 +155,32 @@ export function StatsPage() {
           )}
         </Card>
       </div>
+
+      {referrals.data && (
+        <Card title={t("nav.referrals")}>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+            <div>
+              <dt className="text-muted">{t("referrals.invited")}</dt>
+              <dd className="text-xl font-semibold">{referrals.data.invited}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">{t("referrals.paying")}</dt>
+              <dd className="text-xl font-semibold">{referrals.data.paying}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">{t("referrals.conversion")}</dt>
+              <dd className="text-xl font-semibold">{referrals.data.conversion_percent}%</dd>
+            </div>
+            <div>
+              <dt className="text-muted">{t("referrals.daysGiven")}</dt>
+              <dd className="text-xl font-semibold">{referrals.data.days_given}</dd>
+            </div>
+          </dl>
+          <Link to="/referrals" className="mt-2 inline-block text-accent">
+            {t("stats.more")} →
+          </Link>
+        </Card>
+      )}
 
       <Card title={t("stats.topClients")}>
         {traffic.error ? (

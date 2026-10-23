@@ -315,5 +315,15 @@
   "apiError.not_applicable": "Not applicable to this subscription",
   "apiError.pki_not_ready": "The certificate authority is not created (ocmanager pki init)",
   "apiError.network": "Cannot reach the server",
-  "apiError.internal": "Server error"
+  "apiError.internal": "Server error",
+  "devices.noNodeData": "No node state data: the “online” filter is unavailable right now (the worker has not refreshed the cache).",
+  "node.lastReconcile": "Last reconcile",
+  "settings.fillNumbers": "Fill in the numbers: empty and non-numeric values are not accepted",
+  "overview.dynamics": "Trends",
+  "overview.moreStats": "Detailed statistics",
+  "stats.more": "More",
+  "promo.delete": "Delete",
+  "promo.deleteOf": "Delete {code}",
+  "promo.deleteTitle": "Delete promo code {code}?",
+  "promo.deleteBody": "Nobody has used the code yet, so it is removed for good."
 }

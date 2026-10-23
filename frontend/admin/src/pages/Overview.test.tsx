@@ -119,7 +119,7 @@ test("warns_when_webhooks_need_attention", async () => {
 
 test("status_links_filter_subscriptions", async () => {
   page(FULL);
-  const link = await screen.findByRole("link", { name: /active/ });
+  const link = await screen.findByRole("link", { name: /активна/ });
   expect(link).toHaveAttribute("href", "/subscriptions?status=active");
 });
 
@@ -129,4 +129,60 @@ test("shows_error_state_on_api_failure", async () => {
     { handlers: { "GET /admin/overview": apiError(500, "internal") } },
   );
   expect(await screen.findByRole("alert")).toBeInTheDocument();
+});
+
+test("subscription_statuses_are_shown_in_the_interface_language", async () => {
+  page({
+    ...FULL,
+    subscriptions_by_status: { pending_payment: 0, active: 310, exhausted: 4, trial: 42 },
+  });
+  const money = await screen.findByRole("region", { name: "Деньги" });
+  expect(within(money).getByText("активна")).toBeInTheDocument();
+  expect(within(money).getByText("трафик исчерпан")).toBeInTheDocument();
+  expect(within(money).getByText("ждёт оплаты")).toBeInTheDocument();
+  expect(within(money).queryByText("pending_payment")).toBeNull();
+});
+
+test("the_dynamics_card_shows_a_week_and_links_to_statistics", async () => {
+  renderPage(<OverviewPage />, {
+    handlers: {
+      "GET /admin/overview": FULL,
+      "GET /admin/stats/traffic": {
+        days: [
+          { day: "2026-10-22", bytes_in: 10, bytes_out: 20 },
+          { day: "2026-10-23", bytes_in: 30, bytes_out: 40 },
+        ],
+        top_clients: [],
+      },
+    },
+  });
+  const card = await screen.findByRole("region", { name: "Динамика" });
+  expect(within(card).getByRole("link", { name: /Подробная статистика/ })).toHaveAttribute(
+    "href",
+    "/stats",
+  );
+});
+
+test("the_dynamics_card_asked_for_seven_days", async () => {
+  const { calls } = renderPage(<OverviewPage />, {
+    handlers: {
+      "GET /admin/overview": FULL,
+      "GET /admin/stats/traffic": { days: [], top_clients: [] },
+    },
+  });
+  await screen.findByRole("region", { name: "Динамика" });
+  const q = calls.find((c) => c.url.pathname === "/admin/stats/traffic")!.url.searchParams;
+  expect(q.get("days")).toBe("7");
+});
+
+test("a_failed_dynamics_request_hides_the_card_without_breaking_the_page", async () => {
+  renderPage(<OverviewPage />, {
+    handlers: {
+      "GET /admin/overview": FULL,
+      "GET /admin/stats/traffic": apiError(500, "internal"),
+    },
+  });
+  await screen.findByRole("region", { name: "Сервис" });
+  expect(screen.queryByRole("region", { name: "Динамика" })).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
 });

@@ -15,6 +15,17 @@ export interface SettingsForm {
   traffic_retention_days: string;
 }
 
+/** Числа формы заполнены: пустое поле иначе ушло бы на сервер нулём или NaN. */
+export function hasInvalidNumbers(f: SettingsForm): boolean {
+  const single = [f.trial_days, f.trial_traffic_gb, f.traffic_retention_days];
+  const lists = [f.admin_chat_ids, f.expiry_reminder_days];
+  const bad = (s: string) => s.trim() === "" || !Number.isFinite(Number(s));
+  return (
+    single.some(bad) ||
+    lists.some((l) => l.split(",").map((x) => x.trim()).filter(Boolean).some(bad))
+  );
+}
+
 const list = (v: unknown) => (Array.isArray(v) ? v.join(", ") : "");
 const ints = (s: string) =>
   s

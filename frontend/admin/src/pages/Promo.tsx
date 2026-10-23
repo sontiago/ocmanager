@@ -1,11 +1,18 @@
 import { Fragment, useState, type FormEvent } from "react";
 import { Link } from "react-router";
-import { useCreatePromo, usePatchPromo, usePromoCodes, useRedemptions } from "../api/hooks/promo";
+import {
+  useCreatePromo,
+  useDeletePromo,
+  usePatchPromo,
+  usePromoCodes,
+  useRedemptions,
+} from "../api/hooks/promo";
 import type { S } from "../api/types";
 import { useT } from "../i18n";
 import { dayStartUtc } from "../lib/dates";
 import { errorText } from "../lib/errors";
 import { formatDateTime } from "../lib/format";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { buttonClass, Field, inputClass, primaryButtonClass } from "../ui/Field";
 import { Modal } from "../ui/Modal";
 import { Notice } from "../ui/Notice";
@@ -97,6 +104,8 @@ export function PromoPage() {
   const { t } = useT();
   const query = usePromoCodes();
   const patch = usePatchPromo();
+  const remove = useDeletePromo();
+  const [toDelete, setToDelete] = useState<S<"PromoOut"> | null>(null);
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
 
@@ -111,7 +120,9 @@ export function PromoPage() {
           {t("promo.new")}
         </button>
       </div>
-      {patch.error && <Notice tone="danger" text={errorText(patch.error, t)} />}
+      {(patch.error || remove.error) && (
+        <Notice tone="danger" text={errorText(patch.error ?? remove.error, t)} />
+      )}
       {query.error && <Notice tone="danger" text={t("common.error")} />}
       {query.isPending && <p className="text-muted">{t("common.loading")}</p>}
       {query.data && (
@@ -168,6 +179,15 @@ export function PromoPage() {
                         >
                           {p.is_active ? t("promo.off") : t("promo.on")}
                         </button>
+                        {p.uses === 0 && (
+                          <button
+                            className={buttonClass}
+                            aria-label={t("promo.deleteOf", { code: p.code })}
+                            onClick={() => setToDelete(p)}
+                          >
+                            {t("promo.delete")}
+                          </button>
+                        )}
                       </span>
                     </td>
                   </tr>
@@ -185,6 +205,22 @@ export function PromoPage() {
         </div>
       )}
       {creating && <PromoForm onClose={() => setCreating(false)} />}
+      <ConfirmDialog
+        open={toDelete !== null}
+        title={t("promo.deleteTitle", { code: toDelete?.code ?? "" })}
+        body={t("promo.deleteBody")}
+        confirmLabel={t("promo.delete")}
+        danger
+        pending={remove.isPending}
+        onCancel={() => setToDelete(null)}
+        onConfirm={() =>
+          toDelete &&
+          remove.mutate(toDelete.id, {
+            onSuccess: () => setToDelete(null),
+            onError: () => setToDelete(null),
+          })
+        }
+      />
     </div>
   );
 }

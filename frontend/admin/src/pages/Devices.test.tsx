@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderRoutes } from "../test/utils";
+import { apiError, renderRoutes } from "../test/utils";
 import { DevicesPage } from "./Devices";
 
 const dev = (over: Record<string, unknown> = {}) => ({
@@ -100,4 +100,32 @@ test("sessions_expand_shows_history", async () => {
   page([dev()]);
   await user.click(await screen.findByRole("button", { name: "Сессии" }));
   expect(await screen.findByText("1.2.3.4")).toBeInTheDocument();
+});
+
+test("search_box_follows_the_url_on_back_navigation", async () => {
+  const { router } = page([dev()], "/devices?q=c5");
+  const box = await screen.findByLabelText("Поиск");
+  expect(box).toHaveValue("c5");
+  await act(async () => {
+    await router.navigate("/devices");
+  });
+  expect(box).toHaveValue("");
+});
+
+test("online_filter_without_node_data_explains_itself_instead_of_a_generic_error", async () => {
+  renderRoutes([{ path: "/devices", element: <DevicesPage /> }], {
+    route: "/devices?online=true",
+    handlers: { "GET /admin/devices": apiError(503, "node_unavailable") },
+  });
+  expect(await screen.findByText(/нет данных о состоянии ноды/i)).toBeInTheDocument();
+  expect(screen.queryByText("Не удалось загрузить")).toBeNull();
+});
+
+test("a_503_without_the_online_filter_stays_a_normal_error", async () => {
+  renderRoutes([{ path: "/devices", element: <DevicesPage /> }], {
+    route: "/devices",
+    handlers: { "GET /admin/devices": apiError(503, "node_unavailable") },
+  });
+  expect(await screen.findByRole("alert")).toBeInTheDocument();
+  expect(screen.queryByText(/нет данных о состоянии ноды/i)).toBeNull();
 });

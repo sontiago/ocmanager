@@ -105,3 +105,21 @@ test("redemptions_expand_and_link_to_the_client", async () => {
   const link = await screen.findByRole("link", { name: "Anna" });
   expect(link).toHaveAttribute("href", "/clients/5");
 });
+
+test("an_unused_code_can_be_deleted_after_confirmation", async () => {
+  const user = userEvent.setup();
+  const { calls } = page(
+    { "DELETE /admin/promo-codes/1": () => undefined },
+    [{ ...CODE, uses: 0 }],
+  );
+  await user.click(await screen.findByRole("button", { name: "Удалить spring14" }));
+  expect(sent(calls, "DELETE")).toHaveLength(0);
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Удалить" }));
+  await waitFor(() => expect(sent(calls, "DELETE")).toHaveLength(1));
+});
+
+test("a_used_code_has_no_delete_button", async () => {
+  page();
+  await screen.findByText("spring14");
+  expect(screen.queryByRole("button", { name: "Удалить spring14" })).toBeNull();
+});

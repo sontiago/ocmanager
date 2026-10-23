@@ -1,7 +1,8 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { RequireAuth } from "../app/RequireAuth";
 import { FakeEventSource } from "../test/FakeEventSource";
-import { renderRoutes } from "../test/utils";
+import { apiError, renderRoutes } from "../test/utils";
 import { NodePage } from "./Node";
 
 beforeEach(() => {
@@ -132,4 +133,87 @@ test("leaving_the_page_closes_the_stream", async () => {
   await user.click(await screen.findByRole("button", { name: "Показать логи" }));
   unmount();
   expect(FakeEventSource.instances[0].closed).toBe(true);
+});
+
+test("a_bare_stream_error_with_an_unavailable_node_says_so", async () => {
+  const user = userEvent.setup();
+  renderRoutes([{ path: "/node", element: <NodePage /> }], {
+    route: "/node",
+    handlers: {
+      "GET /admin/node": { node: NODE, health: HEALTH, last_reconcile_report: null },
+      "GET /admin/node/sessions": apiError(503, "node_unavailable"),
+    },
+  });
+  await user.click(await screen.findByRole("button", { name: "Показать логи" }));
+  act(() => FakeEventSource.instances[0].emit("error")); // голое событие: статус неизвестен
+  expect((await screen.findAllByText("Нода недоступна")).length).toBeGreaterThan(0);
+  expect(screen.queryByText("Соединение с потоком потеряно")).toBeNull();
+});
+
+test("a_bare_stream_error_with_a_healthy_node_is_a_lost_connection", async () => {
+  const user = userEvent.setup();
+  page();
+  await user.click(await screen.findByRole("button", { name: "Показать логи" }));
+  act(() => FakeEventSource.instances[0].emit("error"));
+  expect(await screen.findByText("Соединение с потоком потеряно")).toBeInTheDocument();
+});
+
+test("a_stream_error_after_the_session_expired_sends_the_user_to_login", async () => {
+  const user = userEvent.setup();
+  let sessionCalls = 0;
+  const { router } = renderRoutes(
+    [
+      { path: "/login", element: <p>login page</p> },
+      { element: <RequireAuth />, children: [{ path: "/node", element: <NodePage /> }] },
+    ],
+    {
+      route: "/node",
+      handlers: {
+        "GET /admin/node": { node: NODE, health: HEALTH, last_reconcile_report: null },
+        // Сессия живёт, пока открыта страница, и умирает к моменту обрыва потока.
+        "GET /admin/node/sessions": () =>
+          ++sessionCalls === 1 ? [] : apiError(401, "unauthorized"),
+      },
+    },
+  );
+  await user.click(await screen.findByRole("button", { name: "Показать логи" }));
+  act(() => FakeEventSource.instances[0].emit("error"));
+  await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+});
+
+function reportPage(report: unknown) {
+  return renderRoutes([{ path: "/node", element: <NodePage /> }], {
+    route: "/node",
+    handlers: {
+      "GET /admin/node": { node: NODE, health: HEALTH, last_reconcile_report: report },
+      "GET /admin/node/sessions": [],
+    },
+  });
+}
+
+test("the_saved_reconcile_report_is_shown_with_its_drifts", async () => {
+  reportPage({
+    drifts: [{ kind: "crl_missing", details: { path: "/x" } }],
+    error: null,
+  });
+  const card = await screen.findByRole("region", { name: "Последняя сверка" });
+  expect(within(card).getByText("crl_missing")).toBeInTheDocument();
+});
+
+test("a_clean_saved_report_says_no_drifts", async () => {
+  reportPage({ drifts: [], error: null });
+  const card = await screen.findByRole("region", { name: "Последняя сверка" });
+  expect(within(card).getByText("Расхождений нет")).toBeInTheDocument();
+});
+
+test("a_saved_report_with_an_error_shows_it", async () => {
+  reportPage({ drifts: [], error: "node unreachable" });
+  const card = await screen.findByRole("region", { name: "Последняя сверка" });
+  expect(within(card).getByText("node unreachable")).toBeInTheDocument();
+});
+
+test("no_saved_report_means_no_card", async () => {
+  reportPage(null);
+  await screen.findByText("node-1");
+  expect(screen.queryByRole("region", { name: "Последняя сверка" })).toBeNull();
 });
