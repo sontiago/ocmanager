@@ -15,6 +15,7 @@ from ocmanager.apps.worker import (
     check_nodes,
     check_server_cert,
     collect_traffic,
+    detect_abuse,
     dispatch_events,
     expire_subscriptions,
     expiry_reminders,
@@ -61,6 +62,7 @@ def test_cron_registry() -> None:
         "cron:purge_traffic",
         "cron:reconcile_nodes",
         "cron:sweep_webhooks",
+        "cron:detect_abuse",
     }
 
 
@@ -384,3 +386,37 @@ async def test_reconcile_task_heals_and_reports_the_number_of_drifts(
     with registry.override_driver(fake):
         assert await reconcile_nodes(ctx) == 2  # allowlist_missing + crl_missing
         assert await reconcile_nodes(ctx) == 0
+
+
+def test_abuse_detection_runs_every_15_minutes() -> None:
+    [job] = [j for j in WorkerSettings.cron_jobs if j.name == "cron:detect_abuse"]
+    assert job.minute == {0, 15, 30, 45}
+    assert job.second == {25}
+
+
+async def test_detect_abuse_task_reports_the_number_of_alerts(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_device: MakeDevice,
+) -> None:
+    from ocmanager.core import settings_store
+    from ocmanager.nodes.models import TrafficDaily
+
+    await settings_store.update(session, {"admin_chat_ids": [1], "abuse_daily_traffic_gb": 1})
+    client = await make_client()
+    device = await make_device(client)
+    node = await registry.ensure_local_node(session, Settings(_env_file=None))
+    session.add(
+        TrafficDaily(
+            username=device.ocserv_username,
+            node_id=node.id,
+            day=utcnow().date(),
+            bytes_in=5 * 1024**3,
+            bytes_out=0,
+        )
+    )
+    await session.commit()
+    ctx: dict[str, Any] = {"sessionmaker": sessionmaker}
+    assert await detect_abuse(ctx) == 1
+    assert await detect_abuse(ctx) == 0  # тот же день: дубль не ставится

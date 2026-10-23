@@ -75,3 +75,21 @@ async def test_nullable_setting_can_be_cleared(session: AsyncSession) -> None:
     change = await settings_store.update(session, {"support_url": None})
     assert change.changed == {"support_url": ("https://t.me/help", None)}
     assert (await settings_store.load(session)).support_url is None
+
+
+async def test_abuse_thresholds_default_to_sensible_values(session: AsyncSession) -> None:
+    s = await settings_store.load(session)
+    assert (s.abuse_daily_traffic_gb, s.abuse_devices_per_ip) == (100, 10)
+
+
+async def test_abuse_thresholds_can_be_tuned_or_switched_off(session: AsyncSession) -> None:
+    change = await settings_store.update(
+        session, {"abuse_daily_traffic_gb": 0, "abuse_devices_per_ip": 25}
+    )
+    assert (change.settings.abuse_daily_traffic_gb, change.settings.abuse_devices_per_ip) == (0, 25)
+
+
+@pytest.mark.parametrize("key", ["abuse_daily_traffic_gb", "abuse_devices_per_ip"])
+async def test_abuse_thresholds_reject_negative_numbers(session: AsyncSession, key: str) -> None:
+    with pytest.raises(InvalidInput):
+        await settings_store.update(session, {key: -1})

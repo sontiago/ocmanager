@@ -11,6 +11,8 @@
   "node_up": "✅ Node “{node}” is back online.",
   "webhook_dead": "⚠️ Webhook {provider} #{id} was not processed: {reason}. Review it in the Payments section.",
   "webhook_bad_signature": "⚠️ Webhook {provider} #{id} arrived with a bad signature. If you were not testing the integration yourself, check the API key.",
+  "abuse_traffic": "⚠️ Suspected abuse: {client} transferred {traffic} in a day (threshold {limit}).",
+  "abuse_shared_ip": "⚠️ {devices} devices ({clients} clients) connected from {ip} within a day. Possible resale of access or a shared key.",
   "payment_new": "💰 New payment {amount}: {client}, plan “{plan}”.",
   "payment_blocked_client": "⚠️ Payment {amount} from blocked client {client} was recorded, access was not granted. Unblock the client and reprocess the webhook, or refund.",
   "refund": "↩️ Refund {amount}: {client}. Access was not revoked — decide manually.",

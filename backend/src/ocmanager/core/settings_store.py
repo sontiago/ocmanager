@@ -30,6 +30,9 @@ class RuntimeSettings(BaseModel):
     admin_chat_ids: list[int] = Field(default_factory=list)
     expiry_reminder_days: list[int] = Field(default_factory=lambda: [3, 1])
     traffic_retention_days: int = Field(90, ge=7)
+    # Алерты админу о подозрении на злоупотребление; 0 выключает правило.
+    abuse_daily_traffic_gb: int = Field(100, ge=0)  # трафик одного клиента за сутки
+    abuse_devices_per_ip: int = Field(10, ge=0)  # разных устройств с одного адреса за 24 часа
 
 
 @dataclass(frozen=True)

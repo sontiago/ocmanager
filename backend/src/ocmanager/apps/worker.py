@@ -23,6 +23,7 @@ from ocmanager.core.config import Settings, get_settings
 from ocmanager.core.db import make_engine, make_sessionmaker
 from ocmanager.core.logging import configure_logging
 from ocmanager.events import bus
+from ocmanager.flows import abuse as abuse_flows
 from ocmanager.flows import handlers
 from ocmanager.flows import nodes as node_flows
 from ocmanager.flows import notify as notify_flows
@@ -213,6 +214,14 @@ async def collect_traffic(ctx: dict[str, Any]) -> int:
     return sum(r.seen for r in results.values())
 
 
+async def detect_abuse(ctx: dict[str, Any]) -> int:
+    """Раз в 15 минут: подозрение на злоупотребление → алерт админу. Возвращает число сообщений."""
+    async with ctx["sessionmaker"]() as session:
+        queued = await abuse_flows.detect(session, utcnow())
+        await session.commit()
+    return queued
+
+
 async def purge_traffic(ctx: dict[str, Any]) -> int:
     async with ctx["sessionmaker"]() as session:
         deleted = await traffic_flows.purge_samples(session, utcnow())
@@ -296,6 +305,7 @@ class WorkerSettings:
         cron(purge_traffic, hour={4}, minute={30}, keep_result=0),
         cron(reconcile_nodes, minute=set(range(0, 60, 5)), second={40}, keep_result=0),
         cron(sweep_webhooks, second={50}, keep_result=0),
+        cron(detect_abuse, minute={0, 15, 30, 45}, second={25}, keep_result=0),
     ]
     on_startup = startup
     on_shutdown = shutdown

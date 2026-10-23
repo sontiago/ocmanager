@@ -18,6 +18,8 @@ SAMPLES: dict[str, dict[str, Any]] = {
     "referral_tier_3": {},
     "referral_tier_5": {},
     "referral_tier_10": {},
+    "abuse_traffic": {"client": "@big (5001)", "traffic": "120 GB", "limit": "100 GB"},
+    "abuse_shared_ip": {"ip": "203.0.113.7", "devices": 10, "clients": 4},
     "traffic_warning": {"percent": 85, "used": "85 GB", "limit": "100 GB"},
     "traffic_exhausted": {"limit": "100 ГБ", "expires": "01.11.2026"},
     "device_revoked": {"device": "iPhone"},
