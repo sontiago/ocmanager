@@ -1,6 +1,14 @@
 # syntax=docker/dockerfile:1
 # Один образ для всех процессов бэкенда (спека §2.1); роль выбирает docker-entrypoint.sh.
 
+# Веб-админка: контекст `admin` (frontend/admin) передаётся как additional_contexts / --build-context.
+FROM node:22-alpine AS admin-build
+WORKDIR /admin
+COPY --from=admin package.json package-lock.json ./
+RUN npm ci
+COPY --from=admin . .
+RUN npm run build
+
 FROM python:3.12-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
@@ -23,8 +31,9 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY alembic.ini ./
 COPY alembic ./alembic
+COPY --from=admin-build /admin/dist /app/admin-dist
 COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 OCM_ADMIN_STATIC_DIR=/app/admin-dist
 USER app
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["api-public"]

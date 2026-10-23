@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # Ключ API Tribute (кабинет автора, раздел API): им подписаны вебхуки, заголовок trbt-signature.
     # Не задан или пуст — /webhooks/tribute отвечает 404, как будто провайдера нет.
     tribute_api_key: SecretStr | None = None
+    # Собранная веб-админка (frontend/admin/dist). Задан и существует — api-admin отдаёт её на `/`;
+    # не задан — только API (dev: интерфейс отдаёт Vite).
+    admin_static_dir: Path | None = None
 
     @field_validator("public_base_url")
     @classmethod

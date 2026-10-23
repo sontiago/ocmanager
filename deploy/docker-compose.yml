@@ -87,7 +87,10 @@ services:
 
   migrate:
     <<: *backend
-    build: ../backend
+    build:
+      context: ../backend
+      additional_contexts:
+        admin: ../frontend/admin
     restart: "no"
     command: ["migrate"]
     environment: *backend-env
