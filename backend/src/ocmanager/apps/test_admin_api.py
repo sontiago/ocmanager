@@ -58,6 +58,15 @@ async def test_openapi_is_served(settings: Settings) -> None:
     assert "/admin/health" in body["paths"]
 
 
+async def test_swagger_can_send_the_csrf_header(settings: Settings) -> None:
+    _, body = await get(settings, "/admin/openapi.json")
+    assert isinstance(body, dict)
+    schemes = [
+        (v["type"], v["in"], v["name"]) for v in body["components"]["securitySchemes"].values()
+    ]
+    assert ("apiKey", "header", "X-CSRF-Token") in schemes
+
+
 async def test_lifespan_opens_db_and_redis(settings: Settings, db_engine: object) -> None:
     app = create_app(settings)
     async with app.router.lifespan_context(app):

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, Request
+from fastapi.security import APIKeyHeader
 
 from ocmanager.admin import auth
 from ocmanager.admin.models import Admin, AdminSession
@@ -20,6 +21,14 @@ from ocmanager.flows.deps import commit_and_kick as commit_and_kick
 
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
+# Только для документации: кнопка Authorize в Swagger подставляет заголовок в каждый запрос.
+# Саму сверку делает current_admin по request.headers.
+csrf_header_doc = APIKeyHeader(
+    name=auth.CSRF_HEADER,
+    auto_error=False,
+    description="csrf_token из ответа POST /admin/auth/login (или GET /admin/auth/me)",
+)
+
 
 @dataclass(frozen=True)
 class AdminContext:
@@ -28,7 +37,11 @@ class AdminContext:
     actor: Actor  # с IP запроса: его пишет в аудит каждая мутация
 
 
-async def current_admin(request: Request, db: SessionDep) -> AdminContext:
+async def current_admin(
+    request: Request,
+    db: SessionDep,
+    _csrf_doc: Annotated[str | None, Depends(csrf_header_doc)] = None,
+) -> AdminContext:
     """Сессия по cookie; для небезопасных методов ещё и сверка X-CSRF-Token."""
     token = request.cookies.get(auth.COOKIE)
     if not token:
