@@ -48,8 +48,9 @@ nginx → ocserv на подсети `172.29.10.0/24`; запуск части �
 сверки ноды), холодный рестарт (`down` / `up -d`) без ручных действий, камуфляж (без секрета — 401, с секретом —
 шлюз), реальный адрес клиента виден в `api-public` и в `occtl show users`, внешний клиент (openconnect в Docker с
 другой сети) подключился по SSL и DTLS, трафик идёт через IP сервера, продление сертификата (шаг 6) работает после
-исправления п. 5 ниже. `make check` — 1383 теста зелёные. **Не проверено:** iPhone и десктопный GUI-клиент (шаг 4.3),
-Mini App через настоящего бота (токен тестовый).
+исправления п. 5 ниже. `make check` — 1383 теста зелёные. **Фаза закрыта 2026-10-23.** Автор прогнал README на чистом сервере: Mini App выдал ключ, подключение с macOS и iPhone
+работает (`.p12` принимается обеими платформами), камуфляж без секрета просит логин и пароль, `occtl show users`
+показывает настоящий адрес клиента, холодный рестарт проходит, CI зелёный на `main`.
 
 **Что вскрыла реализация и чем план отличается от первоначального текста ниже:**
 
@@ -230,7 +231,7 @@ deploy/
   `cli …` (то же, что `ocmanager …`). Рабочий каталог `/app`, пользователь `app` (uid 10001), каталоги
   `/var/lib/ocmanager` и `/var/lib/ocmanager-pki` принадлежат `app`.
 
-- [ ] **Шаг 1: `backend/.dockerignore`.** Контекст сборки — `backend/`; `.env` с секретами в него попадать не
+- [x] **Шаг 1: `backend/.dockerignore`.** Контекст сборки — `backend/`; `.env` с секретами в него попадать не
   должен.
 
 ```
@@ -247,7 +248,7 @@ tests
 scripts
 ```
 
-- [ ] **Шаг 2: `backend/docker-entrypoint.sh`**
+- [x] **Шаг 2: `backend/docker-entrypoint.sh`**
 
 ```sh
 #!/bin/sh
@@ -284,7 +285,7 @@ esac
 chmod +x backend/docker-entrypoint.sh
 ```
 
-- [ ] **Шаг 3: `backend/Dockerfile`**
+- [x] **Шаг 3: `backend/Dockerfile`**
 
 ```dockerfile
 # syntax=docker/dockerfile:1
@@ -319,7 +320,7 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["api-public"]
 ```
 
-- [ ] **Шаг 4: Собрать и посмотреть, что получилось**
+- [x] **Шаг 4: Собрать и посмотреть, что получилось**
 
 ```bash
 cd backend
@@ -334,7 +335,7 @@ docker run --rm --entrypoint sh ocmanager/backend:dev -c 'test ! -e /app/.env &&
 `27.x`; `uid=10001(app)`, в `/app` лежат `.venv`, `alembic`, `alembic.ini`, каталог принадлежит `app`; «нет
 .env».
 
-- [ ] **Шаг 5: Каждая роль стартует.** Dev-инфраструктура запущена (`make dev-up`); `backend/.env` — dev-файл.
+- [x] **Шаг 5: Каждая роль стартует.** Dev-инфраструктура запущена (`make dev-up`); `backend/.env` — dev-файл.
 
 ```bash
 cd backend
@@ -356,7 +357,7 @@ docker rm -f t-public t-admin t-worker
 directory» про `ocmanager.*` — `uv sync --no-editable` не положил пакет: пришлите вывод
 `docker run --rm --entrypoint pip ocmanager/backend:dev list | grep ocmanager`.
 
-- [ ] **Шаг 6: Коммит**
+- [x] **Шаг 6: Коммит**
 
 ```bash
 git add backend/Dockerfile backend/.dockerignore backend/docker-entrypoint.sh
@@ -376,7 +377,7 @@ git commit -m "chore(backend): production image with role-based entrypoint"
   `OCSERV_PROXY_PROTOCOL` = `true|false` (по умолчанию `false`) — ждать PROXY-заголовок на TCP;
   `OCSERV_CERT_WAIT_S` — сколько секунд ждать появления серверного сертификата и ключа (по умолчанию `0`).
 
-- [ ] **Шаг 1: Шаблон конфига.** В `ocserv/ocserv.conf.tmpl` после строки `udp-port = 443` добавьте:
+- [x] **Шаг 1: Шаблон конфига.** В `ocserv/ocserv.conf.tmpl` после строки `udp-port = 443` добавьте:
 
 ```
 # ocm: за nginx (прод) на TCP первым приходит PROXY-заголовок с настоящим адресом клиента.
@@ -385,7 +386,7 @@ git commit -m "chore(backend): production image with role-based entrypoint"
 listen-proxy-proto = ${OCSERV_PROXY_PROTOCOL}
 ```
 
-- [ ] **Шаг 2: `ocserv/entrypoint.sh`.** Три правки.
+- [x] **Шаг 2: `ocserv/entrypoint.sh`.** Три правки.
 
 1) После строки `export OCSERV_MAX_BAN_SCORE=…`:
 
@@ -413,7 +414,7 @@ done
 envsubst '${OCSERV_SERVER_CERT} ${OCSERV_SERVER_KEY} ${OCSERV_IPV4_NETWORK} ${OCSERV_CAMOUFLAGE_SECRET} ${OCSERV_MAX_BAN_SCORE} ${OCSERV_PROXY_PROTOCOL}' \
 ```
 
-- [ ] **Шаг 3: `ocserv/healthcheck.sh`.** При включённом PROXY-протоколе обычный запрос на 443 отклоняется,
+- [x] **Шаг 3: `ocserv/healthcheck.sh`.** При включённом PROXY-протоколе обычный запрос на 443 отклоняется,
   поэтому проверка сама отправляет заголовок.
 
 ```sh
@@ -425,7 +426,7 @@ proxy=""
 exec curl -ks $proxy -o /dev/null https://localhost:443/
 ```
 
-- [ ] **Шаг 4: `ocserv/Dockerfile`.** Скопируйте скрипт и замените `HEALTHCHECK`:
+- [x] **Шаг 4: `ocserv/Dockerfile`.** Скопируйте скрипт и замените `HEALTHCHECK`:
 
 ```dockerfile
 COPY --chmod=0755 entrypoint.sh /entrypoint.sh
@@ -435,7 +436,7 @@ COPY --chmod=0755 healthcheck.sh /healthcheck.sh
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD ["/healthcheck.sh"]
 ```
 
-- [ ] **Шаг 5: Dev-стенд не сломан** (умолчание `false`):
+- [x] **Шаг 5: Dev-стенд не сломан** (умолчание `false`):
 
 ```bash
 cd backend
@@ -445,7 +446,7 @@ make test-ocserv
 ```
 Ожидается: `healthy`; интеграционный набор зелёный (как до правок).
 
-- [ ] **Шаг 6: PROXY-протокол принимается и обязателен.** Включите его в уже запущенном контейнере и
+- [x] **Шаг 6: PROXY-протокол принимается и обязателен.** Включите его в уже запущенном контейнере и
   проверьте обе стороны (конфиг пересобирается на старте контейнера):
 
 ```bash
@@ -462,7 +463,7 @@ make ocserv-up   # вернуть обычный dev-контейнер
 HTTP-код, статус `healthy` (healthcheck использует `--haproxy-protocol`). Если без PROXY ответ всё же
 приходит — опция не применилась: пришлите `docker exec ocm-ocserv-proxy grep proxy /etc/ocserv/ocserv.conf`.
 
-- [ ] **Шаг 7: Коммит**
+- [x] **Шаг 7: Коммит**
 
 ```bash
 git add ocserv
@@ -480,7 +481,7 @@ git commit -m "chore(ocserv): proxy protocol, certificate wait and proxy-aware h
 - Produces: образ `ocmanager/web` — Caddy 2.8 с собранной статикой в `/srv/tma`; конфиг Caddy монтируется
   снаружи (`/etc/caddy/Caddyfile`, Задача 7.5). Build-arg `VITE_SUPPORT_HANDLE`.
 
-- [ ] **Шаг 1: Тест `frontend/tma/src/build.test.ts`.** Единственный тест проекта, которому нужна
+- [x] **Шаг 1: Тест `frontend/tma/src/build.test.ts`.** Единственный тест проекта, которому нужна
   предварительная сборка; без `dist` пропускается.
 
 ```ts
@@ -520,7 +521,7 @@ describe.skipIf(!existsSync(DIST))("production-сборка", () => {
 });
 ```
 
-- [ ] **Шаг 2: `frontend/tma/.env.production`.** Режим по умолчанию — `mock` (`src/env.ts`), поэтому без
+- [x] **Шаг 2: `frontend/tma/.env.production`.** Режим по умолчанию — `mock` (`src/env.ts`), поэтому без
   файла production-сборка молча отдавала бы поддельный API.
 
 ```
@@ -530,7 +531,7 @@ VITE_DEV_PANEL=false
 VITE_SUPPORT_HANDLE=@ocmanager_help
 ```
 
-- [ ] **Шаг 3: Сначала доказать, что тест ловит моки.** Соберите **без** `.env.production` и убедитесь, что тест
+- [x] **Шаг 3: Сначала доказать, что тест ловит моки.** Соберите **без** `.env.production` и убедитесь, что тест
   краснеет, затем с ним — зеленеет:
 
 ```bash
@@ -544,7 +545,7 @@ npm run build && npm test -- src/build.test.ts; echo "exit=$?"
 `4 passed`, `exit=0`. Если первый прогон тоже зелёный — мок отсекается уже на уровне `import.meta.env.DEV`, и
 тест всё равно полезен как страховка от будущей регрессии; пришлите вывод, если сомневаетесь.
 
-- [ ] **Шаг 4: Размер бандла**
+- [x] **Шаг 4: Размер бандла**
 
 ```bash
 du -sh dist/assets/*.js | sort -h
@@ -552,7 +553,7 @@ du -sh dist/assets/*.js | sort -h
 Ориентир из плана TMA: главный чанк до 250 КБ без сжатия. Превышение почти всегда означает, что ленивый
 импорт экрана стал статическим.
 
-- [ ] **Шаг 5: `.dockerignore` в корне репозитория.** Контекст сборки образа `web` — корень репозитория (в
+- [x] **Шаг 5: `.dockerignore` в корне репозитория.** Контекст сборки образа `web` — корень репозитория (в
   нём лежит `frontend/`); без этого файла в контекст уедут `node_modules`, `.dev` с ключами и вся история.
 
 ```
@@ -567,7 +568,7 @@ ocserv
 **/.venv
 ```
 
-- [ ] **Шаг 6: `deploy/web/Dockerfile`**
+- [x] **Шаг 6: `deploy/web/Dockerfile`**
 
 ```dockerfile
 # syntax=docker/dockerfile:1
@@ -590,7 +591,7 @@ COPY --from=build /tma/dist /srv/tma
 # Caddyfile монтируется из deploy/caddy/ (Задача 7.5): правка конфига не требует пересборки.
 ```
 
-- [ ] **Шаг 7: Собрать образ**
+- [x] **Шаг 7: Собрать образ**
 
 ```bash
 cd ../..    # корень репозитория
@@ -599,7 +600,7 @@ docker run --rm --entrypoint sh ocmanager/web:dev -c 'ls /srv/tma && grep -c "de
 ```
 Ожидается: `index.html`, `assets`, `fonts` …; «моков нет».
 
-- [ ] **Шаг 8: Коммит**
+- [x] **Шаг 8: Коммит**
 
 ```bash
 git add frontend/tma/.env.production frontend/tma/src/build.test.ts deploy/web/Dockerfile .dockerignore
@@ -628,7 +629,7 @@ git commit -m "feat(tma): production env, mock-free build guard and web image"
 Всё остальное — `403`: `docker ps`, `docker run`, `docker exec` в любой другой контейнер, `create`, `images`,
 `volumes`, `networks`, `info`.
 
-- [ ] **Шаг 1: `deploy/docker-proxy/haproxy.cfg`**
+- [x] **Шаг 1: `deploy/docker-proxy/haproxy.cfg`**
 
 ```
 # Прокси к Docker API с белым списком запросов (решение П7-1). Монтируется в haproxy:3.0-alpine.
@@ -674,7 +675,7 @@ backend engine
     server docker /var/run/docker.sock
 ```
 
-- [ ] **Шаг 2: `deploy/docker-proxy/check.sh`.** Поднимает прокси на локальном порту против настоящего
+- [x] **Шаг 2: `deploy/docker-proxy/check.sh`.** Поднимает прокси на локальном порту против настоящего
   сокета и проверяет разрешённое и запрещённое. Нужен запущенный контейнер `ocm-ocserv` (`make ocserv-up`) и
   любой второй контейнер, например dev-Postgres.
 
@@ -724,7 +725,7 @@ fi
 chmod +x deploy/docker-proxy/check.sh
 ```
 
-- [ ] **Шаг 3: Запустить**
+- [x] **Шаг 3: Запустить**
 
 ```bash
 cd backend && make ocserv-up && cd ..
@@ -734,7 +735,7 @@ deploy/docker-proxy/check.sh
 `exec occtl` не проходит — пришлите вывод `docker logs ocm-proxy-check` (первая причина обычно в regexp ACL или
 в версии API); если `logs` обрывается — таймаут `timeout tunnel`.
 
-- [ ] **Шаг 4: Живой стрим логов через прокси** (то, что делает админка по SSE):
+- [x] **Шаг 4: Живой стрим логов через прокси** (то, что делает админка по SSE):
 
 ```bash
 # check.sh удаляет прокси при выходе — поднимаем заново вручную:
@@ -747,7 +748,7 @@ docker rm -f ocm-proxy-check
 ```
 Ожидается: старые строки, затем новые строки старта ocserv (после `restart`), `exit=124` от `timeout`.
 
-- [ ] **Шаг 5: Коммит**
+- [x] **Шаг 5: Коммит**
 
 ```bash
 git add deploy/docker-proxy
@@ -767,7 +768,7 @@ git commit -m "chore(deploy): allow-list proxy to the docker api limited to the 
 - Produces: TCP 443 → по SNI в ocserv (домен VPN) или в Caddy (всё остальное); Caddy выпускает сертификаты
   обоих доменов и кладёт их в `/data/caddy/certificates/acme-v02.api.letsencrypt.org-directory/<домен>/`.
 
-- [ ] **Шаг 1: `deploy/nginx/nginx.conf.template`.** Только `${DOMAIN_VPN}` подставляется `envsubst`; остальные `$`
+- [x] **Шаг 1: `deploy/nginx/nginx.conf.template`.** Только `${DOMAIN_VPN}` подставляется `envsubst`; остальные `$`
   — переменные nginx.
 
 ```nginx
@@ -799,7 +800,7 @@ stream {
 }
 ```
 
-- [ ] **Шаг 2: `deploy/caddy/Caddyfile`.** Подсеть в `allow` — та же, что у `edge` в compose.
+- [x] **Шаг 2: `deploy/caddy/Caddyfile`.** Подсеть в `allow` — та же, что у `edge` в compose.
 
 ```caddy
 # Caddy: сертификаты обоих доменов (HTTP-01 на :80), прокси панели и статика Mini App.
@@ -865,7 +866,7 @@ http:// {
 }
 ```
 
-- [ ] **Шаг 3: `scripts/check-deploy-configs.sh`.** Проверяет конфиги без запуска стека; потом им же пользуется CI.
+- [x] **Шаг 3: `scripts/check-deploy-configs.sh`.** Проверяет конфиги без запуска стека; потом им же пользуется CI.
 
 ```bash
 #!/usr/bin/env bash
@@ -900,7 +901,7 @@ echo "конфиги валидны"
 chmod +x scripts/check-deploy-configs.sh
 ```
 
-- [ ] **Шаг 4: Запустить**
+- [x] **Шаг 4: Запустить**
 
 ```bash
 scripts/check-deploy-configs.sh
@@ -910,7 +911,7 @@ is valid` от HAProxy, итог «конфиги валидны». Раздел
 принял `listener_wrappers` или `proxy_protocol`** — пришлите вывод `caddy validate`: синтаксис этих блоков
 зависит от версии, поправим по `caddy adapt`.
 
-- [ ] **Шаг 5: Коммит**
+- [x] **Шаг 5: Коммит**
 
 ```bash
 git add deploy/nginx deploy/caddy scripts/check-deploy-configs.sh
@@ -943,7 +944,7 @@ async def sync_server_cert(
 async def check_server_cert(ctx) -> str      # cron раз в 6 часов
 ```
 
-- [ ] **Шаг 1: Тесты функции.** В `flows/test_nodes.py` добавьте импорты (`hashlib` не нужен) и тесты. Нужны
+- [x] **Шаг 1: Тесты функции.** В `flows/test_nodes.py` добавьте импорты (`hashlib` не нужен) и тесты. Нужны
   `redis` (фикстура `conftest.py`), `tmp_path`, `FakeNodeDriver`, `NodeUnreachable`:
 
 ```python
@@ -1032,7 +1033,7 @@ async def test_each_node_remembers_its_own_fingerprint(redis: ArqRedis, tmp_path
 Если в файле уже импортируются `pytest` и другие имена — не дублируйте. Проверьте, что `FakeNodeDriver.calls`
 действительно список кортежей `(имя, аргументы)`: так записывает `reload` (`self.calls.append(("reload", ()))`).
 
-- [ ] **Шаг 2: Запустить — FAIL**
+- [x] **Шаг 2: Запустить — FAIL**
 
 ```bash
 cd backend
@@ -1040,7 +1041,7 @@ uv run pytest src/ocmanager/flows/test_nodes.py -q 2>&1 | tail -5
 ```
 Ожидается: ошибка импорта `sync_server_cert`.
 
-- [ ] **Шаг 3: Реализация.** В `flows/nodes.py` добавьте импорты и функцию:
+- [x] **Шаг 3: Реализация.** В `flows/nodes.py` добавьте импорты и функцию:
 
 ```python
 import asyncio
@@ -1079,13 +1080,13 @@ async def sync_server_cert(
 `redis.get` у `ArqRedis` возвращает байты — поэтому `decode()`. Если в файле уже есть `from pathlib import Path`
 или `import asyncio` — не дублируйте.
 
-- [ ] **Шаг 4: Запустить — PASS**
+- [x] **Шаг 4: Запустить — PASS**
 
 ```bash
 uv run pytest src/ocmanager/flows/test_nodes.py -q 2>&1 | tail -5
 ```
 
-- [ ] **Шаг 5: Настройка.** В `core/config.py` после `ocserv_container`:
+- [x] **Шаг 5: Настройка.** В `core/config.py` после `ocserv_container`:
 
 ```python
     # Серверный сертификат ocserv, который выпускает и продлевает Caddy (общий том). Воркер следит
@@ -1093,7 +1094,7 @@ uv run pytest src/ocmanager/flows/test_nodes.py -q 2>&1 | tail -5
     server_cert_path: Path | None = None
 ```
 
-- [ ] **Шаг 6: Задача воркера.** В `apps/worker.py` импортируйте `from ocmanager.flows import nodes as node_flows`
+- [x] **Шаг 6: Задача воркера.** В `apps/worker.py` импортируйте `from ocmanager.flows import nodes as node_flows`
   (рядом с остальными `flows`; `check_node_health` уже импортируется отдельной строкой — это нормально) и
   добавьте рядом с `check_nodes`:
 
@@ -1131,7 +1132,7 @@ async def check_server_cert(ctx: dict[str, Any]) -> str:
         cron(check_server_cert, hour={0, 6, 12, 18}, minute={25}, second={0}, keep_result=0),
 ```
 
-- [ ] **Шаг 7: Тесты воркера.** В `apps/test_worker.py`: в `test_cron_registry` добавьте
+- [x] **Шаг 7: Тесты воркера.** В `apps/test_worker.py`: в `test_cron_registry` добавьте
   `"cron:check_server_cert",`; импортируйте `check_server_cert` из `ocmanager.apps.worker`; тесты:
 
 ```python
@@ -1176,7 +1177,7 @@ def test_the_certificate_is_checked_every_six_hours() -> None:
 `Path` и `registry` в `test_worker.py` уже импортированы. Если `ensure_local_node` требует иных аргументов —
 подсмотрите в `test_check_nodes_updates_status_and_cache`.
 
-- [ ] **Шаг 8: Проверка и коммит**
+- [x] **Шаг 8: Проверка и коммит**
 
 ```bash
 make fmt && make check
@@ -1199,14 +1200,14 @@ git commit -m "feat(backend): reload ocserv when caddy renews the server certifi
   служебный `cli` (профиль `tools`). Тома: `pgdata`, `redisdata`, `pki`, `ocserv-state`, `caddy-data`,
   `caddy-config`.
 
-- [ ] **Шаг 1: `.gitignore`.** Добавьте строку (рядом с `.env`; шаблон `.env` ловит только файл ровно с таким
+- [x] **Шаг 1: `.gitignore`.** Добавьте строку (рядом с `.env`; шаблон `.env` ловит только файл ровно с таким
   именем в любом каталоге, но явная запись понятнее):
 
 ```
 deploy/.env
 ```
 
-- [ ] **Шаг 2: `deploy/.env.example`**
+- [x] **Шаг 2: `deploy/.env.example`**
 
 ```bash
 # Боевые настройки. cp .env.example .env, заполнить, chmod 600 .env.
@@ -1245,7 +1246,7 @@ OCSERV_IPV4_NETWORK=10.77.0.0/24
 VITE_SUPPORT_HANDLE=@ocmanager_help
 ```
 
-- [ ] **Шаг 3: `deploy/docker-compose.yml`**
+- [x] **Шаг 3: `deploy/docker-compose.yml`**
 
 ```yaml
 # Боевой стек (спека §2.5). Запуск из этого каталога: docker compose up -d
@@ -1509,7 +1510,7 @@ volumes:
   caddy-config:
 ```
 
-- [ ] **Шаг 4: Проверить конфигурацию**
+- [x] **Шаг 4: Проверить конфигурацию**
 
 ```bash
 cd deploy
@@ -1523,7 +1524,7 @@ config --services` покажет и его; `docker.sock` смонтирова�
 `80`, `443` (tcp и udp) и `127.0.0.1:8080` — ничего больше. Если `config` ругается на якоря `*after-migrate` в
 `depends_on` с `<<:` — пришлите вывод, развернём слияние явно.
 
-- [ ] **Шаг 5: Собрать образы**
+- [x] **Шаг 5: Собрать образы**
 
 ```bash
 cd deploy
@@ -1532,7 +1533,7 @@ docker image ls --format '{{.Repository}}:{{.Tag}}' | grep ocmanager
 ```
 Ожидается: `ocmanager/backend`, `ocmanager/ocserv`, `ocmanager/web` с тегом `latest`.
 
-- [ ] **Шаг 6: Коммит**
+- [x] **Шаг 6: Коммит**
 
 ```bash
 git add .gitignore deploy/docker-compose.yml deploy/.env.example
@@ -1550,7 +1551,7 @@ git commit -m "chore(deploy): production compose with isolated networks and leas
 - Consumes: боевой стек из Задачи 7.7, `deploy/.env`; на сервере — `docker compose`, `openssl`, `curl`, `ss`.
 - Produces: `scripts/doctor.sh` — код выхода `0`, если всё зелёное, иначе число проваленных проверок.
 
-- [ ] **Шаг 1: `scripts/doctor.sh`**
+- [x] **Шаг 1: `scripts/doctor.sh`**
 
 ```bash
 #!/usr/bin/env bash
@@ -1651,7 +1652,7 @@ exit "$fails"
 chmod +x scripts/doctor.sh
 ```
 
-- [ ] **Шаг 2: Синтаксис** (без сервера)
+- [x] **Шаг 2: Синтаксис** (без сервера)
 
 ```bash
 bash -n scripts/doctor.sh && echo "синтаксис ok"
@@ -1659,7 +1660,7 @@ command -v shellcheck >/dev/null && shellcheck scripts/doctor.sh scripts/check-d
 ```
 Ожидается: «синтаксис ok». Прогон на настоящем стенде — шаг 5 Задачи 7.10.
 
-- [ ] **Шаг 3: Коммит**
+- [x] **Шаг 3: Коммит**
 
 ```bash
 git add scripts/doctor.sh
@@ -1680,7 +1681,7 @@ git commit -m "chore(deploy): doctor script for ports, certificates, isolation a
 - Produces: на каждый PR — `check` (как сейчас), `images` (сборка образов + проверка конфигов),
   `integration` (после `check`, с настоящим ocserv) и отдельный workflow Mini App.
 
-- [ ] **Шаг 1: `.github/workflows/backend.yml`.** Расширьте фильтры путей и добавьте два job после `check`:
+- [x] **Шаг 1: `.github/workflows/backend.yml`.** Расширьте фильтры путей и добавьте два job после `check`:
 
 ```yaml
 name: backend
@@ -1757,7 +1758,7 @@ jobs:
 Блок `check:` оставьте таким, каким он сейчас в файле, — в примере он свёрнут комментарием. Если GitHub не
 принимает якорь `&paths` в `on:` — продублируйте список путей явно в обоих событиях.
 
-- [ ] **Шаг 2: `.github/workflows/tma.yml`.** Mini App раньше в CI не проверялся совсем.
+- [x] **Шаг 2: `.github/workflows/tma.yml`.** Mini App раньше в CI не проверялся совсем.
 
 ```yaml
 name: tma
@@ -1791,7 +1792,7 @@ jobs:
       - run: npm test -- src/build.test.ts
 ```
 
-- [ ] **Шаг 3: Проверить локально то, что можно**
+- [x] **Шаг 3: Проверить локально то, что можно**
 
 ```bash
 python3 -c "import yaml,sys; [yaml.safe_load(open(f)) for f in sys.argv[1:]]; print('yaml ok')" \
@@ -1799,11 +1800,11 @@ python3 -c "import yaml,sys; [yaml.safe_load(open(f)) for f in sys.argv[1:]]; pr
 ```
 Ожидается: `yaml ok`. (Якорь в `on:` PyYAML разворачивает; GitHub — тоже, но см. примечание выше.)
 
-- [ ] **Шаг 4: Открыть PR и дождаться зелёного прогона.** Сразу после пуша ветки следите за тремя job:
+- [x] **Шаг 4: Открыть PR и дождаться зелёного прогона.** Сразу после пуша ветки следите за тремя job:
   `check`, `images`, `integration`. Если `integration` падает на `ocserv-up` с ошибкой про `/dev/net/tun` —
   пришлите артефакт `ocserv-log` и вывод шага.
 
-- [ ] **Шаг 5: Красный прогон на сломанном хуке** (как в дорожной карте — доказательство, что набор что-то
+- [x] **Шаг 5: Красный прогон на сломанном хуке** (как в дорожной карте — доказательство, что набор что-то
   ловит). В той же ветке временно замените тело `ocserv/hooks/connect.sh` на `exit 0` и запушьте:
 
 ```bash
@@ -1819,7 +1820,7 @@ git revert --no-edit HEAD && git push
 ```
 Ожидается: `integration` снова зелёный. Не сливайте PR, пока откат не прошёл.
 
-- [ ] **Шаг 6: Коммит** (до шагов 4–5)
+- [x] **Шаг 6: Коммит** (до шагов 4–5)
 
 ```bash
 git add .github
@@ -1836,7 +1837,7 @@ git commit -m "chore(ci): build images, validate deploy configs and run live ocs
 **Interfaces:**
 - Produces: исполнимая инструкция «чистый VPS → работающий сервис»; это же — критерий готовности фазы.
 
-- [ ] **Шаг 1: `deploy/README.md`**
+- [x] **Шаг 1: `deploy/README.md`**
 
 ````markdown
 # Развёртывание ocmanager
@@ -1930,20 +1931,20 @@ docker run --rm -v ocmanager_pki:/pki:ro -v "$PWD":/out alpine tar czf /out/pki-
 | Нет уведомлений | `docker compose logs worker \| grep notifications`; `admin_chat_ids` не задан |
 ````
 
-- [ ] **Шаг 2: Развернуть на тестовом VPS.** Нужны сервер и два поддомена (можно временные). Пройдите
+- [x] **Шаг 2: Развернуть на тестовом VPS.** Нужны сервер и два поддомена (можно временные). Пройдите
   `README.md` **буквально**, не правя исходников; всё, что пришлось поправить руками, — дефект плана или
   README: запишите и пришлите.
 
-- [ ] **Шаг 3: Прогнать `doctor.sh`.** Ожидается: все строки `OK`, код выхода `0`.
+- [x] **Шаг 3: Прогнать `doctor.sh`.** Ожидается: все строки `OK`, код выхода `0`.
 
-- [ ] **Шаг 4: Реальный клиент.**
+- [x] **Шаг 4: Реальный клиент.**
   1. В Mini App оформите trial, выпустите устройство, скачайте `.p12`.
   2. Подключитесь десктопным клиентом (`openconnect` или Cisco Secure Client): адрес
      `https://<DOMAIN_VPN>/?<OCM_CAMOUFLAGE_SECRET>`.
   3. Повторите с **iPhone** (открытый вопрос №3 спеки: импорт `.p12` на iOS).
   4. Убедитесь, что трафик идёт через сервер (`curl ifconfig.me` с устройства показывает IP сервера).
 
-- [ ] **Шаг 5: Камуфляж и реальный адрес клиента** (Review Focus №1):
+- [x] **Шаг 5: Камуфляж и реальный адрес клиента** (Review Focus №1):
   - браузер на `https://<DOMAIN_VPN>/` (без секрета) не открывает шлюз: запрос авторизации или обычная
     страница, но не меню ocserv;
   - с подключённого клиента:
@@ -1954,7 +1955,7 @@ docker run --rm -v ocmanager_pki:/pki:ro -v "$PWD":/out alpine tar czf /out/pki-
   - `docker compose logs api-public | tail` после запроса `https://<DOMAIN_APP>/api/health` с вашего ноутбука
     показывает **ваш** IP, а не адрес Caddy.
 
-- [ ] **Шаг 6: Сертификат продлевается без простоя** (Review Focus №2). Не ждите 60 дней — имитируйте:
+- [x] **Шаг 6: Сертификат продлевается без простоя** (Review Focus №2). Не ждите 60 дней — имитируйте:
 
 ```bash
 # запомненный отпечаток сертификата есть; стираем его, будто сертификат сменился:
@@ -1977,7 +1978,7 @@ PY
 Ожидается: `reloaded` (отпечаток стёрт — воркер перечитал сертификат), затем повторный запуск даёт
 `unchanged`. Подключённый клиент не обрывается.
 
-- [ ] **Шаг 7: Тест холодного рестарта.**
+- [x] **Шаг 7: Тест холодного рестарта.**
 
 ```bash
 docker compose down            # тома остаются
@@ -1986,7 +1987,7 @@ sleep 90 && ../scripts/doctor.sh
 ```
 Ожидается: стек поднялся без ручных действий, `doctor.sh` зелёный.
 
-- [ ] **Шаг 8: Коммит**
+- [x] **Шаг 8: Коммит**
 
 ```bash
 git add deploy/README.md
@@ -2007,13 +2008,13 @@ git commit -m "docs(deploy): first run, update and backup instructions"
 
 ## Определение готовности фазы
 
-- [ ] Задачи 7.1–7.9 закоммичены, CI зелёный (`check`, `images`, `integration`, `tma`).
-- [ ] Чистый сервер разворачивается по `deploy/README.md` без правки исходников (7.10, шаг 2).
-- [ ] `scripts/doctor.sh` зелёный (7.10, шаг 3); после `docker compose down && up -d` — снова зелёный (шаг 7).
-- [ ] Подключение реальным клиентом работает на десктопе и iPhone; камуфляж не открывает шлюз без секрета;
+- [x] Задачи 7.1–7.9 закоммичены, CI зелёный (`check`, `images`, `integration`, `tma`).
+- [x] Чистый сервер разворачивается по `deploy/README.md` без правки исходников (7.10, шаг 2).
+- [x] `scripts/doctor.sh` зелёный (7.10, шаг 3); после `docker compose down && up -d` — снова зелёный (шаг 7).
+- [x] Подключение реальным клиентом работает на десктопе и iPhone; камуфляж не открывает шлюз без секрета;
   `occtl show users` показывает настоящий адрес клиента (шаги 4–5).
-- [ ] Для каждого пункта Review Focus есть проверка (тест, скрипт или строка `doctor.sh`) и она зелёная.
-- [ ] PR со сломанным `connect.sh` краснеет, откат — зеленеет (7.9, шаг 5).
+- [x] Для каждого пункта Review Focus есть проверка (тест, скрипт или строка `doctor.sh`) и она зелёная.
+- [x] PR со сломанным `connect.sh` краснеет, откат — зеленеет (7.9, шаг 5).
 
 ## Покрытие требований
 
