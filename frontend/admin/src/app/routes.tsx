@@ -1,4 +1,7 @@
 import type { RouteObject } from "react-router";
+import { AuditPage } from "../pages/Audit";
+import { ProfilePage } from "../pages/Profile";
+import { SettingsPage } from "../pages/Settings";
 import { ClientDetailPage } from "../pages/ClientDetail";
 import { ClientsPage } from "../pages/Clients";
 import { DevicesPage } from "../pages/Devices";
@@ -10,10 +13,6 @@ import { NodePage } from "../pages/Node";
 import { OverviewPage } from "../pages/Overview";
 import { AppShell } from "../ui/AppShell";
 import { RequireAuth } from "./RequireAuth";
-
-function Stub({ name }: { name: string }) {
-  return <h1 className="text-lg font-semibold">{name}</h1>;
-}
 
 export const routes: RouteObject[] = [
   { path: "/login", element: <LoginPage /> },
@@ -31,9 +30,9 @@ export const routes: RouteObject[] = [
           { path: "/payments", element: <PaymentsPage /> },
           { path: "/devices", element: <DevicesPage /> },
           { path: "/node", element: <NodePage /> },
-          { path: "/audit", element: <Stub name="Аудит" /> },
-          { path: "/settings", element: <Stub name="Настройки" /> },
-          { path: "/profile", element: <Stub name="Профиль" /> },
+          { path: "/audit", element: <AuditPage /> },
+          { path: "/settings", element: <SettingsPage /> },
+          { path: "/profile", element: <ProfilePage /> },
         ],
       },
     ],

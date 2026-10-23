@@ -86,3 +86,18 @@ test("logout_clears_state_and_csrf", async () => {
   });
   await waitFor(() => expect(h.get().status).toBe("anon"));
 });
+
+test("refresh_reloads_admin", async () => {
+  let totp = false;
+  const h = harness((url) =>
+    url.endsWith("/auth/me")
+      ? json(200, { admin: { ...admin, totp_enabled: totp }, csrf_token: "c1" })
+      : json(404, {}),
+  );
+  await screen.findByText("authed");
+  totp = true;
+  await act(async () => {
+    await h.get().refresh();
+  });
+  expect(h.get().admin?.totp_enabled).toBe(true);
+});

@@ -18,6 +18,8 @@ export interface SessionValue {
   status: SessionStatus;
   login(body: S<"LoginBody">): Promise<void>;
   logout(): Promise<void>;
+  /** Перечитать админа с сервера (после включения/отключения 2FA). */
+  refresh(): Promise<void>;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -84,9 +86,13 @@ export function SessionProvider({ client, children }: { client: ApiClient; child
     }
   }, [client, reset]);
 
+  const refresh = useCallback(async () => {
+    accept(await client.get<S<"AuthOut">>("/auth/me"));
+  }, [client, accept]);
+
   const value = useMemo(
-    () => ({ admin, status, login, logout }),
-    [admin, status, login, logout],
+    () => ({ admin, status, login, logout, refresh }),
+    [admin, status, login, logout, refresh],
   );
   return (
     <ClientContext.Provider value={client}>
