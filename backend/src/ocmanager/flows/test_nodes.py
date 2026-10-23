@@ -15,6 +15,12 @@ from ocmanager.nodes.driver.base import NodeUnreachable
 from ocmanager.nodes.driver.fake import FakeNodeDriver
 from ocmanager.nodes.models import Node
 
+CERT = Path("/caddy-data/server.crt")
+
+
+def reloads(driver: FakeNodeDriver) -> int:
+    return driver.calls.count(("reload", ()))
+
 
 @pytest.fixture
 async def node(session: AsyncSession, settings: Settings) -> Node:
@@ -67,40 +73,32 @@ async def test_failed_action_is_not_audited(session: AsyncSession, node: Node) -
     assert await audit_rows(session) == []
 
 
-async def test_the_first_look_at_the_certificate_reloads_once(
-    redis: ArqRedis, tmp_path: Path
-) -> None:
-    cert = tmp_path / "server.crt"
-    cert.write_bytes(b"certificate-1")
-    driver = FakeNodeDriver()
+async def test_the_first_look_at_the_certificate_reloads_once(redis: ArqRedis) -> None:
+    driver = FakeNodeDriver(server_cert=b"certificate-1")
 
-    assert await sync_server_cert(redis, 1, cert, driver) == "reloaded"
-    assert driver.calls == [("reload", ())]
+    assert await sync_server_cert(redis, 1, CERT, driver) == "reloaded"
+    assert driver.calls == [("read_server_cert", (CERT,)), ("reload", ())]
 
 
-async def test_an_unchanged_certificate_is_left_alone(redis: ArqRedis, tmp_path: Path) -> None:
-    cert = tmp_path / "server.crt"
-    cert.write_bytes(b"certificate-1")
-    driver = FakeNodeDriver()
-    await sync_server_cert(redis, 1, cert, driver)
+async def test_an_unchanged_certificate_is_left_alone(redis: ArqRedis) -> None:
+    driver = FakeNodeDriver(server_cert=b"certificate-1")
+    await sync_server_cert(redis, 1, CERT, driver)
 
-    assert await sync_server_cert(redis, 1, cert, driver) == "unchanged"
-    assert driver.calls == [("reload", ())]  # второго reload нет
+    assert await sync_server_cert(redis, 1, CERT, driver) == "unchanged"
+    assert reloads(driver) == 1  # второго reload нет
 
 
-async def test_a_renewed_certificate_reloads_the_node(redis: ArqRedis, tmp_path: Path) -> None:
-    cert = tmp_path / "server.crt"
-    cert.write_bytes(b"certificate-1")
-    driver = FakeNodeDriver()
-    await sync_server_cert(redis, 1, cert, driver)
+async def test_a_renewed_certificate_reloads_the_node(redis: ArqRedis) -> None:
+    driver = FakeNodeDriver(server_cert=b"certificate-1")
+    await sync_server_cert(redis, 1, CERT, driver)
 
-    cert.write_bytes(b"certificate-2")  # Caddy продлил сертификат
+    driver.server_cert = b"certificate-2"  # Caddy продлил сертификат
 
-    assert await sync_server_cert(redis, 1, cert, driver) == "reloaded"
-    assert driver.calls == [("reload", ()), ("reload", ())]
+    assert await sync_server_cert(redis, 1, CERT, driver) == "reloaded"
+    assert reloads(driver) == 2
 
 
-async def test_a_failed_reload_is_retried_next_time(redis: ArqRedis, tmp_path: Path) -> None:
+async def test_a_failed_reload_is_retried_next_time(redis: ArqRedis) -> None:
     class FlakyDriver(FakeNodeDriver):
         failures = 1
 
@@ -110,31 +108,25 @@ async def test_a_failed_reload_is_retried_next_time(redis: ArqRedis, tmp_path: P
                 raise NodeUnreachable("occtl is down")
             await super().reload()
 
-    cert = tmp_path / "server.crt"
-    cert.write_bytes(b"certificate-1")
-    driver = FlakyDriver()
+    driver = FlakyDriver(server_cert=b"certificate-1")
 
     with pytest.raises(NodeUnreachable):
-        await sync_server_cert(redis, 1, cert, driver)
+        await sync_server_cert(redis, 1, CERT, driver)
     # отпечаток не запомнен: следующий запуск повторит reload
-    assert await sync_server_cert(redis, 1, cert, driver) == "reloaded"
-    assert driver.calls == [("reload", ())]
+    assert await sync_server_cert(redis, 1, CERT, driver) == "reloaded"
+    assert reloads(driver) == 1
 
 
-async def test_a_missing_certificate_file_is_reported_not_raised(
-    redis: ArqRedis, tmp_path: Path
-) -> None:
+async def test_a_missing_certificate_file_is_reported_not_raised(redis: ArqRedis) -> None:
     driver = FakeNodeDriver()
-    assert await sync_server_cert(redis, 1, tmp_path / "nope.crt", driver) == "missing"
-    assert driver.calls == []
+    assert await sync_server_cert(redis, 1, CERT, driver) == "missing"
+    assert reloads(driver) == 0
 
 
-async def test_each_node_remembers_its_own_fingerprint(redis: ArqRedis, tmp_path: Path) -> None:
-    cert = tmp_path / "server.crt"
-    cert.write_bytes(b"certificate-1")
-    first, second = FakeNodeDriver(), FakeNodeDriver()
+async def test_each_node_remembers_its_own_fingerprint(redis: ArqRedis) -> None:
+    first, second = FakeNodeDriver(server_cert=b"c"), FakeNodeDriver(server_cert=b"c")
 
-    await sync_server_cert(redis, 1, cert, first)
-    await sync_server_cert(redis, 2, cert, second)
+    await sync_server_cert(redis, 1, CERT, first)
+    await sync_server_cert(redis, 2, CERT, second)
 
-    assert first.calls == second.calls == [("reload", ())]
+    assert reloads(first) == reloads(second) == 1

@@ -1,6 +1,5 @@
 """Склейка nodes + audit: проверка здоровья и действия над нодой с аудитом."""
 
-import asyncio
 import hashlib
 from pathlib import Path
 from typing import Literal
@@ -75,12 +74,12 @@ async def sync_server_cert(
     """Серверный сертификат ocserv выпускает и продлевает Caddy; ocserv держит прочитанный при
     старте. Смена файла без reload тихо ломает подключения через 60–90 дней, поэтому воркер
     сверяет отпечаток с запомненным и при отличии просит ocserv перечитать сертификат.
+    Файл читает сама нода: том Caddy закрыт для всех, кроме root.
 
     Отпечаток запоминается только после успешного reload: сбой повторится при следующем запуске.
     Пустой Redis даёт один лишний reload — он не обрывает сессии и дешевле пропущенного."""
-    try:
-        data = await asyncio.to_thread(path.read_bytes)
-    except FileNotFoundError:
+    data = await driver.read_server_cert(path)
+    if data is None:
         return "missing"
     fingerprint = hashlib.sha256(data).hexdigest()
     key = SERVER_CERT_FINGERPRINT_KEY.format(node_id=node_id)

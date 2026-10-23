@@ -67,6 +67,18 @@ class LocalDockerDriver:
     async def reload(self) -> None:
         await self.occtl.reload()
 
+    async def read_server_cert(self, path: Path) -> bytes | None:
+        argv = ["docker", "exec", self.container, "cat", str(path)]
+        try:
+            result = await shell.run(argv, check=False)
+        except (shell.CommandTimeout, shell.CommandNotFound) as exc:
+            raise NodeUnreachable(str(exc)) from exc
+        if result.returncode == 0:
+            return result.stdout.encode()
+        if "no such file" in result.stderr.lower():
+            return None
+        raise NodeUnreachable(f"cat {path}: {result.stderr.strip()[:300]}")
+
     async def publish_allowlist(self, usernames: Iterable[str]) -> None:
         data = files.render_allowlist(usernames)  # ValueError — до записи
         await asyncio.to_thread(files.atomic_write, self.state_dir / ALLOWLIST_FILE, data)

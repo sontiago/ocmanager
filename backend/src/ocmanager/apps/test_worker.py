@@ -207,21 +207,18 @@ async def test_check_server_cert_reloads_the_node_when_the_file_changes(
     sessionmaker: async_sessionmaker[AsyncSession],
     redis: ArqRedis,
     settings: Settings,
-    tmp_path: Path,
 ) -> None:
-    cert = tmp_path / "server.crt"
-    cert.write_bytes(b"certificate-1")
-    configured = settings.model_copy(update={"server_cert_path": cert})
+    configured = settings.model_copy(update={"server_cert_path": Path("/caddy-data/server.crt")})
     async with sessionmaker() as s:
         await registry.ensure_local_node(s, configured)
         await s.commit()
     ctx: dict[str, Any] = {"settings": configured, "sessionmaker": sessionmaker, "redis": redis}
-    fake = FakeNodeDriver()
+    fake = FakeNodeDriver(server_cert=b"certificate-1")
 
     with registry.override_driver(fake):
         assert await check_server_cert(ctx) == "reloaded"
         assert await check_server_cert(ctx) == "unchanged"
-        cert.write_bytes(b"certificate-2")
+        fake.server_cert = b"certificate-2"
         assert await check_server_cert(ctx) == "reloaded"
 
     assert fake.calls.count(("reload", ())) == 2

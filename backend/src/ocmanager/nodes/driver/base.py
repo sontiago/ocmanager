@@ -8,6 +8,7 @@
 from collections.abc import AsyncIterator, Iterable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, Protocol
 
 from ocmanager.nodes.occtl.parser import OcSession, OcStatus
@@ -38,6 +39,11 @@ class NodeDriver(Protocol):
         ...
 
     async def reload(self) -> None: ...
+
+    async def read_server_cert(self, path: Path) -> bytes | None:
+        """Серверный сертификат так, как его видит нода: том Caddy закрыт для воркера.
+        None — файла нет."""
+        ...
 
     async def publish_allowlist(self, usernames: Iterable[str]) -> None:
         """Атомарно заменяет allowed.list. ValueError на невалидном username —

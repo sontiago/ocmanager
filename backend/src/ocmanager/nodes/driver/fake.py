@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from ocmanager.core.clock import utcnow
@@ -23,6 +24,7 @@ class FakeNodeDriver:
     sessions: list[OcSession] = field(default_factory=list)
     allowlist: set[str] | None = field(default_factory=set)
     crl: bytes | None = None
+    server_cert: bytes | None = None
     container_state: str = "running"
     occtl_ok: bool = True
     log_lines: list[str] = field(default_factory=lambda: ["ocserv started"])
@@ -84,6 +86,11 @@ class FakeNodeDriver:
     async def reload(self) -> None:
         self.calls.append(("reload", ()))
         self._occtl()
+
+    async def read_server_cert(self, path: Path) -> bytes | None:
+        self.calls.append(("read_server_cert", (path,)))
+        self._occtl()
+        return self.server_cert
 
     async def publish_allowlist(self, usernames: Iterable[str]) -> None:
         data = files.render_allowlist(usernames)

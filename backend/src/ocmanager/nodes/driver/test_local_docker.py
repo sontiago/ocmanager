@@ -90,6 +90,33 @@ async def test_disconnect_invalid_username_never_runs(
     assert sh.calls == []
 
 
+CAT = ("docker", "exec", "ocm-ocserv", "cat", "/caddy-data/server.crt")
+CERT = Path("/caddy-data/server.crt")
+
+
+async def test_read_server_cert_runs_cat_in_the_container(
+    sh: FakeShell, driver: LocalDockerDriver
+) -> None:
+    sh.reply(CAT, out="-----BEGIN CERTIFICATE-----\n")
+    assert await driver.read_server_cert(CERT) == b"-----BEGIN CERTIFICATE-----\n"
+    assert sh.calls == [CAT]
+
+
+async def test_read_server_cert_missing_file_is_none(
+    sh: FakeShell, driver: LocalDockerDriver
+) -> None:
+    sh.reply(CAT, code=1, err="cat: /caddy-data/server.crt: No such file or directory")
+    assert await driver.read_server_cert(CERT) is None
+
+
+async def test_read_server_cert_other_failures_are_unreachable(
+    sh: FakeShell, driver: LocalDockerDriver
+) -> None:
+    sh.reply(CAT, code=1, err="Error response from daemon: container is not running")
+    with pytest.raises(NodeUnreachable):
+        await driver.read_server_cert(CERT)
+
+
 async def test_reload_argv(sh: FakeShell, driver: LocalDockerDriver) -> None:
     await driver.reload()
     assert sh.calls == [(*EXEC, "reload")]
