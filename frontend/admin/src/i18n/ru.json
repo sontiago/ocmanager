@@ -134,5 +134,16 @@
   "plans.products": "Продукты провайдеров (JSON)",
   "plans.productsInvalid": "Нужен JSON-объект",
   "plans.sortOrder": "Порядок сортировки",
-  "plans.active": "Активен (виден в каталоге)"
+  "plans.active": "Активен (виден в каталоге)",
+  "payments.tabPayments": "Платежи",
+  "payments.tabWebhooks": "Вебхуки",
+  "payments.provider": "Провайдер",
+  "payments.since": "С даты",
+  "payments.until": "По дату",
+  "payments.clientId": "ID клиента",
+  "webhooks.event": "Событие",
+  "webhooks.attempts": "Попытки",
+  "webhooks.details": "Подробнее",
+  "webhooks.reprocess": "Переобработать",
+  "webhooks.needAttention": "Требуют внимания"
 }

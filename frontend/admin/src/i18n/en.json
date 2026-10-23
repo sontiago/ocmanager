@@ -134,5 +134,16 @@
   "plans.products": "Provider products (JSON)",
   "plans.productsInvalid": "A JSON object is required",
   "plans.sortOrder": "Sort order",
-  "plans.active": "Active (visible in catalog)"
+  "plans.active": "Active (visible in catalog)",
+  "payments.tabPayments": "Payments",
+  "payments.tabWebhooks": "Webhooks",
+  "payments.provider": "Provider",
+  "payments.since": "Since",
+  "payments.until": "Until",
+  "payments.clientId": "Client ID",
+  "webhooks.event": "Event",
+  "webhooks.attempts": "Attempts",
+  "webhooks.details": "Details",
+  "webhooks.reprocess": "Reprocess",
+  "webhooks.needAttention": "Needing attention"
 }
