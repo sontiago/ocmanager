@@ -10,7 +10,6 @@ from ocmanager.audit.models import AuditLog
 from ocmanager.audit.service import Actor
 from ocmanager.billing import promo
 from ocmanager.core.errors import (
-    NotApplicable,
     PromoAlreadyUsed,
     PromoInvalid,
     SubscriptionInactive,
@@ -99,12 +98,47 @@ async def test_a_failed_redeem_does_not_consume_the_code(
     assert await promo.redemptions(session, created.id) == []
 
 
+async def test_an_ineligible_client_cannot_tell_valid_codes_from_invalid_ones(
+    session: AsyncSession, make_client: MakeClient
+) -> None:
+    """Без подписки и действующий, и выдуманный код дают один и тот же отказ: иначе клиент без
+    подписки подбирал бы коды по тексту ошибки."""
+    client = await make_client()
+    await promo.create(session, code="real", kind="days", value=5)
+    for code in ("real", "madeup"):
+        with pytest.raises(SubscriptionInactive):
+            await flows.redeem(session, client.id, code, me(client.id), NOW)
+
+
+async def test_a_blocked_client_gets_the_same_refusal_for_any_code(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client_id = await subscribed(session, make_client, make_plan)
+    await subscriptions.set_blocked(session, client_id, True, NOW)
+    await promo.create(session, code="real", kind="days", value=5)
+    for code in ("real", "madeup"):
+        with pytest.raises(SubscriptionInactive):
+            await flows.redeem(session, client_id, code, me(client_id), NOW)
+
+
+async def test_a_traffic_code_the_client_cannot_use_looks_invalid_and_is_not_consumed(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client_id = await subscribed(session, make_client, make_plan, duration_days=1)
+    await subscriptions.expire_due(session, NOW + 2 * DAY)  # подписка истекла
+    created = await promo.create(session, code="gbcode", kind="traffic", value=500)
+    with pytest.raises(PromoInvalid):
+        await flows.redeem(session, client_id, "gbcode", me(client_id), NOW + 2 * DAY)
+    await session.refresh(created)
+    assert created.uses == 0
+
+
 async def test_a_traffic_code_on_an_unlimited_plan_is_not_consumed(
     session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
 ) -> None:
     client_id = await subscribed(session, make_client, make_plan, traffic_limit_bytes=None)
     created = await promo.create(session, code="gbcode", kind="traffic", value=500)
-    with pytest.raises(NotApplicable):
+    with pytest.raises(PromoInvalid):  # не NotApplicable: иначе код выдал бы себя как действующий
         await flows.redeem(session, client_id, "gbcode", me(client_id), NOW)
     await session.refresh(created)
     assert created.uses == 0

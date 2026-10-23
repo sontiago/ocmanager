@@ -19,6 +19,8 @@ export const en: Record<MessageKey, string> = {
   "error.trial_already_used": "The trial period has already been used.",
   "error.subscription_inactive": "Subscription is not active.",
   "error.node_unavailable": "The server is temporarily unavailable. Try later.",
+  "error.promo_invalid": "The promo code is invalid or expired.",
+  "error.promo_already_used": "You have already used this promo code.",
   "error.not_found": "Not found.",
   "error.internal": "Internal server error.",
   "error.code": "Code",

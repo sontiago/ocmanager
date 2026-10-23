@@ -12,12 +12,14 @@ from ocmanager.events.types import (
     ClientUnblocked,
     DeviceIssued,
     DeviceRevoked,
+    PaymentReceived,
     SubscriptionActivated,
     SubscriptionExpired,
     SubscriptionRenewed,
     TrafficExhausted,
     TrafficReset,
 )
+from ocmanager.flows import referrals
 from ocmanager.flows.access import sync_all_nodes
 
 ACCESS_EVENTS = (
@@ -40,3 +42,13 @@ def register(settings: Settings) -> None:
     async def sync_node_access(_: object, session: AsyncSession) -> None:
         # Событие говорит лишь «что-то изменилось»: список пересчитывается целиком.
         await sync_all_nodes(session, settings, utcnow())
+
+    @bus.on(PaymentReceived)
+    async def reward_referrer(event: PaymentReceived, session: AsyncSession) -> None:
+        await referrals.reward_first_payment(session, event.payment_id, utcnow())
+
+    @bus.on(SubscriptionActivated, SubscriptionRenewed)
+    async def apply_pending_rewards(
+        event: SubscriptionActivated | SubscriptionRenewed, session: AsyncSession
+    ) -> None:
+        await referrals.apply_pending(session, event.client_id, utcnow())

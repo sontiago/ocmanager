@@ -21,6 +21,7 @@ ERRORS_TS = REPO / "frontend" / "tma" / "src" / "api" / "errors.ts"
 # Коды, которых нет во фронтенде, но бэкенд может их отдать на /api/tma/*. Каждый — с причиной.
 KNOWN_UNMAPPED = {
     "validation_error": "битое тело запроса; форма фронтенда таких не шлёт (maxLength=40)",
+    "not_applicable": "flows/promo превращает её в promo_invalid: код не должен выдавать себя",
     "pki_not_ready": "не создан CA (`ocmanager pki init`): ошибка развёртывания, не пользователя",
 }
 # Коды только админки: до Mini App не доходят.

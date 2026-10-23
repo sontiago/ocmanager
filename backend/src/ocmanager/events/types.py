@@ -70,6 +70,18 @@ class TrafficReset(DomainEvent):
     client_id: int
 
 
+class ReferralRewarded(DomainEvent):
+    """Первый платёж приглашённого: награда пригласившему и приглашённому записана."""
+
+    name: ClassVar[str] = "referral.rewarded"
+    reward_id: int
+
+
+class ReferralTierReached(DomainEvent):
+    name: ClassVar[str] = "referral.tier_reached"
+    reward_id: int
+
+
 class ClientBlocked(DomainEvent):
     name: ClassVar[str] = "client.blocked"
     client_id: int

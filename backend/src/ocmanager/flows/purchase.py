@@ -26,6 +26,7 @@ from ocmanager.events.types import (
     PaymentRefunded,
     WebhookDeadLettered,
 )
+from ocmanager.flows import referrals
 from ocmanager.flows import subscriptions as subscription_flows
 from ocmanager.flows.clients import register_client
 from ocmanager.subscriptions import service as subscriptions
@@ -191,7 +192,7 @@ async def _pay(
             await _close(session, row, "processed", now)
             return "processed"
 
-    terms = subscription_flows.terms_from_plan(plan)
+    terms = await referrals.terms_for_client(session, plan, client.id)
     try:
         # SAVEPOINT: отказ подписки откатывает только её собственные записи, платёж остаётся.
         async with session.begin_nested():

@@ -3,9 +3,9 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Any, Literal
 
-from sqlalchemy import Boolean, literal_column, select, text
+from sqlalchemy import Boolean, func, literal_column, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +29,7 @@ from ocmanager.events.types import (
     TrafficReset,
 )
 from ocmanager.subscriptions import state as state_mod
-from ocmanager.subscriptions.models import Client, Subscription
+from ocmanager.subscriptions.models import Client, ReferralReward, Subscription
 from ocmanager.subscriptions.schemas import TelegramIdentity
 from ocmanager.subscriptions.state import LIVE, PlanTerms, Status, SubState, has_access
 
@@ -439,3 +439,69 @@ async def set_referrer(session: AsyncSession, client_id: int, code: str) -> bool
     client.referred_by = referrer.id
     await session.flush()
     return True
+
+
+# --- журнал наград -------------------------------------------------------------
+
+
+async def reward_exists_for_payment(session: AsyncSession, payment_id: int) -> bool:
+    found = await session.scalar(
+        select(ReferralReward.id).where(
+            ReferralReward.payment_id == payment_id, ReferralReward.kind == "base"
+        )
+    )
+    return found is not None
+
+
+async def recent_base_rewards(session: AsyncSession, inviter_id: int, since: datetime) -> int:
+    """Базовые награды с днями за период (для потолка). Урезанные потолком не считаются."""
+    count = await session.scalar(
+        select(func.count())
+        .select_from(ReferralReward)
+        .where(
+            ReferralReward.inviter_id == inviter_id,
+            ReferralReward.kind == "base",
+            ReferralReward.status != "capped",
+            ReferralReward.created_at >= since,
+        )
+    )
+    return int(count or 0)
+
+
+async def paying_friends(session: AsyncSession, inviter_id: int) -> int:
+    """Сколько приглашённых заплатили: по одной базовой награде на друга, в том числе урезанной."""
+    count = await session.scalar(
+        select(func.count())
+        .select_from(ReferralReward)
+        .where(ReferralReward.inviter_id == inviter_id, ReferralReward.kind == "base")
+    )
+    return int(count or 0)
+
+
+async def tier_rewarded(session: AsyncSession, inviter_id: int, tier: int) -> bool:
+    found = await session.scalar(
+        select(ReferralReward.id).where(
+            ReferralReward.inviter_id == inviter_id,
+            ReferralReward.kind == "tier",
+            ReferralReward.tier == tier,
+        )
+    )
+    return found is not None
+
+
+async def add_reward(session: AsyncSession, **fields: Any) -> ReferralReward:
+    row = ReferralReward(**fields)
+    session.add(row)
+    await session.flush()
+    return row
+
+
+async def pending_rewards(session: AsyncSession, inviter_id: int) -> list[ReferralReward]:
+    return list(
+        await session.scalars(
+            select(ReferralReward)
+            .where(ReferralReward.inviter_id == inviter_id, ReferralReward.status == "pending")
+            .order_by(ReferralReward.id)
+            .with_for_update()
+        )
+    )

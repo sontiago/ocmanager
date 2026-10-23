@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ocmanager.audit.service import Actor
 from ocmanager.billing import plans
 from ocmanager.core.errors import InvalidInput
+from ocmanager.flows import referrals
 from ocmanager.flows import subscriptions as flows
 from ocmanager.subscriptions.models import Subscription
 from ocmanager.subscriptions.state import MAX_DAYS
@@ -27,7 +28,7 @@ async def grant_plan(
     plan = await plans.get_by_code(session, plan_code)
     if plan.is_trial:
         raise InvalidInput("the trial plan is started with start_trial, not granted")
-    terms = flows.terms_from_plan(plan)
+    terms = await referrals.terms_for_client(session, plan, client_id)
     if days is not None:
         if not 0 < days <= MAX_DAYS:
             raise InvalidInput(f"days must be 1..{MAX_DAYS}")

@@ -20,6 +20,8 @@ export const ru = {
   "error.trial_already_used": "Пробный период уже был использован.",
   "error.subscription_inactive": "Подписка неактивна.",
   "error.node_unavailable": "Сервер временно недоступен. Попробуйте позже.",
+  "error.promo_invalid": "Промокод недействителен или закончился.",
+  "error.promo_already_used": "Вы уже использовали этот промокод.",
   "error.not_found": "Не найдено.",
   "error.internal": "Внутренняя ошибка сервера.",
   "error.code": "Код",

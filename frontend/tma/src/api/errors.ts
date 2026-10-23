@@ -9,6 +9,8 @@ export const API_ERROR_CODES = [
   "trial_already_used",
   "subscription_inactive",
   "node_unavailable",
+  "promo_invalid",
+  "promo_already_used",
   "not_found",
   "internal",
 ] as const;
