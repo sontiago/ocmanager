@@ -6,6 +6,7 @@ import { PaymentsPage } from "../pages/Payments";
 import { PlansPage } from "../pages/Plans";
 import { SubscriptionsPage } from "../pages/Subscriptions";
 import { LoginPage } from "../pages/Login";
+import { NodePage } from "../pages/Node";
 import { OverviewPage } from "../pages/Overview";
 import { AppShell } from "../ui/AppShell";
 import { RequireAuth } from "./RequireAuth";
@@ -29,7 +30,7 @@ export const routes: RouteObject[] = [
           { path: "/plans", element: <PlansPage /> },
           { path: "/payments", element: <PaymentsPage /> },
           { path: "/devices", element: <DevicesPage /> },
-          { path: "/node", element: <Stub name="Нода" /> },
+          { path: "/node", element: <NodePage /> },
           { path: "/audit", element: <Stub name="Аудит" /> },
           { path: "/settings", element: <Stub name="Настройки" /> },
           { path: "/profile", element: <Stub name="Профиль" /> },
