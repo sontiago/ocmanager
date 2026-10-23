@@ -87,8 +87,8 @@ def test_a_full_run_issues_the_commands_in_the_order_of_the_readme(root: Path) -
     assert [c for c in runner.joined() if c.startswith("docker compose")] == [
         "docker compose build",
         "docker compose up -d postgres redis volume-init",
-        "docker compose run --rm cli pki init",
-        "docker compose run --rm cli admin create owner --password-stdin",
+        "docker compose run --rm -T cli pki init",
+        "docker compose run --rm -T cli admin create owner --password-stdin",
         "docker compose up -d",
     ]
     assert any("s_client" in c and "app.example.com" in c for c in runner.joined())

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Команда ocm: находит каталог установки (скрипт может быть ссылкой в /usr/local/bin)
+# и передаёт управление Python-части.
+set -euo pipefail
+
+self="$(readlink -f "${BASH_SOURCE[0]}")"
+root="$(dirname "$(dirname "$self")")"
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "ocm нужно запускать от root: sudo ocm $*" >&2
+  exit 1
+fi
+
+PYTHONPATH="$root/deploy" exec python3 -m installer.ocm "$@"

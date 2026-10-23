@@ -90,11 +90,11 @@ class FakeRunner:
     inputs: list[str | None] = field(default_factory=list)
     _rules: list[tuple[str, Outcome]] = field(default_factory=list)
 
-    def on(self, needle: str, outcome: Outcome) -> None:
+    def on(self, needle: str, outcome: Outcome, *, first: bool = False) -> None:
         """Первое правило, чья подстрока входит в команду, выигрывает. Ответ — Result, исключение,
         которое нужно бросить, или функция от команды (побочные эффекты, например создание
         файла, который в жизни создала бы сама команда)."""
-        self._rules.append((needle, outcome))
+        self._rules.insert(0 if first else len(self._rules), (needle, outcome))
 
     def run(
         self,

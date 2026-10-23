@@ -161,13 +161,13 @@ def _tolerate(ctx: Context, args: list[str], marker: str, *, input: str | None =
 
 
 def _pki(ctx: Context) -> bool:
-    return _tolerate(ctx, ["run", "--rm", "cli", "pki", "init"], "уже существует")
+    return _tolerate(ctx, ["run", "--rm", "-T", "cli", "pki", "init"], "уже существует")
 
 
 def _admin(ctx: Context) -> bool:
     return _tolerate(
         ctx,
-        ["run", "--rm", "cli", "admin", "create", ctx.admin_user, "--password-stdin"],
+        ["run", "--rm", "-T", "cli", "admin", "create", ctx.admin_user, "--password-stdin"],
         "already exists",
         input=ctx.admin_password + "\n",
     )
