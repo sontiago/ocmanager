@@ -127,3 +127,67 @@ async def test_a_message_without_a_sender_is_ignored(
     await bot.whoami(msg(fake))
     await bot.fallback(msg(fake), settings=https_settings)
     assert fake.answers == []
+
+
+# --- реферальная ссылка в /start ----------------------------------------------
+
+
+def command(args: str | None) -> Any:
+    return SimpleNamespace(args=args)
+
+
+async def test_start_with_a_referral_link_binds_a_new_client(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    https_settings: Settings,
+    make_client: Any,
+) -> None:
+    inviter = await make_client()
+    fake = FakeMessage(user_id=7101)
+    await bot.start(
+        msg(fake),
+        command=command(f"ref_{inviter.referral_code}"),
+        settings=https_settings,
+        sessionmaker=sessionmaker,
+    )
+    friend = (await session.execute(select(Client).where(Client.telegram_id == 7101))).scalar_one()
+    await session.refresh(friend)
+    assert friend.referred_by == inviter.id
+    assert fake.answers  # приветствие ушло как обычно
+
+
+async def test_start_with_a_link_does_not_rebind_an_existing_client(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    https_settings: Settings,
+    make_client: Any,
+) -> None:
+    inviter = await make_client()
+    await bot.start(
+        msg(FakeMessage(user_id=7102)), settings=https_settings, sessionmaker=sessionmaker
+    )
+    await bot.start(
+        msg(FakeMessage(user_id=7102)),
+        command=command(f"ref_{inviter.referral_code}"),
+        settings=https_settings,
+        sessionmaker=sessionmaker,
+    )
+    friend = (await session.execute(select(Client).where(Client.telegram_id == 7102))).scalar_one()
+    await session.refresh(friend)
+    assert friend.referred_by is None
+
+
+async def test_start_with_garbage_or_own_code_binds_nobody(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    https_settings: Settings,
+) -> None:
+    await bot.start(
+        msg(FakeMessage(user_id=7103)),
+        command=command("ref_nosuchco"),
+        settings=https_settings,
+        sessionmaker=sessionmaker,
+    )
+    friend = (await session.execute(select(Client).where(Client.telegram_id == 7103))).scalar_one()
+    await session.refresh(friend)
+    assert friend.referred_by is None

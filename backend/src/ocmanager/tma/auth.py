@@ -28,6 +28,7 @@ MAX_TELEGRAM_ID: Final = 2**52
 class InitData:
     user: TelegramIdentity
     auth_date: datetime
+    start_param: str | None = None  # ?startapp=… из ссылки на Mini App
 
 
 def _malformed() -> Unauthorized:
@@ -85,4 +86,6 @@ def validate_init_data(
         raise Unauthorized("auth_date is in the future")
     if now - auth_date > timedelta(seconds=ttl_s):
         raise InitDataExpired("initData expired")
-    return InitData(user=_identity(user), auth_date=auth_date)
+    return InitData(
+        user=_identity(user), auth_date=auth_date, start_param=data.get("start_param") or None
+    )

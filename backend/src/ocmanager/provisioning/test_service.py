@@ -244,8 +244,8 @@ async def test_parallel_issuing_respects_the_limit(
     async with committed_sessionmaker() as s, s.begin():
         client_id = await s.scalar(
             text(
-                "INSERT INTO clients (telegram_id, first_name, lang)"
-                " VALUES (777, 'A', 'ru') RETURNING id"
+                "INSERT INTO clients (telegram_id, first_name, lang, referral_code)"
+                " VALUES (777, 'A', 'ru', 'testcode') RETURNING id"
             )
         )
     assert client_id is not None
@@ -273,8 +273,8 @@ async def test_double_click_on_revoke_revokes_once(
     async with committed_sessionmaker() as s, s.begin():
         client_id = await s.scalar(
             text(
-                "INSERT INTO clients (telegram_id, first_name, lang)"
-                " VALUES (888, 'A', 'ru') RETURNING id"
+                "INSERT INTO clients (telegram_id, first_name, lang, referral_code)"
+                " VALUES (888, 'A', 'ru', 'testcod2') RETURNING id"
             )
         )
         assert client_id is not None

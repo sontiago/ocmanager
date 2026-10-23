@@ -173,3 +173,46 @@ class CheckoutIn(BaseModel):
 class CheckoutOut(BaseModel):
     checkout_url: str
     payment_id: str  # id намерения покупки; платёж появится после вебхука
+
+
+class TierOut(BaseModel):
+    friends: int
+    days: int
+    devices: int
+    traffic_bytes: int
+    badge: Literal["friend", "ambassador"] | None
+    reached: bool
+
+
+class RewardOut(BaseModel):
+    created_at: UtcDatetime
+    kind: Literal["base", "tier"]
+    tier: int | None
+    days: int
+    devices: int
+    traffic_bytes: int
+    status: Literal["applied", "pending", "capped"]
+
+
+class ReferralOut(BaseModel):
+    code: str
+    link: str | None  # None — имя бота не настроено
+    invited: int  # привязанных клиентов
+    paying_friends: int  # из них оплативших
+    badges: list[Literal["friend", "ambassador"]]
+    tiers: list[TierOut]
+    next_tier_friends: int | None
+    bonus_devices: int
+    bonus_traffic_bytes: int
+    history: list[RewardOut]
+
+
+class PromoIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: Annotated[str, Field(min_length=1, max_length=64)]
+
+
+class PromoOut(BaseModel):
+    kind: Literal["days", "traffic"]
+    value: int  # дни или байты

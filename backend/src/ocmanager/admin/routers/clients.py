@@ -53,6 +53,20 @@ class ClientRow(ClientOut):
     devices_active: int
 
 
+class ReferrerOut(BaseModel):
+    id: int
+    name: str
+
+
+class ReferralInfo(BaseModel):
+    code: str
+    referred_by: ReferrerOut | None
+    invited: int
+    paying_friends: int
+    bonus_devices: int
+    bonus_traffic_bytes: int
+
+
 class ClientCard(BaseModel):
     client: ClientOut
     subscription: SubscriptionOut | None
@@ -60,6 +74,7 @@ class ClientCard(BaseModel):
     traffic_daily: list[DailyTrafficOut]  # за 30 дней по дням, по возрастанию
     sessions: list[SessionRowOut]  # последние 50
     payments: list[PaymentOut]  # последние 50, новые первыми
+    referral: ReferralInfo
 
 
 class GrantBody(BaseModel):
@@ -188,6 +203,11 @@ async def client_card(
         .order_by(Payment.received_at.desc(), Payment.id.desc())
         .limit(PAYMENTS_IN_CARD)
     )
+    referrer = (
+        None
+        if client.referred_by is None
+        else await subscriptions.get_client(db, client.referred_by)
+    )
     return ClientCard(
         client=ClientOut.of(client),
         subscription=None if sub is None else await subscription_out(db, sub),
@@ -204,6 +224,16 @@ async def client_card(
         ],
         sessions=[SessionRowOut.of(s) for s in sessions],
         payments=[PaymentOut.of(p) for p in payments],
+        referral=ReferralInfo(
+            code=client.referral_code,
+            referred_by=None
+            if referrer is None
+            else ReferrerOut(id=referrer.id, name=referrer.first_name),
+            invited=await subscriptions.invited_count(db, client_id),
+            paying_friends=await subscriptions.paying_friends(db, client_id),
+            bonus_devices=client.bonus_devices,
+            bonus_traffic_bytes=client.bonus_traffic_bytes,
+        ),
     )
 
 

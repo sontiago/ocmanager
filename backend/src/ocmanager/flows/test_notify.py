@@ -18,6 +18,8 @@ from ocmanager.events.types import (
     PaymentNeedsReview,
     PaymentReceived,
     PaymentRefunded,
+    ReferralRewarded,
+    ReferralTierReached,
     SubscriptionActivated,
     SubscriptionExpired,
     TrafficExhausted,
@@ -27,6 +29,8 @@ from ocmanager.events.types import (
 from ocmanager.flows import notify
 from ocmanager.nodes.models import Node
 from ocmanager.notifications.models import OutboxMessage
+from ocmanager.subscriptions import service as subscriptions
+from ocmanager.subscriptions.models import Client, ReferralReward
 
 NOW = datetime(2026, 10, 2, 12, tzinfo=UTC)
 
@@ -427,3 +431,85 @@ async def test_quota_message_is_silent_if_the_client_was_revived_meanwhile(
     await make_subscription(client, days=30, now=NOW)  # живая: событие устарело
     await deliver(session, sessionmaker, TrafficExhausted(client_id=client.id))
     assert await queued(session) == []
+
+
+# --- рефералы ----------------------------------------------------------------
+
+
+async def _reward(
+    session: AsyncSession,
+    make_client: MakeClient,
+    make_payment: MakePayment,
+    *,
+    kind: str = "base",
+    status: str = "applied",
+    tier: int | None = None,
+    days: int = 7,
+) -> tuple[Client, Client, ReferralReward]:
+    inviter, friend = await make_client(), await make_client()
+    payment = await make_payment(friend, processed_at=NOW)
+    reward = await subscriptions.add_reward(
+        session,
+        inviter_id=inviter.id,
+        invitee_id=friend.id,
+        payment_id=payment.id,
+        kind=kind,
+        tier=tier,
+        days=days,
+        invitee_days=3 if kind == "base" else 0,
+        status=status,
+    )
+    return inviter, friend, reward
+
+
+async def test_a_reward_tells_both_sides(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_payment: MakePayment,
+) -> None:
+    inviter, friend, reward = await _reward(session, make_client, make_payment)
+    await deliver(session, sessionmaker, ReferralRewarded(reward_id=reward.id))
+    await deliver(session, sessionmaker, ReferralRewarded(reward_id=reward.id))
+    assert sorted(await queued(session)) == sorted(
+        [
+            ("client", friend.telegram_id, "referral_invitee", "ru"),
+            ("client", inviter.telegram_id, "referral_inviter", "ru"),
+        ]
+    )
+    texts = {m.template_key: m.payload for m in await messages(session)}
+    assert texts["referral_invitee"] == {"days": 3}
+    assert texts["referral_inviter"] == {"days": 7, "friends": 1}
+
+
+@pytest.mark.parametrize(
+    ("status", "key"),
+    [("pending", "referral_inviter_pending"), ("capped", "referral_inviter_capped")],
+)
+async def test_the_inviter_hears_why_days_were_not_added(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_payment: MakePayment,
+    status: str,
+    key: str,
+) -> None:
+    inviter, _, reward = await _reward(session, make_client, make_payment, status=status)
+    await deliver(session, sessionmaker, ReferralRewarded(reward_id=reward.id))
+    assert ("client", inviter.telegram_id, key, "ru") in await queued(session)
+
+
+@pytest.mark.parametrize("tier", [3, 5, 10])
+async def test_a_tier_tells_the_inviter(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_payment: MakePayment,
+    tier: int,
+) -> None:
+    inviter, _, reward = await _reward(
+        session, make_client, make_payment, kind="tier", tier=tier, days=0
+    )
+    await deliver(session, sessionmaker, ReferralTierReached(reward_id=reward.id))
+    await deliver(session, sessionmaker, ReferralTierReached(reward_id=reward.id))
+    assert await queued(session) == [("client", inviter.telegram_id, f"referral_tier_{tier}", "ru")]

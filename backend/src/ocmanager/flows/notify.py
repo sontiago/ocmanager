@@ -24,6 +24,8 @@ from ocmanager.events.types import (
     PaymentNeedsReview,
     PaymentReceived,
     PaymentRefunded,
+    ReferralRewarded,
+    ReferralTierReached,
     SubscriptionActivated,
     SubscriptionExpired,
     TrafficExhausted,
@@ -34,7 +36,7 @@ from ocmanager.nodes.models import Node
 from ocmanager.notifications import service as notifications
 from ocmanager.provisioning.models import Device
 from ocmanager.subscriptions import service as subscriptions
-from ocmanager.subscriptions.models import Client, Subscription
+from ocmanager.subscriptions.models import Client, ReferralReward, Subscription
 from ocmanager.subscriptions.state import LIVE, Status
 
 DOWN = ("offline", "degraded")
@@ -271,6 +273,45 @@ def register() -> None:
             dedupe_key=(
                 f"traffic_exhausted:client:{event.client_id}:{sub.traffic_period_start.isoformat()}"
             ),
+        )
+
+    @bus.on(ReferralRewarded)
+    async def referral_rewarded(event: ReferralRewarded, session: AsyncSession) -> None:
+        reward = await session.get(ReferralReward, event.reward_id)
+        if reward is None:
+            return
+        await to_client(
+            session,
+            reward.invitee_id,
+            "referral_invitee",
+            {"days": reward.invitee_days},
+            dedupe_key=f"referral_invitee:reward:{reward.id}",
+        )
+        friends = await subscriptions.paying_friends(session, reward.inviter_id)
+        key, payload = {
+            "applied": ("referral_inviter", {"days": reward.days, "friends": friends}),
+            "pending": ("referral_inviter_pending", {"days": reward.days, "friends": friends}),
+            "capped": ("referral_inviter_capped", {"friends": friends}),
+        }[reward.status]
+        await to_client(
+            session,
+            reward.inviter_id,
+            key,
+            payload,
+            dedupe_key=f"referral_inviter:reward:{reward.id}",
+        )
+
+    @bus.on(ReferralTierReached)
+    async def referral_tier_reached(event: ReferralTierReached, session: AsyncSession) -> None:
+        reward = await session.get(ReferralReward, event.reward_id)
+        if reward is None or reward.tier is None:
+            return
+        await to_client(
+            session,
+            reward.inviter_id,
+            f"referral_tier_{reward.tier}",
+            {},
+            dedupe_key=f"referral_tier:reward:{reward.id}",
         )
 
 

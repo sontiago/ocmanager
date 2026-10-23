@@ -3,10 +3,12 @@ from typing import Any
 
 import pytest
 from conftest import MakeClient, MakePayment, MakePlan
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ocmanager.audit.models import AuditLog
+from ocmanager.billing.models import Payment
 from ocmanager.core.errors import SubscriptionInactive
 from ocmanager.events.models import EventOutbox
 from ocmanager.flows import referrals
@@ -275,3 +277,62 @@ async def test_a_subscription_failure_for_the_friend_does_not_lose_the_reward_re
     with pytest.raises(SubscriptionInactive):
         await world.pay(friend)
     assert await world.rewards() == []  # откатилось целиком: событие повторится
+
+
+async def test_reward_checks_for_one_inviter_run_one_at_a_time(
+    committed_sessionmaker: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Потолок считается по журналу: без блокировки пригласившего два платежа одновременно
+    оба увидели бы «девять из десяти» и оба получили бы награду."""
+    async with committed_sessionmaker() as s, s.begin():
+        inviter = Client(telegram_id=1, first_name="I", lang="ru")
+        s.add(inviter)
+        await s.flush()
+        friend = Client(telegram_id=2, first_name="F", lang="ru", referred_by=inviter.id)
+        s.add(friend)
+        await s.flush()
+        plan_id = await s.scalar(
+            text(
+                "INSERT INTO plans (code, name_i18n, duration_days, device_limit, price_amount,"
+                " currency) VALUES ('m1', '{}', 30, 1, 1, 'RUB') RETURNING id"
+            )
+        )
+        assert plan_id is not None
+        terms_ = PlanTerms(plan_id, 30, 1, None, False)
+        await subscriptions.activate(s, friend.id, terms_, NOW, auto_renew=True)
+        await subscriptions.activate(s, inviter.id, terms_, NOW, auto_renew=True)
+        payment = Payment(
+            client_id=friend.id,
+            provider="tribute",
+            external_id="p1",
+            amount=100,
+            currency="RUB",
+            status="succeeded",
+            raw_payload={},
+            received_at=NOW,
+            processed_at=NOW,
+        )
+        s.add(payment)
+        await s.flush()
+        payment_id = payment.id
+
+    locked_when_counting: list[bool] = []
+    original = subscriptions.recent_base_rewards
+
+    async def spy(session: AsyncSession, inviter: int, since: datetime) -> int:
+        # Из другого соединения: если строка пригласившего уже занята нашей транзакцией, NOWAIT
+        # откажет. Значит, подсчёт идёт под блокировкой.
+        async with committed_sessionmaker() as other, other.begin():
+            try:
+                await other.scalar(
+                    select(Client.id).where(Client.id == inviter).with_for_update(nowait=True)
+                )
+                locked_when_counting.append(False)
+            except DBAPIError:
+                locked_when_counting.append(True)
+        return await original(session, inviter, since)
+
+    monkeypatch.setattr(subscriptions, "recent_base_rewards", spy)
+    async with committed_sessionmaker() as b, b.begin():
+        await referrals.reward_first_payment(b, payment_id, NOW)
+    assert locked_when_counting == [True]

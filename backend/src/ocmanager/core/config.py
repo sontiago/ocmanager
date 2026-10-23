@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     camouflage_secret: SecretStr = Field(min_length=4)
     # Публичный адрес панели: от него строятся ссылки на скачивание .p12. Без слэша на конце.
     public_base_url: str = "http://localhost:8000"
+    # Имя бота без @: из него строится реферальная ссылка `https://t.me/<имя>?start=ref_<код>`.
+    # Не задано — Mini App показывает только код.
+    bot_username: str | None = None
     # Токен бота: им подписана initData, которую присылает TMA.
     bot_token: SecretStr = Field(min_length=10)
     # Срок годности initData. TMA шлёт одну и ту же строку весь сеанс (решение №6).
@@ -48,6 +51,12 @@ class Settings(BaseSettings):
     # Собранная веб-админка (frontend/admin/dist). Задан и существует — api-admin отдаёт её на `/`;
     # не задан — только API (dev: интерфейс отдаёт Vite).
     admin_static_dir: Path | None = None
+
+    @field_validator("bot_username")
+    @classmethod
+    def _clean_bot_username(cls, value: str | None) -> str | None:
+        clean = (value or "").strip().removeprefix("@")
+        return clean or None
 
     @field_validator("public_base_url")
     @classmethod

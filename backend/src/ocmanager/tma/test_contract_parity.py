@@ -70,7 +70,7 @@ def test_the_frontend_expects_no_code_the_backend_never_sends() -> None:
     assert not dead, f"фронтенд ждёт коды, которых нет в бэкенде: {sorted(dead)}"
 
 
-async def test_the_public_api_exposes_the_nine_contract_operations_and_the_download(
+async def test_the_public_api_exposes_the_contract_operations_and_the_download(
     public_client: AsyncClient,
 ) -> None:
     schema = (await public_client.get("/api/openapi.json")).json()
@@ -91,6 +91,8 @@ async def test_the_public_api_exposes_the_nine_contract_operations_and_the_downl
         ("DELETE", "/api/tma/devices/{device_id}"),
         ("GET", "/api/tma/connection"),
         ("GET", "/api/tma/download/{token}"),
+        ("GET", "/api/tma/referral"),
+        ("POST", "/api/tma/promo/redeem"),
     }
     names = set(schema["components"]["schemas"])
     # По этим именам frontend сверяет свои типы со схемой (Задача 20 плана TMA).

@@ -505,3 +505,24 @@ async def pending_rewards(session: AsyncSession, inviter_id: int) -> list[Referr
             .with_for_update()
         )
     )
+
+
+async def invited_count(session: AsyncSession, client_id: int) -> int:
+    count = await session.scalar(
+        select(func.count()).select_from(Client).where(Client.referred_by == client_id)
+    )
+    return int(count or 0)
+
+
+async def list_rewards(
+    session: AsyncSession, inviter_id: int, *, limit: int
+) -> list[ReferralReward]:
+    """Награды пригласившего, новые первыми."""
+    return list(
+        await session.scalars(
+            select(ReferralReward)
+            .where(ReferralReward.inviter_id == inviter_id)
+            .order_by(ReferralReward.id.desc())
+            .limit(limit)
+        )
+    )

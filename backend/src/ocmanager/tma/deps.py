@@ -11,6 +11,7 @@ from ocmanager.core.clock import utcnow
 from ocmanager.core.db import SessionDep
 from ocmanager.core.errors import DomainError, Unauthorized
 from ocmanager.flows import clients as client_flows
+from ocmanager.flows import referrals as referral_flows
 from ocmanager.flows.deps import SettingsDep, client_ip
 from ocmanager.subscriptions import service as subscriptions
 from ocmanager.subscriptions.models import Client
@@ -64,7 +65,10 @@ async def current_client(request: Request, db: SessionDep, settings: SettingsDep
         raise
     client = await subscriptions.find_client_by_telegram_id(db, init.user.telegram_id)
     if client is None or _needs_refresh(client, init.user):
-        client = (await client_flows.register_client(db, init.user)).client
+        registered = await client_flows.register_client(db, init.user)
+        client = registered.client
+        if registered.created:
+            await referral_flows.attach(db, client.id, init.start_param)
         await db.commit()
     return TmaContext(
         client=client,

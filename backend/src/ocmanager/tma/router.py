@@ -16,12 +16,14 @@ from ocmanager.core.errors import (
 )
 from ocmanager.flows import checkout as checkout_flow
 from ocmanager.flows import devices as device_flows
+from ocmanager.flows import promo as promo_flows
 from ocmanager.flows import trial as trial_flow
 from ocmanager.flows.deps import CaDep, FernetDep, RedisDep, SettingsDep, commit_and_kick
 from ocmanager.flows.nodes import online_usernames
 from ocmanager.nodes import traffic
 from ocmanager.provisioning import delivery
 from ocmanager.provisioning import service as provisioning
+from ocmanager.subscriptions import referral
 from ocmanager.subscriptions import service as subscriptions
 from ocmanager.subscriptions.models import Subscription
 from ocmanager.tma.deps import CurrentClient, TmaContext
@@ -34,8 +36,13 @@ from ocmanager.tma.schemas import (
     IssuedDeviceOut,
     MeOut,
     PlanOut,
+    PromoIn,
+    PromoOut,
+    ReferralOut,
+    RewardOut,
     SubscriptionEnvelope,
     SubscriptionOut,
+    TierOut,
 )
 
 router = APIRouter(prefix="/tma", tags=["tma"])
@@ -44,6 +51,8 @@ router = APIRouter(prefix="/tma", tags=["tma"])
 TRIAL_LIMIT, TRIAL_WINDOW_S = 3, 3600
 DEVICE_LIMIT, DEVICE_WINDOW_S = 10, 3600
 CHECKOUT_LIMIT, CHECKOUT_WINDOW_S = 20, 3600
+PROMO_LIMIT, PROMO_WINDOW_S = 10, 3600  # подбор кодов
+HISTORY_LIMIT = 20
 MAX_ID_DIGITS = 18  # 18 цифр всегда влезают в BIGINT
 MIN_TOKEN_LEN, MAX_TOKEN_LEN = 16, 128
 
@@ -218,3 +227,58 @@ async def download_p12(token: str, redis: RedisDep, fernet: FernetDep) -> Respon
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.get("/referral")
+async def get_referral(ctx: CurrentClient, db: SessionDep, settings: SettingsDep) -> ReferralOut:
+    client = ctx.client
+    friends = await subscriptions.paying_friends(db, client.id)
+    nxt = referral.next_tier(friends)
+    link = (
+        None
+        if settings.bot_username is None
+        else f"https://t.me/{settings.bot_username}?start={referral.START_PREFIX}{client.referral_code}"
+    )
+    return ReferralOut(
+        code=client.referral_code,
+        link=link,
+        invited=await subscriptions.invited_count(db, client.id),
+        paying_friends=friends,
+        badges=referral.badges(friends),
+        tiers=[
+            TierOut(
+                friends=t.friends,
+                days=t.days,
+                devices=t.devices,
+                traffic_bytes=t.traffic_bytes,
+                badge=t.badge,
+                reached=friends >= t.friends,
+            )
+            for t in referral.TIERS
+        ],
+        next_tier_friends=None if nxt is None else nxt.friends,
+        bonus_devices=client.bonus_devices,
+        bonus_traffic_bytes=client.bonus_traffic_bytes,
+        history=[
+            RewardOut(
+                created_at=r.created_at,
+                kind=r.kind,
+                tier=r.tier,
+                days=r.days,
+                devices=r.devices,
+                traffic_bytes=r.traffic_bytes,
+                status=r.status,
+            )
+            for r in await subscriptions.list_rewards(db, client.id, limit=HISTORY_LIMIT)
+        ],
+    )
+
+
+@router.post("/promo/redeem")
+async def redeem_promo(
+    body: PromoIn, ctx: CurrentClient, db: SessionDep, redis: RedisDep
+) -> PromoOut:
+    await ratelimit.hit(redis, f"promo:{ctx.client.id}", limit=PROMO_LIMIT, window_s=PROMO_WINDOW_S)
+    result = await promo_flows.redeem(db, ctx.client.id, body.code, ctx.actor, utcnow())
+    await commit_and_kick(db, redis)
+    return PromoOut(kind=result.kind, value=result.value)

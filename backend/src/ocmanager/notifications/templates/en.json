@@ -17,5 +17,12 @@
   "bot_start": "Hi, {name}! Here you can buy a VPN subscription, issue keys for your devices and watch your traffic — all in the app.",
   "bot_hint": "Everything is managed in the app. Tap the button below.",
   "bot_whoami": "Your chat_id: {chat_id}. To receive alerts, add this number to admin_chat_ids in the panel settings.",
-  "bot_open_app": "Open the app"
+  "bot_open_app": "Open the app",
+  "referral_invitee": "Invite bonus: +{days} days added to your subscription. Welcome!",
+  "referral_inviter": "Your friend paid for a subscription: you get +{days} days. Paying friends: {friends}.",
+  "referral_inviter_pending": "Your friend paid for a subscription. Your +{days} days will be added as soon as you have a subscription. Paying friends: {friends}.",
+  "referral_inviter_capped": "Your friend paid for a subscription. The monthly invite reward limit is reached, so no days were added for this friend, but they count towards your tiers. Paying friends: {friends}.",
+  "referral_tier_3": "🎉 “Friend of the network”: 3 paying friends. You get +30 days and a badge in the app.",
+  "referral_tier_5": "🎉 5 paying friends: +1 device added to your plan for good.",
+  "referral_tier_10": "🏆 “Ambassador”: 10 paying friends. You get +100 GB of traffic for good and a badge in the app."
 }

@@ -474,11 +474,13 @@ def tma_headers(settings: Settings) -> TmaHeaders:
         first_name: str = "Anna",
         language_code: str = "ru",
         age_s: int = 0,
+        start_param: str | None = None,
     ) -> dict[str, str]:
         raw = make_init_data(
             settings.bot_token.get_secret_value(),
             user={"id": telegram_id, "first_name": first_name, "language_code": language_code},
             auth_date=int(datetime.now(UTC).timestamp()) - age_s,
+            extra={} if start_param is None else {"start_param": start_param},
         )
         return {"Authorization": f"tma {raw}"}
 

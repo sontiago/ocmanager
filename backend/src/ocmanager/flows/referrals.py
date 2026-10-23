@@ -13,11 +13,12 @@ from ocmanager.core.errors import InvalidTransition, SubscriptionInactive
 from ocmanager.events import bus
 from ocmanager.events.types import ReferralRewarded, ReferralTierReached
 from ocmanager.subscriptions import service as subscriptions
-from ocmanager.subscriptions.models import ReferralReward
+from ocmanager.subscriptions.models import Client, ReferralReward
 from ocmanager.subscriptions.referral import (
     INVITEE_DAYS,
     INVITER_DAYS,
     MONTHLY_CAP,
+    parse_start_param,
     tiers_reached,
 )
 from ocmanager.subscriptions.state import PlanTerms
@@ -72,6 +73,10 @@ async def reward_first_payment(session: AsyncSession, payment_id: int, now: date
 
     inviter_id = friend.referred_by
     async with session.begin_nested():  # всё или ничего: событие повторится целиком
+        # Потолок и уровни считаются по журналу: без блокировки пригласившего два платежа его
+        # друзей, пришедшие одновременно, оба увидели бы «девять из десяти». Порядок блокировок
+        # безопасен: referred_by всегда указывает на более старого клиента, колец нет.
+        await session.scalar(select(Client.id).where(Client.id == inviter_id).with_for_update())
         if await subscriptions.get_subscription(session, friend.id) is None:
             raise SubscriptionInactive("the friend has no subscription to reward")
         await subscriptions.extend_days(session, friend.id, INVITEE_DAYS, now)
@@ -164,3 +169,22 @@ async def apply_pending(session: AsyncSession, client_id: int, now: datetime) ->
         row.status, row.applied_at = "applied", now
     await session.flush()
     return total
+
+
+async def attach(session: AsyncSession, client_id: int, start_param: str | None) -> bool:
+    """Привязывает нового клиента к пригласившему по start-параметру (`ref_<код>`). Вызывать
+    только в момент создания клиента: уже существующего перепривязать нельзя. Мусор, неизвестный
+    код и собственный код молча игнорируются."""
+    code = parse_start_param(start_param)
+    if code is None or not await subscriptions.set_referrer(session, client_id, code):
+        return False
+    client = await subscriptions.get_client(session, client_id)
+    await audit.record(
+        session,
+        Actor("client", str(client_id)),
+        "referral.attach",
+        target_type="client",
+        target_id=str(client_id),
+        details={"inviter_id": client.referred_by},
+    )
+    return True
