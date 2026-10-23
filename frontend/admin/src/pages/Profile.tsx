@@ -49,7 +49,7 @@ function PasswordCard() {
         <Field label={t("profile.newPassword")}>
           <input className={inputClass} type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} required />
         </Field>
-        {change.error && <Notice tone="danger" text={errorText(change.error, t("common.error"))} />}
+        {change.error && <Notice tone="danger" text={errorText(change.error, t)} />}
         <Notice text={done} />
         <button type="submit" className={primaryButtonClass} disabled={change.isPending}>
           {t("profile.changePassword")}
@@ -88,7 +88,7 @@ function TotpCard() {
           {t("profile.totpEnable")}
         </button>
       )}
-      {setup.error && <Notice tone="danger" text={errorText(setup.error, t("common.error"))} />}
+      {setup.error && <Notice tone="danger" text={errorText(setup.error, t)} />}
       {!enabled && setup.data && (
         <div className="mb-3 space-y-1">
           <p className="text-muted">{t("profile.totpHint")}</p>
@@ -103,7 +103,7 @@ function TotpCard() {
           <Field label={t("login.totp")}>
             <input className={inputClass} inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} required />
           </Field>
-          {failing && <Notice tone="danger" text={errorText(failing, t("common.error"))} />}
+          {failing && <Notice tone="danger" text={errorText(failing, t)} />}
           <button type="submit" className={enabled ? buttonClass : primaryButtonClass}>
             {enabled ? t("profile.totpDisable") : t("profile.totpConfirm")}
           </button>
@@ -145,7 +145,7 @@ function SessionsCard() {
           },
         ]}
       />
-      {close.error && <Notice tone="danger" text={errorText(close.error, t("common.error"))} />}
+      {close.error && <Notice tone="danger" text={errorText(close.error, t)} />}
       <ConfirmDialog
         open={target !== null}
         title={t("profile.closeSession")}

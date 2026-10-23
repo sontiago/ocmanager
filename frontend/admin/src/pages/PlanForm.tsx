@@ -72,7 +72,7 @@ export function PlanFormDialog({
           />
           {t("plans.active")}
         </label>
-        {mutation.error && <Notice tone="danger" text={errorText(mutation.error, t("common.error"))} />}
+        {mutation.error && <Notice tone="danger" text={errorText(mutation.error, t)} />}
         <div className="flex justify-end gap-2">
           <button type="button" className={buttonClass} onClick={onClose}>
             {t("common.cancel")}

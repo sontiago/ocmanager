@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { useDialogFocus } from "../lib/useDialogFocus";
 
 export function Modal({
   title,
@@ -9,6 +10,7 @@ export function Modal({
   onClose(): void;
   children: ReactNode;
 }) {
+  const ref = useDialogFocus<HTMLDivElement>();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -20,6 +22,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div
+        ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={title}

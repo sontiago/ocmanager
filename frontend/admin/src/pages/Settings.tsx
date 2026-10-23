@@ -58,7 +58,7 @@ function Form({ settings }: { settings: S<"SettingsOut"> }) {
       <Field label={t("settings.retentionDays")}>
         <input className={inputClass} type="number" {...bind("traffic_retention_days")} />
       </Field>
-      {patch.error && <Notice tone="danger" text={errorText(patch.error, t("common.error"))} />}
+      {patch.error && <Notice tone="danger" text={errorText(patch.error, t)} />}
       <Notice text={notice} />
       <button type="submit" className={primaryButtonClass} disabled={patch.isPending}>
         {t("common.save")}

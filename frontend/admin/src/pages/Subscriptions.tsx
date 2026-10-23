@@ -141,7 +141,7 @@ export function SubscriptionsPage() {
       </div>
       <Notice text={notice} />
       {(cancel.error || expire.error) && (
-        <Notice tone="danger" text={errorText(cancel.error ?? expire.error, t("common.error"))} />
+        <Notice tone="danger" text={errorText(cancel.error ?? expire.error, t)} />
       )}
       <DataTable
         columns={columns}

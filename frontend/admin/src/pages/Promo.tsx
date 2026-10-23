@@ -60,7 +60,7 @@ function PromoForm({ onClose }: { onClose(): void }) {
         <Field label={t("promo.until")}>
           <input className={inputClass} type="date" value={until} onChange={(e) => setUntil(e.target.value)} />
         </Field>
-        {create.error && <Notice tone="danger" text={errorText(create.error, t("common.error"))} />}
+        {create.error && <Notice tone="danger" text={errorText(create.error, t)} />}
         <div className="flex justify-end gap-2">
           <button type="button" className={buttonClass} onClick={onClose}>
             {t("common.cancel")}
@@ -111,7 +111,7 @@ export function PromoPage() {
           {t("promo.new")}
         </button>
       </div>
-      {patch.error && <Notice tone="danger" text={errorText(patch.error, t("common.error"))} />}
+      {patch.error && <Notice tone="danger" text={errorText(patch.error, t)} />}
       {query.error && <Notice tone="danger" text={t("common.error")} />}
       {query.isPending && <p className="text-muted">{t("common.loading")}</p>}
       {query.data && (

@@ -55,7 +55,7 @@ function RevokeDialog({ device, onClose }: { device: S<"DeviceRow">; onClose(): 
         <Field label={t("devices.reason")}>
           <input className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
         </Field>
-        {revoke.error && <Notice tone="danger" text={errorText(revoke.error, t("common.error"))} />}
+        {revoke.error && <Notice tone="danger" text={errorText(revoke.error, t)} />}
         <div className="flex justify-end gap-2">
           <button type="button" className={buttonClass} onClick={onClose} disabled={revoke.isPending}>
             {t("common.cancel")}

@@ -75,7 +75,7 @@ export function NodePage() {
   const [pending, setPending] = useState<Pending | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  if (node.error) return <Notice tone="danger" text={errorText(node.error, t("common.error"))} />;
+  if (node.error) return <Notice tone="danger" text={errorText(node.error, t)} />;
   if (!node.data) return <p className="text-muted">{t("common.loading")}</p>;
 
   const { node: n, health } = node.data;
@@ -98,7 +98,7 @@ export function NodePage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-normal">{t("nav.node")}</h1>
       <Notice text={notice} />
-      {action.error && <Notice tone="danger" text={errorText(action.error, t("common.error"))} />}
+      {action.error && <Notice tone="danger" text={errorText(action.error, t)} />}
 
       <Card
         title={n.name}
@@ -149,7 +149,7 @@ export function NodePage() {
         </div>
       </Card>
 
-      {reconcile.error && <Notice tone="danger" text={errorText(reconcile.error, t("common.error"))} />}
+      {reconcile.error && <Notice tone="danger" text={errorText(reconcile.error, t)} />}
       {reconcile.data && (
         <Card title={t("node.reconcileReport")}>
           {reconcile.data.error && <Notice tone="danger" text={reconcile.data.error} />}

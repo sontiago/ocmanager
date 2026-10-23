@@ -72,7 +72,7 @@ export function IssueDeviceDialog({ clientId, onClose }: { clientId: number; onC
             ))}
           </select>
         </Field>
-        {issue.error && <Notice tone="danger" text={errorText(issue.error, t("common.error"))} />}
+        {issue.error && <Notice tone="danger" text={errorText(issue.error, t)} />}
         <div className="flex justify-end gap-2">
           <button type="button" className={buttonClass} onClick={close} disabled={issue.isPending}>
             {t("common.cancel")}

@@ -41,3 +41,24 @@ test("pagination_disabled_at_edges", () => {
   expect(screen.getByRole("button", { name: "Назад" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Вперёд" })).toBeDisabled();
 });
+
+
+test("clickable_rows_are_reachable_and_activate_from_the_keyboard", async () => {
+  const onRowClick = vi.fn();
+  render(
+    <DataTable columns={columns} rows={[{ id: 7 }]} rowKey={(r) => r.id} onRowClick={onRowClick} />,
+  );
+  const row = screen.getByText("7").closest("tr")!;
+  expect(row).toHaveAttribute("tabindex", "0");
+  await userEvent.tab(); // шапка не фокусируется: первый Tab попадает на строку
+  expect(row).toHaveFocus();
+  await userEvent.keyboard("{Enter}");
+  expect(onRowClick).toHaveBeenCalledWith({ id: 7 });
+  await userEvent.keyboard(" ");
+  expect(onRowClick).toHaveBeenCalledTimes(2);
+});
+
+test("rows_without_a_handler_are_not_focusable", () => {
+  render(<DataTable columns={columns} rows={[{ id: 7 }]} rowKey={(r) => r.id} />);
+  expect(screen.getByText("7").closest("tr")).not.toHaveAttribute("tabindex");
+});

@@ -62,7 +62,19 @@ export function DataTable<T>({
             <tr
               key={rowKey(row)}
               className={`border-t border-border odd:bg-black/[0.03] hover:bg-black/[0.06] ${onRowClick ? "cursor-pointer" : ""}`}
+              tabIndex={onRowClick ? 0 : undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      // Только сама строка: Enter на кнопке или ссылке внутри — их собственное действие.
+                      if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined
+              }
             >
               {columns.map((c) => (
                 <td key={c.key} className={`px-3 py-2 ${c.className ?? ""}`}>

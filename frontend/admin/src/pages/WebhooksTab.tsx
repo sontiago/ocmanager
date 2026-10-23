@@ -95,7 +95,7 @@ export function WebhooksTab() {
         </Field>
       </div>
       <Notice text={notice} />
-      {reprocess.error && <Notice tone="danger" text={errorText(reprocess.error, t("common.error"))} />}
+      {reprocess.error && <Notice tone="danger" text={errorText(reprocess.error, t)} />}
       <DataTable
         columns={columns}
         rows={query.data?.items}

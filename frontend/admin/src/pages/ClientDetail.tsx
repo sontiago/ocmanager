@@ -70,7 +70,7 @@ function GrantForm({ clientId, onDone }: { clientId: number; onDone(changed: boo
       <Field label={t("grant.days")}>
         <input className={inputClass} type="number" min={1} value={days} onChange={(e) => setDays(e.target.value)} />
       </Field>
-      {grant.error && <Notice tone="danger" text={errorText(grant.error, t("common.error"))} />}
+      {grant.error && <Notice tone="danger" text={errorText(grant.error, t)} />}
       <div className="flex justify-end">
         <button type="submit" className={primaryButtonClass} disabled={grant.isPending || !plan}>
           {t("grant.submit")}
@@ -93,7 +93,7 @@ function ExtendForm({ clientId, onDone }: { clientId: number; onDone(changed: bo
       <Field label={t("extend.days")}>
         <input className={inputClass} type="number" min={1} value={days} onChange={(e) => setDays(e.target.value)} required />
       </Field>
-      {extend.error && <Notice tone="danger" text={errorText(extend.error, t("common.error"))} />}
+      {extend.error && <Notice tone="danger" text={errorText(extend.error, t)} />}
       <div className="flex justify-end">
         <button type="submit" className={primaryButtonClass} disabled={extend.isPending || !days}>
           {t("extend.submit")}
@@ -166,7 +166,7 @@ export function ClientDetailPage() {
       {(unblock.error || block.error || resetTraffic.error) && (
         <Notice
           tone="danger"
-          text={errorText(unblock.error ?? block.error ?? resetTraffic.error, t("common.error"))}
+          text={errorText(unblock.error ?? block.error ?? resetTraffic.error, t)}
         />
       )}
 

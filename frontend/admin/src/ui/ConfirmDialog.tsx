@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { useDialogFocus } from "../lib/useDialogFocus";
 import { useT } from "../i18n";
 import { buttonClass, dangerButtonClass, primaryButtonClass } from "./Field";
 
@@ -24,6 +25,7 @@ export function ConfirmDialog({
   onCancel,
 }: Props) {
   const { t } = useT();
+  const ref = useDialogFocus<HTMLDivElement>(open);
 
   useEffect(() => {
     if (!open) return;
@@ -38,6 +40,7 @@ export function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div
+        ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={title}
