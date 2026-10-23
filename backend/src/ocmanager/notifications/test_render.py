@@ -18,6 +18,7 @@ SAMPLES: dict[str, dict[str, Any]] = {
     "referral_tier_3": {},
     "referral_tier_5": {},
     "referral_tier_10": {},
+    "traffic_warning": {"percent": 85, "used": "85 GB", "limit": "100 GB"},
     "traffic_exhausted": {"limit": "100 ГБ", "expires": "01.11.2026"},
     "device_revoked": {"device": "iPhone"},
     "trial_started": {"days": 3, "expires": "05.10.2026"},

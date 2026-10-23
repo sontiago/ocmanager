@@ -575,3 +575,80 @@ async def test_set_referrer_ignores_unknown_codes_and_self(
     assert not await service.set_referrer(session, client.id, "nosuchco")
     assert not await service.set_referrer(session, client.id, client.referral_code)
     assert (await service.get_client(session, client.id)).referred_by is None
+
+
+# ── предупреждение о расходе трафика ───────────────────────────────────────
+
+
+async def _warn_setup(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan, *, limit: int | None = 1000
+) -> int:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=limit)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    return client.id
+
+
+async def _warned(session: AsyncSession) -> int:
+    return [e for e, _ in await events(session)].count("traffic.warning")
+
+
+async def test_warn_quota_fires_when_usage_crosses_80_percent(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client_id = await _warn_setup(session, make_client, make_plan)
+    await _with_usage(session, client_id, 850)
+    assert await service.warn_quota(session, client_id, before_used=700)
+    assert await _warned(session) == 1
+
+
+async def test_warn_quota_counts_exactly_80_percent_as_crossed(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client_id = await _warn_setup(session, make_client, make_plan)
+    await _with_usage(session, client_id, 800)
+    assert await service.warn_quota(session, client_id, before_used=799)
+
+
+async def test_warn_quota_speaks_once_per_crossing(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client_id = await _warn_setup(session, make_client, make_plan)
+    await _with_usage(session, client_id, 900)
+    assert not await service.warn_quota(session, client_id, before_used=850)  # уже было выше 80%
+    assert await _warned(session) == 0
+
+
+async def test_warn_quota_stays_quiet_below_the_threshold(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client_id = await _warn_setup(session, make_client, make_plan)
+    await _with_usage(session, client_id, 799)
+    assert not await service.warn_quota(session, client_id, before_used=100)
+
+
+async def test_warn_quota_leaves_the_exhaustion_to_its_own_message(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client_id = await _warn_setup(session, make_client, make_plan)
+    await _with_usage(session, client_id, 1000)
+    assert not await service.warn_quota(session, client_id, before_used=100)
+    assert await _warned(session) == 0
+
+
+async def test_warn_quota_ignores_unlimited_plans_and_missing_subscriptions(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    bare = await make_client()
+    assert not await service.warn_quota(session, bare.id, before_used=0)
+    free = await _warn_setup(session, make_client, make_plan, limit=None)
+    await _with_usage(session, free, 10**12)
+    assert not await service.warn_quota(session, free, before_used=0)
+
+
+async def test_warn_quota_ignores_blocked_and_expired_clients(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client_id = await _warn_setup(session, make_client, make_plan)
+    await _with_usage(session, client_id, 900)
+    await service.set_blocked(session, client_id, True, NOW)
+    assert not await service.warn_quota(session, client_id, before_used=100)

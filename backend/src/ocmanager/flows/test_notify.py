@@ -23,6 +23,7 @@ from ocmanager.events.types import (
     SubscriptionActivated,
     SubscriptionExpired,
     TrafficExhausted,
+    TrafficWarning,
     WebhookDeadLettered,
     WebhookRejected,
 )
@@ -513,3 +514,41 @@ async def test_a_tier_tells_the_inviter(
     await deliver(session, sessionmaker, ReferralTierReached(reward_id=reward.id))
     await deliver(session, sessionmaker, ReferralTierReached(reward_id=reward.id))
     assert await queued(session) == [("client", inviter.telegram_id, f"referral_tier_{tier}", "ru")]
+
+
+# --- предупреждение о трафике -------------------------------------------------
+
+
+async def test_the_80_percent_warning_tells_the_client_once_per_period(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_subscription: MakeSubscription,
+) -> None:
+    client = await make_client()
+    sub = await make_subscription(client, days=30, now=NOW)
+    sub.traffic_limit_bytes = 100 * 1024**3
+    sub.traffic_used_bytes = 85 * 1024**3
+    await session.flush()
+
+    await deliver(session, sessionmaker, TrafficWarning(client_id=client.id))
+    await deliver(session, sessionmaker, TrafficWarning(client_id=client.id))
+
+    assert await queued(session) == [("client", client.telegram_id, "traffic_warning", "ru")]
+    [message] = await messages(session)
+    assert message.payload == {"percent": 85, "used": "85 GB", "limit": "100 GB"}
+
+
+async def test_the_warning_is_silent_if_the_client_has_no_limit_or_was_reset_meanwhile(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_subscription: MakeSubscription,
+) -> None:
+    client = await make_client()
+    sub = await make_subscription(client, days=30, now=NOW)
+    sub.traffic_limit_bytes = 100 * 1024**3
+    sub.traffic_used_bytes = 10 * 1024**3  # продлили: счётчик сброшен, пока событие ждало
+    await session.flush()
+    await deliver(session, sessionmaker, TrafficWarning(client_id=client.id))
+    assert await queued(session) == []

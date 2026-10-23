@@ -63,6 +63,13 @@ class TrafficExhausted(DomainEvent):
     client_id: int
 
 
+class TrafficWarning(DomainEvent):
+    """Расход трафика периода пересёк порог предупреждения (80 % лимита)."""
+
+    name: ClassVar[str] = "traffic.warning"
+    client_id: int
+
+
 class TrafficReset(DomainEvent):
     """Админ сбросил счётчик исчерпанной подписки: доступ возвращается."""
 

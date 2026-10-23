@@ -3,6 +3,7 @@
   "device_issued": "The key for “{device}” has been issued. It cannot be downloaded again — if you lose it, issue the device anew.",
   "expiring_soon": "Your subscription ends in {days} d ({expires}). Renew it in the app so the VPN stays on.",
   "expired": "Your subscription has ended and access is closed. Open the app to renew.",
+  "traffic_warning": "You have used {percent}% of your traffic ({used} of {limit}). When the limit runs out, access pauses until you renew.",
   "traffic_exhausted": "The plan traffic ({limit}) is used up and access is paused. Renew your subscription in the app to start a new allowance. Your subscription is valid until {expires}.",
   "device_revoked": "Device “{device}” was revoked: its access is closed.",
   "trial_started": "Your trial has started: {days} d, until {expires}. Open the app and add a device.",

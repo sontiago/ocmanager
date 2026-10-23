@@ -27,6 +27,9 @@ class Status(StrEnum):
 # (scripts/test_consistency.py). Больше — риск выйти за 9999 год и получить OverflowError.
 MAX_DAYS: Final = 3650
 
+# Доля лимита трафика (в процентах), с которой клиенту уходит предупреждение.
+WARNING_PERCENT: Final = 80
+
 # Дают доступ. cancelled — это auto_renew=false при живом expires_at.
 LIVE: Final = frozenset({Status.TRIAL, Status.ACTIVE, Status.CANCELLED})
 

@@ -29,6 +29,7 @@ from ocmanager.events.types import (
     SubscriptionActivated,
     SubscriptionExpired,
     TrafficExhausted,
+    TrafficWarning,
     WebhookDeadLettered,
     WebhookRejected,
 )
@@ -37,7 +38,7 @@ from ocmanager.notifications import service as notifications
 from ocmanager.provisioning.models import Device
 from ocmanager.subscriptions import service as subscriptions
 from ocmanager.subscriptions.models import Client, ReferralReward, Subscription
-from ocmanager.subscriptions.state import LIVE, Status
+from ocmanager.subscriptions.state import LIVE, WARNING_PERCENT, Status
 
 DOWN = ("offline", "degraded")
 REASON_LIMIT = 300
@@ -254,6 +255,24 @@ def register() -> None:
             "expired",
             {},
             dedupe_key=f"expired:client:{event.client_id}:{sub.expires_at.isoformat()}",
+        )
+
+    @bus.on(TrafficWarning)
+    async def traffic_warning(event: TrafficWarning, session: AsyncSession) -> None:
+        sub = await subscriptions.get_subscription(session, event.client_id)
+        if sub is None or sub.traffic_limit_bytes is None or Status(sub.status) not in LIVE:
+            return
+        limit, used = sub.traffic_limit_bytes, sub.traffic_used_bytes
+        if not (used * 100 >= limit * WARNING_PERCENT and used < limit):
+            return  # продлили или сбросили счётчик, пока событие ждало очереди
+        await to_client(
+            session,
+            event.client_id,
+            "traffic_warning",
+            {"percent": used * 100 // limit, "used": gib(used), "limit": gib(limit)},
+            dedupe_key=(
+                f"traffic_warning:client:{event.client_id}:{sub.traffic_period_start.isoformat()}"
+            ),
         )
 
     @bus.on(TrafficExhausted)

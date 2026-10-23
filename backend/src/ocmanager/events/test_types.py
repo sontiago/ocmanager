@@ -13,7 +13,7 @@ from ocmanager.events.types import (
 
 def test_every_event_is_registered_by_name() -> None:
     assert DomainEvent.registry["device.revoked"] is DeviceRevoked
-    assert len(DomainEvent.registry) == 18
+    assert len(DomainEvent.registry) == 19
 
 
 def test_roundtrip_through_json_payload() -> None:

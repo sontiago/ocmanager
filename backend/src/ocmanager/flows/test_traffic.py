@@ -336,3 +336,41 @@ async def test_quota_enforcement_does_not_deadlock_with_a_concurrent_client_lock
         sub = await subscriptions.get_subscription(c, client_id)
         assert sub is not None
         assert sub.status == "exhausted"
+
+
+async def _events(session: AsyncSession) -> list[str]:
+    from ocmanager.events.models import EventOutbox
+
+    return list(await session.scalars(select(EventOutbox.name).order_by(EventOutbox.id)))
+
+
+async def test_crossing_80_percent_warns_once(
+    session: AsyncSession,
+    settings: Settings,
+    client_with_two_devices: tuple[int, str, str],
+) -> None:
+    _, d1, _ = client_with_two_devices
+    await push(session, settings, d1, T0 + MIN, bytes_in=50 * GIB)
+    await flows.apply_usage(session, [d1], T0 + 2 * MIN)  # 50 %: тихо
+    assert "traffic.warning" not in await _events(session)
+
+    await push(session, settings, d1, T0 + 3 * MIN, bytes_in=85 * GIB)
+    await flows.apply_usage(session, [d1], T0 + 4 * MIN)  # 85 %: пересекли
+    assert (await _events(session)).count("traffic.warning") == 1
+
+    await push(session, settings, d1, T0 + 5 * MIN, bytes_in=90 * GIB)
+    await flows.apply_usage(session, [d1], T0 + 6 * MIN)  # 90 %: уже предупреждали
+    assert (await _events(session)).count("traffic.warning") == 1
+
+
+async def test_a_jump_straight_past_the_limit_exhausts_without_a_warning(
+    session: AsyncSession,
+    settings: Settings,
+    client_with_two_devices: tuple[int, str, str],
+) -> None:
+    _, d1, _ = client_with_two_devices
+    await push(session, settings, d1, T0 + MIN, bytes_in=120 * GIB)
+    await flows.apply_usage(session, [d1], T0 + 2 * MIN)
+    names = await _events(session)
+    assert "traffic.exhausted" in names
+    assert "traffic.warning" not in names

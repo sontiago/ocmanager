@@ -27,11 +27,19 @@ from ocmanager.events.types import (
     SubscriptionRenewed,
     TrafficExhausted,
     TrafficReset,
+    TrafficWarning,
 )
 from ocmanager.subscriptions import state as state_mod
 from ocmanager.subscriptions.models import Client, ReferralReward, Subscription
 from ocmanager.subscriptions.schemas import TelegramIdentity
-from ocmanager.subscriptions.state import LIVE, PlanTerms, Status, SubState, has_access
+from ocmanager.subscriptions.state import (
+    LIVE,
+    WARNING_PERCENT,
+    PlanTerms,
+    Status,
+    SubState,
+    has_access,
+)
 
 
 def lang_from_telegram(code: str | None) -> Literal["ru", "en"]:
@@ -526,3 +534,18 @@ async def list_rewards(
             .limit(limit)
         )
     )
+
+
+async def warn_quota(session: AsyncSession, client_id: int, *, before_used: int) -> bool:
+    """Предупреждает, когда расход пересёк WARNING_PERCENT лимита: ровно один раз за пересечение
+    (`before_used` — расход до этого опроса). Исчерпание — отдельное событие, поэтому если лимит
+    уже выбран, предупреждения нет. Безлимитным и неживым подпискам предупреждать не о чем."""
+    sub = await get_subscription(session, client_id)
+    if sub is None or not _was_live(sub) or sub.traffic_limit_bytes is None:
+        return False
+    limit, used = sub.traffic_limit_bytes, sub.traffic_used_bytes
+    threshold = limit * WARNING_PERCENT
+    if not (before_used * 100 < threshold <= used * 100 and used < limit):
+        return False
+    await bus.record(session, TrafficWarning(client_id=client_id))
+    return True
