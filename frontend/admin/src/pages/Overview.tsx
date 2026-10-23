@@ -64,6 +64,7 @@ export function OverviewPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <SmallBox
                 color="info"
+                icon="users"
                 value={data.active_sessions === null ? "—" : data.active_sessions}
                 label={t("overview.sessions")}
                 to="/node"
@@ -71,6 +72,7 @@ export function OverviewPage() {
               />
               <SmallBox
                 color="ok"
+                icon="activity"
                 value={`↓ ${formatBytes(data.traffic.bytes_in)} · ↑ ${formatBytes(data.traffic.bytes_out)}`}
                 label={t("overview.traffic")}
               />
@@ -106,12 +108,13 @@ export function OverviewPage() {
           <div className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {revenue.length === 0 && (
-                <SmallBox color="ok" value="—" label={t("overview.noRevenue")} />
+                <SmallBox color="ok" icon="dollar" value="—" label={t("overview.noRevenue")} />
               )}
               {revenue.map(([currency, minor]) => (
                 <SmallBox
                   key={currency}
                   color="ok"
+                  icon="dollar"
                   value={formatMoney(minor, currency)}
                   label={t("overview.revenue")}
                   to="/payments"
@@ -120,6 +123,7 @@ export function OverviewPage() {
               ))}
               <SmallBox
                 color="warn"
+                icon="clock"
                 value={data.expiring_soon}
                 label={t("overview.expiring")}
                 to="/subscriptions?expiring_within_days=3"

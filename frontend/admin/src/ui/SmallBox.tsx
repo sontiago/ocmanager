@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { Icon, type IconName } from "./Icon";
 
 type Color = "info" | "ok" | "warn" | "danger" | "accent";
 
@@ -16,17 +17,20 @@ export function SmallBox({
   color,
   value,
   label,
+  icon,
   to,
   moreLabel,
 }: {
   color: Color;
   value: ReactNode;
   label: string;
+  icon?: IconName;
   to?: string;
   moreLabel?: string;
 }) {
   const body = (
-    <div className="px-4 pt-3 pb-3">
+    <div className="relative px-4 pt-3 pb-3">
+      {icon && <Icon name={icon} size={56} className="absolute top-3 right-4 opacity-15" />}
       <div className="text-2xl font-bold leading-tight">{value}</div>
       <div className="text-sm">{label}</div>
     </div>

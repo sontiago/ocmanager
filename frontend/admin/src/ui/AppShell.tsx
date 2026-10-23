@@ -2,19 +2,20 @@ import { NavLink, Outlet } from "react-router";
 import { useSession } from "../api/session";
 import { useT } from "../i18n";
 import { buttonClass } from "./Field";
+import { Icon, type IconName } from "./Icon";
 
-const NAV = [
-  ["/", "nav.overview"],
-  ["/clients", "nav.clients"],
-  ["/subscriptions", "nav.subscriptions"],
-  ["/plans", "nav.plans"],
-  ["/payments", "nav.payments"],
-  ["/devices", "nav.devices"],
-  ["/node", "nav.node"],
-  ["/audit", "nav.audit"],
-  ["/settings", "nav.settings"],
-  ["/profile", "nav.profile"],
-] as const;
+const NAV: readonly (readonly [string, string, IconName])[] = [
+  ["/", "nav.overview", "home"],
+  ["/clients", "nav.clients", "users"],
+  ["/subscriptions", "nav.subscriptions", "refresh"],
+  ["/plans", "nav.plans", "tag"],
+  ["/payments", "nav.payments", "card"],
+  ["/devices", "nav.devices", "phone"],
+  ["/node", "nav.node", "server"],
+  ["/audit", "nav.audit", "list"],
+  ["/settings", "nav.settings", "sliders"],
+  ["/profile", "nav.profile", "user"],
+];
 
 /** Каркас в духе AdminLTE: тёмный сайдбар слева, белая верхняя панель, светлое поле контента. */
 export function AppShell() {
@@ -28,15 +29,16 @@ export function AppShell() {
           <b>ocm</b>anager
         </div>
         <nav className="flex flex-col gap-0.5 p-2">
-          {NAV.map(([to, key]) => (
+          {NAV.map(([to, key, icon]) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `rounded-md px-3 py-2 ${isActive ? "bg-accent text-white" : "hover:bg-white/10 hover:text-white"}`
+                `flex items-center gap-3 rounded-md px-3 py-2 ${isActive ? "bg-accent text-white" : "hover:bg-white/10 hover:text-white"}`
               }
             >
+              <Icon name={icon} />
               {t(key)}
             </NavLink>
           ))}
