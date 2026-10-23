@@ -16,3 +16,6 @@ __pycache__/
 # Локальное состояние dev-окружения (PKI, allowed.list — Фаза 1)
 .dev/
 deploy/.env
+
+# visual companion
+.superpowers/
