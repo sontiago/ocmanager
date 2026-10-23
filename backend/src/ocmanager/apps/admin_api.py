@@ -21,6 +21,7 @@ from ocmanager.admin.routers import overview as overview_router
 from ocmanager.admin.routers import payments as payments_router
 from ocmanager.admin.routers import plans as plans_router
 from ocmanager.admin.routers import settings as settings_router
+from ocmanager.admin.routers import stats as stats_router
 from ocmanager.admin.routers import subscriptions as subscriptions_router
 from ocmanager.apps.spa import SpaStaticFiles
 from ocmanager.core.config import Settings, get_settings
@@ -104,6 +105,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(overview_router.router)
     api.include_router(audit_router.router)
     api.include_router(settings_router.router)
+    api.include_router(stats_router.router)
     app.include_router(api)
     # Последним: иначе `/` перехватил бы /admin/*.
     if settings.admin_static_dir is not None and settings.admin_static_dir.is_dir():
