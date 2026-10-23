@@ -1,3 +1,32 @@
 import type { RouteObject } from "react-router";
+import { LoginPage } from "../pages/Login";
+import { AppShell } from "../ui/AppShell";
+import { RequireAuth } from "./RequireAuth";
 
-export const routes: RouteObject[] = [{ path: "/", element: <main>ocmanager</main> }];
+function Stub({ name }: { name: string }) {
+  return <h1 className="text-lg font-semibold">{name}</h1>;
+}
+
+export const routes: RouteObject[] = [
+  { path: "/login", element: <LoginPage /> },
+  {
+    element: <RequireAuth />,
+    children: [
+      {
+        element: <AppShell />,
+        children: [
+          { path: "/", element: <Stub name="Обзор" /> },
+          { path: "/clients", element: <Stub name="Клиенты" /> },
+          { path: "/subscriptions", element: <Stub name="Подписки" /> },
+          { path: "/plans", element: <Stub name="Тарифы" /> },
+          { path: "/payments", element: <Stub name="Платежи" /> },
+          { path: "/devices", element: <Stub name="Устройства" /> },
+          { path: "/node", element: <Stub name="Нода" /> },
+          { path: "/audit", element: <Stub name="Аудит" /> },
+          { path: "/settings", element: <Stub name="Настройки" /> },
+          { path: "/profile", element: <Stub name="Профиль" /> },
+        ],
+      },
+    ],
+  },
+];
