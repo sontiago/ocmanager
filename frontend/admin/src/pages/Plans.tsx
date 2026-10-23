@@ -54,7 +54,7 @@ export function PlansPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">{t("nav.plans")}</h1>
+        <h1 className="text-2xl font-normal">{t("nav.plans")}</h1>
         <button className={primaryButtonClass} onClick={() => setEditing("new")}>
           {t("plans.new")}
         </button>

@@ -39,12 +39,12 @@ export function DataTable<T>({
   if (loading && !rows) return <p className="p-3 text-muted">{t("common.loading")}</p>;
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+    <div className="overflow-x-auto rounded-md bg-surface shadow-card">
       <table className="w-full text-left">
-        <thead className="border-b border-border text-xs text-muted uppercase">
+        <thead className="border-b-2 border-border">
           <tr>
             {columns.map((c) => (
-              <th key={c.key} className={`px-3 py-2 font-medium ${c.className ?? ""}`}>
+              <th key={c.key} className={`px-3 py-2 font-bold ${c.className ?? ""}`}>
                 {c.header}
               </th>
             ))}
@@ -61,7 +61,7 @@ export function DataTable<T>({
           {rows?.map((row) => (
             <tr
               key={rowKey(row)}
-              className={`border-b border-border last:border-0 ${onRowClick ? "cursor-pointer hover:bg-bg" : ""}`}
+              className={`border-t border-border odd:bg-black/[0.03] hover:bg-black/[0.06] ${onRowClick ? "cursor-pointer" : ""}`}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
             >
               {columns.map((c) => (

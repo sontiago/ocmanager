@@ -42,8 +42,12 @@ export function LoginPage() {
   }
 
   return (
-    <main className="mx-auto mt-24 w-full max-w-sm rounded-lg border border-border bg-surface p-6">
-      <h1 className="mb-4 text-lg font-semibold">{t("login.title")}</h1>
+    <main className="mx-auto mt-24 w-full max-w-sm px-4">
+      <div className="mb-4 text-center text-4xl font-light">
+        <b>ocm</b>anager
+      </div>
+      <div className="rounded-md border-t-[3px] border-t-accent bg-surface p-6 shadow-card">
+      <h1 className="mb-4 text-center text-muted">{t("login.title")}</h1>
       <form onSubmit={submit} className="space-y-3">
         <Field label={t("login.username")}>
           <input
@@ -86,6 +90,7 @@ export function LoginPage() {
           {t("login.submit")}
         </button>
       </form>
+      </div>
     </main>
   );
 }

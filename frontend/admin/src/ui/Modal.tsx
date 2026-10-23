@@ -23,9 +23,9 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md rounded-lg border border-border bg-surface p-5"
+        className="w-full max-w-md rounded-md border-t-[3px] border-t-accent bg-surface p-5 shadow-card"
       >
-        <h2 className="mb-3 text-base font-semibold">{title}</h2>
+        <h2 className="mb-3 text-lg font-normal">{title}</h2>
         {children}
       </div>
     </div>

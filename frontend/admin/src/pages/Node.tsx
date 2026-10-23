@@ -96,7 +96,7 @@ export function NodePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">{t("nav.node")}</h1>
+      <h1 className="text-2xl font-normal">{t("nav.node")}</h1>
       <Notice text={notice} />
       {action.error && <Notice tone="danger" text={errorText(action.error, t("common.error"))} />}
 

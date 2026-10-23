@@ -21,7 +21,7 @@ export function PaymentsPage() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-lg font-semibold">{t("nav.payments")}</h1>
+      <h1 className="text-2xl font-normal">{t("nav.payments")}</h1>
       <div role="tablist" className="flex gap-1 border-b border-border">
         {tabButton("payments", t("payments.tabPayments"))}
         {tabButton("webhooks", t("payments.tabWebhooks"))}

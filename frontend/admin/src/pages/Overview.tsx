@@ -4,6 +4,7 @@ import { useOverview } from "../api/hooks/overview";
 import { useT } from "../i18n";
 import { formatBytes, formatDateTime, formatMoney, relativeTime } from "../lib/format";
 import { Card } from "../ui/Card";
+import { SmallBox } from "../ui/SmallBox";
 import { StatusBadge, type Tone } from "../ui/StatusBadge";
 
 const STATE_TONE: Record<string, Tone> = { online: "ok", degraded: "warn", offline: "danger" };
@@ -36,7 +37,7 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">{t("overview.title")}</h1>
+      <h1 className="text-2xl font-normal">{t("overview.title")}</h1>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={t("overview.service")}>
           <div className="space-y-3">
@@ -60,12 +61,20 @@ export function OverviewPage() {
                 </Row>
               </div>
             )}
-            <Row label={t("overview.sessions")}>
-              {data.active_sessions === null ? noData : data.active_sessions}
-            </Row>
-            <Row label={t("overview.traffic")}>
-              ↓ {formatBytes(data.traffic.bytes_in)} · ↑ {formatBytes(data.traffic.bytes_out)}
-            </Row>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <SmallBox
+                color="info"
+                value={data.active_sessions === null ? "—" : data.active_sessions}
+                label={t("overview.sessions")}
+                to="/node"
+                moreLabel={t("nav.node")}
+              />
+              <SmallBox
+                color="ok"
+                value={`↓ ${formatBytes(data.traffic.bytes_in)} · ↑ ${formatBytes(data.traffic.bytes_out)}`}
+                label={t("overview.traffic")}
+              />
+            </div>
             {data.webhooks_needing_attention > 0 && (
               <Link to="/payments?tab=webhooks" className="block rounded-md border border-warn p-2 text-warn">
                 {t("overview.webhooks", { n: data.webhooks_needing_attention })}
@@ -95,14 +104,27 @@ export function OverviewPage() {
 
         <Card title={t("overview.money")}>
           <div className="space-y-3">
-            <div>
-              <h3 className="mb-1 text-xs text-muted uppercase">{t("overview.revenue")}</h3>
-              {revenue.length === 0 && <p className="text-muted">{t("overview.noRevenue")}</p>}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {revenue.length === 0 && (
+                <SmallBox color="ok" value="—" label={t("overview.noRevenue")} />
+              )}
               {revenue.map(([currency, minor]) => (
-                <p key={currency} className="text-2xl font-semibold">
-                  {formatMoney(minor, currency)}
-                </p>
+                <SmallBox
+                  key={currency}
+                  color="ok"
+                  value={formatMoney(minor, currency)}
+                  label={t("overview.revenue")}
+                  to="/payments"
+                  moreLabel={t("nav.payments")}
+                />
               ))}
+              <SmallBox
+                color="warn"
+                value={data.expiring_soon}
+                label={t("overview.expiring")}
+                to="/subscriptions?expiring_within_days=3"
+                moreLabel={t("nav.subscriptions")}
+              />
             </div>
             <div>
               <h3 className="mb-1 text-xs text-muted uppercase">{t("overview.subscriptions")}</h3>
@@ -116,13 +138,6 @@ export function OverviewPage() {
                   <span className="font-medium">{count}</span>
                 </Link>
               ))}
-              <Link
-                to="/subscriptions?expiring_within_days=3"
-                className="mt-1 flex justify-between py-0.5 hover:text-accent"
-              >
-                <span>{t("overview.expiring")}</span>
-                <span className="font-medium">{data.expiring_soon}</span>
-              </Link>
             </div>
             <div>
               <h3 className="mb-1 text-xs text-muted uppercase">{t("overview.payments")}</h3>

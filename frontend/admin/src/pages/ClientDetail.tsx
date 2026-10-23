@@ -106,7 +106,7 @@ export function ClientDetailPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold">
+        <h1 className="text-2xl font-normal">
           {client.first_name} {client.username && <span className="text-muted">@{client.username}</span>}{" "}
           {client.is_blocked && <StatusBadge tone="danger" label={t("clients.blocked")} />}
         </h1>

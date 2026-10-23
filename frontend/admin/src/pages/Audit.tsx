@@ -76,7 +76,7 @@ export function AuditPage() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-lg font-semibold">{t("nav.audit")}</h1>
+      <h1 className="text-2xl font-normal">{t("nav.audit")}</h1>
       <div className="flex flex-wrap items-end gap-3">
         <Field label={t("audit.actor")}>
           <select

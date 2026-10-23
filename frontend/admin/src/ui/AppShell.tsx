@@ -16,30 +16,35 @@ const NAV = [
   ["/profile", "nav.profile"],
 ] as const;
 
+/** Каркас в духе AdminLTE: тёмный сайдбар слева, белая верхняя панель, светлое поле контента. */
 export function AppShell() {
   const { t, lang, setLang } = useT();
   const { admin, logout } = useSession();
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-52 shrink-0 flex-col gap-1 border-r border-border bg-surface p-3">
-        <div className="mb-3 px-2 text-base font-semibold">ocmanager</div>
-        <nav className="flex flex-col gap-0.5">
+      <aside className="flex w-56 shrink-0 flex-col bg-sidebar text-sidebar-text">
+        <div className="border-b border-sidebar-border px-4 py-3 text-xl font-light text-white">
+          <b>ocm</b>anager
+        </div>
+        <nav className="flex flex-col gap-0.5 p-2">
           {NAV.map(([to, key]) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `rounded-md px-2 py-1.5 ${isActive ? "bg-accent text-accent-text" : "hover:bg-bg"}`
+                `rounded-md px-3 py-2 ${isActive ? "bg-accent text-white" : "hover:bg-white/10 hover:text-white"}`
               }
             >
               {t(key)}
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto flex flex-col gap-2 pt-4 text-sm">
-          <span className="px-2 text-muted">{admin?.username}</span>
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center justify-end gap-3 border-b border-border bg-surface px-6 py-2 shadow-card">
+          <span className="text-muted">{admin?.username}</span>
           <button
             type="button"
             className={buttonClass}
@@ -50,11 +55,11 @@ export function AppShell() {
           <button type="button" className={buttonClass} onClick={() => void logout()}>
             {t("shell.logout")}
           </button>
-        </div>
-      </aside>
-      <main className="min-w-0 flex-1 p-6">
-        <Outlet />
-      </main>
+        </header>
+        <main className="min-w-0 flex-1 p-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+/** Карточка AdminLTE: цветная полоса сверху, заголовок с линией под ним. */
 export function Card({
   title,
   action,
@@ -12,15 +13,15 @@ export function Card({
   return (
     <section
       aria-label={typeof title === "string" ? title : undefined}
-      className="rounded-lg border border-border bg-surface p-4"
+      className="rounded-md border-t-[3px] border-t-accent bg-surface shadow-card"
     >
       {(title || action) && (
-        <header className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-muted uppercase tracking-wide">{title}</h2>
+        <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+          <h2 className="text-lg font-normal">{title}</h2>
           {action}
         </header>
       )}
-      {children}
+      <div className="p-4">{children}</div>
     </section>
   );
 }

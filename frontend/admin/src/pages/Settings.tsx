@@ -76,7 +76,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">{t("nav.settings")}</h1>
+      <h1 className="text-2xl font-normal">{t("nav.settings")}</h1>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={t("settings.runtime")}>
           <Form settings={query.data} />

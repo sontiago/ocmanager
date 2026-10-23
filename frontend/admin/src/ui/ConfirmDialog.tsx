@@ -41,9 +41,9 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-md rounded-lg border border-border bg-surface p-5"
+        className="w-full max-w-md rounded-md border-t-[3px] border-t-accent bg-surface p-5 shadow-card"
       >
-        <h2 className="mb-2 text-base font-semibold">{title}</h2>
+        <h2 className="mb-2 text-lg font-normal">{title}</h2>
         {body && <div className="mb-4 text-sm text-muted">{body}</div>}
         <div className="flex justify-end gap-2">
           <button type="button" className={buttonClass} onClick={onCancel} disabled={pending}>

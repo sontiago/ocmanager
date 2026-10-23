@@ -90,7 +90,7 @@ export function SubscriptionsPage() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-lg font-semibold">{t("nav.subscriptions")}</h1>
+      <h1 className="text-2xl font-normal">{t("nav.subscriptions")}</h1>
       <div className="flex flex-wrap items-end gap-3">
         <Field label={t("clients.status")}>
           <select

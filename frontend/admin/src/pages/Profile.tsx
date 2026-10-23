@@ -165,7 +165,7 @@ export function ProfilePage() {
   const { admin } = useSession();
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">
+      <h1 className="text-2xl font-normal">
         {t("nav.profile")} <span className="text-muted">{admin?.username}</span>
       </h1>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
