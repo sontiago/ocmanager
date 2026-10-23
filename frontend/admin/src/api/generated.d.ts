@@ -4,15 +4,19 @@
  */
 
 export interface paths {
-    "/admin/health": {
+    "/admin/audit": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Health */
-        get: operations["health_admin_health_get"];
+        /**
+         * List Audit
+         * @description Журнал, новые первыми. Фильтры складываются по «и». Время — только с часовым
+         *     поясом (`2026-09-29T00:00:00Z`): наивное сравнилось бы с timestamptz ошибкой БД.
+         */
+        get: operations["list_audit_admin_audit_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -92,7 +96,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/auth/totp/setup": {
+    "/admin/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sessions */
+        get: operations["list_sessions_admin_auth_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/sessions/{session_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -101,12 +122,9 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Totp Setup
-         * @description Готовит секрет; включается он только после `confirm` с рабочим кодом.
-         */
-        post: operations["totp_setup_admin_auth_totp_setup_post"];
-        delete?: never;
+        post?: never;
+        /** Delete Session */
+        delete: operations["delete_session_admin_auth_sessions__session_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -146,24 +164,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/auth/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Sessions */
-        get: operations["list_sessions_admin_auth_sessions_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/auth/sessions/{session_id}": {
+    "/admin/auth/totp/setup": {
         parameters: {
             query?: never;
             header?: never;
@@ -172,9 +173,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
-        /** Delete Session */
-        delete: operations["delete_session_admin_auth_sessions__session_id__delete"];
+        /**
+         * Totp Setup
+         * @description Готовит секрет; включается он только после `confirm` с рабочим кодом.
+         */
+        post: operations["totp_setup_admin_auth_totp_setup_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -231,7 +235,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/clients/{client_id}/unblock": {
+    "/admin/clients/{client_id}/devices": {
         parameters: {
             query?: never;
             header?: never;
@@ -240,8 +244,29 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Unblock */
-        post: operations["unblock_admin_clients__client_id__unblock_post"];
+        /**
+         * Issue Device
+         * @description Те же проверки подписки и лимита, что и из TMA: ключ клиенту без доступа не выдать —
+         *     сначала `grant`. Пароль и ссылка отдаются один раз.
+         */
+        post: operations["issue_device_admin_clients__client_id__devices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/clients/{client_id}/extend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Extend */
+        post: operations["extend_admin_clients__client_id__extend_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -262,23 +287,6 @@ export interface paths {
          * @description «Выдать вручную»: тариф без оплаты и без автопродления.
          */
         post: operations["grant_admin_clients__client_id__grant_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/clients/{client_id}/extend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Extend */
-        post: operations["extend_admin_clients__client_id__extend_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -306,7 +314,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/clients/{client_id}/devices": {
+    "/admin/clients/{client_id}/unblock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unblock */
+        post: operations["unblock_admin_clients__client_id__unblock_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Devices
+         * @description `online` — по кэшу состояния ноды, который раз в минуту обновляет воркер. Если кэша
+         *     нет, фильтровать нечем, и это честный отказ, а не «никто не подключён».
+         */
+        get: operations["list_devices_admin_devices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/devices/{device_id}/revoke": {
         parameters: {
             query?: never;
             header?: never;
@@ -316,11 +362,28 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Issue Device
-         * @description Те же проверки подписки и лимита, что и из TMA: ключ клиенту без доступа не выдать —
-         *     сначала `grant`. Пароль и ссылка отдаются один раз.
+         * Revoke Device
+         * @description Отзыв необратим: сертификат уходит в CRL, номер устройства не переиспользуется.
+         *     Повторный вызов ничего не меняет и возвращает то же устройство.
          */
-        post: operations["issue_device_admin_clients__client_id__devices_post"];
+        post: operations["revoke_device_admin_devices__device_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/devices/{device_id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Device Sessions */
+        get: operations["device_sessions_admin_devices__device_id__sessions_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -339,6 +402,489 @@ export interface paths {
          * @description `.p12` один раз: повторный запрос — 404, как и просроченная ссылка.
          */
         get: operations["download_p12_admin_downloads__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/export/audit.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Audit */
+        get: operations["export_audit_admin_export_audit_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/export/clients.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Clients */
+        get: operations["export_clients_admin_export_clients_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/export/payments.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Payments */
+        get: operations["export_payments_admin_export_payments_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/export/subscriptions.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Subscriptions */
+        get: operations["export_subscriptions_admin_export_subscriptions_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/export/traffic.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Traffic */
+        get: operations["export_traffic_admin_export_traffic_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health */
+        get: operations["health_admin_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/node": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Node Status */
+        get: operations["node_status_admin_node_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/node/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Node Action
+         * @description Только действия из реестра `NodeAction`: произвольная команда на ноде невозможна
+         *     по построению. Аудит пишется лишь для выполненного действия.
+         */
+        post: operations["node_action_admin_node_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/node/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Node Logs
+         * @description Живые логи ocserv потоком SSE. Пока клиент подключён, идёт `docker logs -f`; при обрыве
+         *     соединения процесс завершается (shell.stream закрывается вместе с генератором).
+         */
+        get: operations["node_logs_admin_node_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/node/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Probe
+         * @description Живая проверка, а не кэш: обновляет и кэш, и статус ноды.
+         */
+        post: operations["probe_admin_node_probe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/node/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reconcile
+         * @description Сверка прямо сейчас. Найденное чинится, отчёт сохраняется в строке ноды.
+         *     Сбой ноды — не ошибка запроса, а поле `error` отчёта.
+         */
+        post: operations["reconcile_admin_node_reconcile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/node/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live Sessions
+         * @description Текущие сессии прямо с ноды (`occtl`), с именами клиента и устройства.
+         */
+        get: operations["live_sessions_admin_node_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Overview
+         * @description Всё, что видно с первого экрана. Работает на пустой базе: нулями, а не ошибкой.
+         */
+        get: operations["overview_admin_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Payments */
+        get: operations["list_payments_admin_payments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Plans
+         * @description Все тарифы, включая неактивные и скрытый trial.
+         */
+        get: operations["list_plans_admin_plans_get"];
+        put?: never;
+        /** Create Plan */
+        post: operations["create_plan_admin_plans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plans/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Plan
+         * @description Меняются только переданные поля. Код и признак trial не меняются вообще: поля `is_trial`
+         *     в схеме нет, лишнее поле — 422. Уже купленные подписки хранят свой снимок условий,
+         *     поэтому правка тарифа их не трогает; `is_active=false` лишь прячет тариф из каталога.
+         */
+        patch: operations["update_plan_admin_plans__code__patch"];
+        trace?: never;
+    };
+    "/admin/promo-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Promo Codes */
+        get: operations["list_promo_codes_admin_promo_codes_get"];
+        put?: never;
+        /** Create Promo Code */
+        post: operations["create_promo_code_admin_promo_codes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/promo-codes/{promo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Promo Code */
+        delete: operations["delete_promo_code_admin_promo_codes__promo_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Promo Code */
+        patch: operations["update_promo_code_admin_promo_codes__promo_id__patch"];
+        trace?: never;
+    };
+    "/admin/promo-codes/{promo_id}/redemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Redemptions */
+        get: operations["redemptions_admin_promo_codes__promo_id__redemptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/referrals/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rewards */
+        get: operations["rewards_admin_referrals_rewards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/referrals/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stats */
+        get: operations["stats_admin_referrals_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Settings */
+        get: operations["get_settings_admin_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Settings
+         * @description Частичное обновление: валидируется весь результат, пишутся только изменившиеся ключи.
+         *     Неизвестный ключ или недопустимое значение — 422. Аудит — только если что-то изменилось.
+         */
+        patch: operations["patch_settings_admin_settings_patch"];
+        trace?: never;
+    };
+    "/admin/stats/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Clients */
+        get: operations["clients_admin_stats_clients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stats/economics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Economics
+         * @description MRR — оценка по живым платным подпискам: цена тарифа за 30 суток. Цена берётся из тарифа
+         *     сейчас, а не на момент покупки: снимка цены в подписке нет.
+         */
+        get: operations["economics_admin_stats_economics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stats/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Revenue */
+        get: operations["revenue_admin_stats_revenue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stats/traffic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Traffic */
+        get: operations["traffic_admin_stats_traffic_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -406,23 +952,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/payments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Payments */
-        get: operations["list_payments_admin_payments_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/admin/webhooks": {
         parameters: {
             query?: never;
@@ -481,535 +1010,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/plans": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Plans
-         * @description Все тарифы, включая неактивные и скрытый trial.
-         */
-        get: operations["list_plans_admin_plans_get"];
-        put?: never;
-        /** Create Plan */
-        post: operations["create_plan_admin_plans_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/plans/{code}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Update Plan
-         * @description Меняются только переданные поля. Код и признак trial не меняются вообще: поля `is_trial`
-         *     в схеме нет, лишнее поле — 422. Уже купленные подписки хранят свой снимок условий,
-         *     поэтому правка тарифа их не трогает; `is_active=false` лишь прячет тариф из каталога.
-         */
-        patch: operations["update_plan_admin_plans__code__patch"];
-        trace?: never;
-    };
-    "/admin/devices": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Devices
-         * @description `online` — по кэшу состояния ноды, который раз в минуту обновляет воркер. Если кэша
-         *     нет, фильтровать нечем, и это честный отказ, а не «никто не подключён».
-         */
-        get: operations["list_devices_admin_devices_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/devices/{device_id}/revoke": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Revoke Device
-         * @description Отзыв необратим: сертификат уходит в CRL, номер устройства не переиспользуется.
-         *     Повторный вызов ничего не меняет и возвращает то же устройство.
-         */
-        post: operations["revoke_device_admin_devices__device_id__revoke_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/devices/{device_id}/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Device Sessions */
-        get: operations["device_sessions_admin_devices__device_id__sessions_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/node": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Node Status */
-        get: operations["node_status_admin_node_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/node/probe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Probe
-         * @description Живая проверка, а не кэш: обновляет и кэш, и статус ноды.
-         */
-        post: operations["probe_admin_node_probe_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/node/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Live Sessions
-         * @description Текущие сессии прямо с ноды (`occtl`), с именами клиента и устройства.
-         */
-        get: operations["live_sessions_admin_node_sessions_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/node/actions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Node Action
-         * @description Только действия из реестра `NodeAction`: произвольная команда на ноде невозможна
-         *     по построению. Аудит пишется лишь для выполненного действия.
-         */
-        post: operations["node_action_admin_node_actions_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/node/reconcile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reconcile
-         * @description Сверка прямо сейчас. Найденное чинится, отчёт сохраняется в строке ноды.
-         *     Сбой ноды — не ошибка запроса, а поле `error` отчёта.
-         */
-        post: operations["reconcile_admin_node_reconcile_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/node/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Node Logs
-         * @description Живые логи ocserv потоком SSE. Пока клиент подключён, идёт `docker logs -f`; при обрыве
-         *     соединения процесс завершается (shell.stream закрывается вместе с генератором).
-         */
-        get: operations["node_logs_admin_node_logs_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/overview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Overview
-         * @description Всё, что видно с первого экрана. Работает на пустой базе: нулями, а не ошибкой.
-         */
-        get: operations["overview_admin_overview_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/audit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Audit
-         * @description Журнал, новые первыми. Фильтры складываются по «и». Время — только с часовым
-         *     поясом (`2026-09-29T00:00:00Z`): наивное сравнилось бы с timestamptz ошибкой БД.
-         */
-        get: operations["list_audit_admin_audit_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Settings */
-        get: operations["get_settings_admin_settings_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Patch Settings
-         * @description Частичное обновление: валидируется весь результат, пишутся только изменившиеся ключи.
-         *     Неизвестный ключ или недопустимое значение — 422. Аудит — только если что-то изменилось.
-         */
-        patch: operations["patch_settings_admin_settings_patch"];
-        trace?: never;
-    };
-    "/admin/stats/traffic": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Traffic */
-        get: operations["traffic_admin_stats_traffic_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/stats/revenue": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Revenue */
-        get: operations["revenue_admin_stats_revenue_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/stats/clients": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Clients */
-        get: operations["clients_admin_stats_clients_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/stats/economics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Economics
-         * @description MRR — оценка по живым платным подпискам: цена тарифа за 30 суток. Цена берётся из тарифа
-         *     сейчас, а не на момент покупки: снимка цены в подписке нет.
-         */
-        get: operations["economics_admin_stats_economics_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/export/clients.csv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export Clients */
-        get: operations["export_clients_admin_export_clients_csv_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/export/subscriptions.csv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export Subscriptions */
-        get: operations["export_subscriptions_admin_export_subscriptions_csv_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/export/payments.csv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export Payments */
-        get: operations["export_payments_admin_export_payments_csv_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/export/audit.csv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export Audit */
-        get: operations["export_audit_admin_export_audit_csv_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/export/traffic.csv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Export Traffic */
-        get: operations["export_traffic_admin_export_traffic_csv_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/promo-codes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Promo Codes */
-        get: operations["list_promo_codes_admin_promo_codes_get"];
-        put?: never;
-        /** Create Promo Code */
-        post: operations["create_promo_code_admin_promo_codes_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/promo-codes/{promo_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Promo Code */
-        delete: operations["delete_promo_code_admin_promo_codes__promo_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Promo Code */
-        patch: operations["update_promo_code_admin_promo_codes__promo_id__patch"];
-        trace?: never;
-    };
-    "/admin/promo-codes/{promo_id}/redemptions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Redemptions */
-        get: operations["redemptions_admin_promo_codes__promo_id__redemptions_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/referrals/stats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Stats */
-        get: operations["stats_admin_referrals_stats_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/admin/referrals/rewards": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Rewards */
-        get: operations["rewards_admin_referrals_rewards_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1033,40 +1033,40 @@ export interface components {
         AdminOut: {
             /** Id */
             id: number;
-            /** Username */
-            username: string;
+            /** Last Login At */
+            last_login_at: string | null;
             /** Role */
             role: string;
             /** Totp Enabled */
             totp_enabled: boolean;
-            /** Last Login At */
-            last_login_at: string | null;
+            /** Username */
+            username: string;
         };
         /** AuditRow */
         AuditRow: {
-            /** Id */
-            id: number;
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Type */
+            actor_type: string;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Actor Type */
-            actor_type: string;
-            /** Actor Id */
-            actor_id: string | null;
-            /** Ip */
-            ip: string | null;
-            /** Action */
-            action: string;
-            /** Target Type */
-            target_type: string | null;
-            /** Target Id */
-            target_id: string | null;
             /** Details */
             details: {
                 [key: string]: unknown;
             };
+            /** Id */
+            id: number;
+            /** Ip */
+            ip: string | null;
+            /** Target Id */
+            target_id: string | null;
+            /** Target Type */
+            target_type: string | null;
         };
         /** AuthOut */
         AuthOut: {
@@ -1077,89 +1077,89 @@ export interface components {
         /** ClientCard */
         ClientCard: {
             client: components["schemas"]["ClientOut"];
-            subscription: components["schemas"]["SubscriptionOut"] | null;
             /** Devices */
             devices: components["schemas"]["DeviceOut"][];
-            /** Traffic Daily */
-            traffic_daily: components["schemas"]["DailyTrafficOut"][];
-            /** Sessions */
-            sessions: components["schemas"]["SessionRowOut"][];
             /** Payments */
             payments: components["schemas"]["PaymentOut"][];
             referral: components["schemas"]["ReferralInfo"];
+            /** Sessions */
+            sessions: components["schemas"]["SessionRowOut"][];
+            subscription: components["schemas"]["SubscriptionOut"] | null;
+            /** Traffic Daily */
+            traffic_daily: components["schemas"]["DailyTrafficOut"][];
         };
         /** ClientOut */
         ClientOut: {
-            /** Id */
-            id: number;
-            /** Telegram Id */
-            telegram_id: number;
-            /** Username */
-            username: string | null;
-            /** First Name */
-            first_name: string;
-            /** Lang */
-            lang: string;
-            /** Is Blocked */
-            is_blocked: boolean;
-            /** Trial Used At */
-            trial_used_at: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** First Name */
+            first_name: string;
+            /** Id */
+            id: number;
+            /** Is Blocked */
+            is_blocked: boolean;
+            /** Lang */
+            lang: string;
+            /** Telegram Id */
+            telegram_id: number;
+            /** Trial Used At */
+            trial_used_at: string | null;
+            /** Username */
+            username: string | null;
         };
         /** ClientRow */
         ClientRow: {
-            /** Id */
-            id: number;
-            /** Telegram Id */
-            telegram_id: number;
-            /** Username */
-            username: string | null;
-            /** First Name */
-            first_name: string;
-            /** Lang */
-            lang: string;
-            /** Is Blocked */
-            is_blocked: boolean;
-            /** Trial Used At */
-            trial_used_at: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Subscription Status */
-            subscription_status: string | null;
-            /** Plan Code */
-            plan_code: string | null;
-            /** Expires At */
-            expires_at: string | null;
             /** Devices Active */
             devices_active: number;
+            /** Expires At */
+            expires_at: string | null;
+            /** First Name */
+            first_name: string;
+            /** Id */
+            id: number;
+            /** Is Blocked */
+            is_blocked: boolean;
+            /** Lang */
+            lang: string;
+            /** Plan Code */
+            plan_code: string | null;
+            /** Subscription Status */
+            subscription_status: string | null;
+            /** Telegram Id */
+            telegram_id: number;
+            /** Trial Used At */
+            trial_used_at: string | null;
+            /** Username */
+            username: string | null;
         };
         /** ClientsPoint */
         ClientsPoint: {
+            /** Count */
+            count: number;
             /**
              * Day
              * Format: date
              */
             day: string;
-            /** Count */
-            count: number;
         };
         /** ClientsStats */
         ClientsStats: {
-            /** Series */
-            series: components["schemas"]["ClientsPoint"][];
-            /** Total */
-            total: number;
             /** New In Period */
             new_in_period: number;
             /** Paying In Period */
             paying_in_period: number;
+            /** Series */
+            series: components["schemas"]["ClientsPoint"][];
+            /** Total */
+            total: number;
         };
         /** CodeBody */
         CodeBody: {
@@ -1168,12 +1168,12 @@ export interface components {
         };
         /** CurrencyTotal */
         CurrencyTotal: {
-            /** Currency */
-            currency: string;
             /** Amount */
             amount: number;
             /** Count */
             count: number;
+            /** Currency */
+            currency: string;
             /** Refunded Amount */
             refunded_amount: number;
             /** Refunded Count */
@@ -1181,109 +1181,109 @@ export interface components {
         };
         /** DailyTrafficOut */
         DailyTrafficOut: {
+            /** Bytes In */
+            bytes_in: number;
+            /** Bytes Out */
+            bytes_out: number;
             /**
              * Day
              * Format: date
              */
             day: string;
-            /** Bytes In */
-            bytes_in: number;
-            /** Bytes Out */
-            bytes_out: number;
         };
         /** DeviceOut */
         DeviceOut: {
-            /** Id */
-            id: number;
-            /** Client Id */
-            client_id: number;
-            /** Seq */
-            seq: number;
-            /** Name */
-            name: string;
-            /** Platform */
-            platform: string;
-            /** Username */
-            username: string;
-            /**
-             * Issued At
-             * Format: date-time
-             */
-            issued_at: string;
             /**
              * Cert Expires At
              * Format: date-time
              */
             cert_expires_at: string;
-            /** Revoked At */
-            revoked_at: string | null;
-            /** Revocation Reason */
-            revocation_reason: string | null;
-            /** Last Seen At */
-            last_seen_at: string | null;
+            /** Client Id */
+            client_id: number;
+            /** Id */
+            id: number;
             /** Is Online */
             is_online: boolean | null;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Name */
+            name: string;
+            /** Platform */
+            platform: string;
+            /** Revocation Reason */
+            revocation_reason: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Seq */
+            seq: number;
             /** Traffic Bytes */
             traffic_bytes: number;
+            /** Username */
+            username: string;
         };
         /** DeviceRow */
         DeviceRow: {
-            /** Id */
-            id: number;
-            /** Client Id */
-            client_id: number;
-            /** Telegram Id */
-            telegram_id: number;
-            /** Client Name */
-            client_name: string;
-            /** Seq */
-            seq: number;
-            /** Name */
-            name: string;
-            /** Platform */
-            platform: string;
-            /** Username */
-            username: string;
-            /**
-             * Issued At
-             * Format: date-time
-             */
-            issued_at: string;
             /**
              * Cert Expires At
              * Format: date-time
              */
             cert_expires_at: string;
-            /** Revoked At */
-            revoked_at: string | null;
-            /** Revocation Reason */
-            revocation_reason: string | null;
-            /** Last Seen At */
-            last_seen_at: string | null;
+            /** Client Id */
+            client_id: number;
+            /** Client Name */
+            client_name: string;
+            /** Id */
+            id: number;
             /** Is Online */
             is_online: boolean | null;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Name */
+            name: string;
+            /** Platform */
+            platform: string;
+            /** Revocation Reason */
+            revocation_reason: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Seq */
+            seq: number;
+            /** Telegram Id */
+            telegram_id: number;
+            /** Username */
+            username: string;
         };
         /** DriftOut */
         DriftOut: {
-            /** Kind */
-            kind: string;
             /** Details */
             details: {
                 [key: string]: unknown;
             };
+            /** Kind */
+            kind: string;
         };
         /** EconomicsStats */
         EconomicsStats: {
-            /** Mrr */
-            mrr: {
-                [key: string]: number;
-            };
+            /** Active Paid */
+            active_paid: number;
             /** Arpu */
             arpu: {
                 [key: string]: number;
             };
-            /** Active Paid */
-            active_paid: number;
+            /** Mrr */
+            mrr: {
+                [key: string]: number;
+            };
         };
         /**
          * EnvironmentOut
@@ -1293,12 +1293,12 @@ export interface components {
         EnvironmentOut: {
             /** Env */
             env: string;
-            /** Vpn Host */
-            vpn_host: string;
             /** Ocserv Container */
             ocserv_container: string;
             /** Version */
             version: string;
+            /** Vpn Host */
+            vpn_host: string;
         };
         /** ExtendBody */
         ExtendBody: {
@@ -1307,10 +1307,10 @@ export interface components {
         };
         /** GrantBody */
         GrantBody: {
-            /** Plan Code */
-            plan_code: string;
             /** Days */
             days?: number | null;
+            /** Plan Code */
+            plan_code: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1319,10 +1319,6 @@ export interface components {
         };
         /** HealthOut */
         HealthOut: {
-            /** State */
-            state: string;
-            /** Container State */
-            container_state: string;
             /** Active Sessions */
             active_sessions: number;
             /**
@@ -1330,8 +1326,12 @@ export interface components {
              * Format: date-time
              */
             checked_at: string;
+            /** Container State */
+            container_state: string;
             /** Error */
             error: string | null;
+            /** State */
+            state: string;
         };
         /** IssueBody */
         IssueBody: {
@@ -1346,110 +1346,110 @@ export interface components {
         /** IssuedOut */
         IssuedOut: {
             device: components["schemas"]["DeviceOut"];
-            /** P12 Password */
-            p12_password: string;
-            /** Download Path */
-            download_path: string;
             /**
              * Download Expires At
              * Format: date-time
              */
             download_expires_at: string;
+            /** Download Path */
+            download_path: string;
+            /** P12 Password */
+            p12_password: string;
         };
         /** LiveSessionOut */
         LiveSessionOut: {
-            /** Session Id */
-            session_id: string;
-            /** Username */
-            username: string;
-            /** Remote Ip */
-            remote_ip: string;
-            /** Vpn Ip */
-            vpn_ip: string | null;
             /** Bytes In */
             bytes_in: number;
             /** Bytes Out */
             bytes_out: number;
+            /** Client Id */
+            client_id: number | null;
+            /** Client Name */
+            client_name: string | null;
             /**
              * Connected At
              * Format: date-time
              */
             connected_at: string;
-            /** User Agent */
-            user_agent: string | null;
             /** Device Id */
             device_id: number | null;
             /** Device Name */
             device_name: string | null;
-            /** Client Id */
-            client_id: number | null;
+            /** Remote Ip */
+            remote_ip: string;
+            /** Session Id */
+            session_id: string;
             /** Telegram Id */
             telegram_id: number | null;
-            /** Client Name */
-            client_name: string | null;
+            /** User Agent */
+            user_agent: string | null;
+            /** Username */
+            username: string;
+            /** Vpn Ip */
+            vpn_ip: string | null;
         };
         /** LoginBody */
         LoginBody: {
-            /** Username */
-            username: string;
             /** Password */
             password: string;
             /** Totp Code */
             totp_code?: string | null;
+            /** Username */
+            username: string;
         };
         /** NodeOut */
         NodeOut: {
-            /** Id */
-            id: number;
-            /** Name */
-            name: string;
             /** Driver */
             driver: string;
-            /** Public Host */
-            public_host: string;
-            /** Status */
-            status: string;
-            /** Last Seen At */
-            last_seen_at: string | null;
+            /** Id */
+            id: number;
             /** Is Active */
             is_active: boolean;
             /** Last Reconcile At */
             last_reconcile_at: string | null;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Name */
+            name: string;
+            /** Public Host */
+            public_host: string;
+            /** Status */
+            status: string;
         };
         /** NodeStatusOut */
         NodeStatusOut: {
-            node: components["schemas"]["NodeOut"];
             health: components["schemas"]["HealthOut"] | null;
             /** Last Reconcile Report */
             last_reconcile_report: {
                 [key: string]: unknown;
             } | null;
+            node: components["schemas"]["NodeOut"];
         };
         /** OverviewOut */
         OverviewOut: {
-            node: components["schemas"]["NodeOut"] | null;
-            health: components["schemas"]["HealthOut"] | null;
             /** Active Sessions */
             active_sessions: number | null;
-            traffic: components["schemas"]["TrafficOut"];
-            /** Subscriptions By Status */
-            subscriptions_by_status: {
-                [key: string]: number;
-            };
             /** Expiring Soon */
             expiring_soon: number;
-            /** Recent Audit */
-            recent_audit: components["schemas"]["AuditRow"][];
+            health: components["schemas"]["HealthOut"] | null;
             /** Last Reconcile */
             last_reconcile: {
                 [key: string]: unknown;
             } | null;
+            node: components["schemas"]["NodeOut"] | null;
+            /** Recent Audit */
+            recent_audit: components["schemas"]["AuditRow"][];
+            /** Recent Payments */
+            recent_payments: components["schemas"]["PaymentOut"][];
             /** Revenue */
             revenue: {
                 [key: string]: number;
             };
-            /** Recent Payments */
-            recent_payments: components["schemas"]["PaymentOut"][];
+            /** Subscriptions By Status */
+            subscriptions_by_status: {
+                [key: string]: number;
+            };
+            traffic: components["schemas"]["TrafficOut"];
             /** Webhooks Needing Attention */
             webhooks_needing_attention: number;
         };
@@ -1457,89 +1457,89 @@ export interface components {
         Page_AuditRow_: {
             /** Items */
             items: components["schemas"]["AuditRow"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
+            /** Total */
+            total: number;
         };
         /** Page[ClientRow] */
         Page_ClientRow_: {
             /** Items */
             items: components["schemas"]["ClientRow"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
+            /** Total */
+            total: number;
         };
         /** Page[DeviceRow] */
         Page_DeviceRow_: {
             /** Items */
             items: components["schemas"]["DeviceRow"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
+            /** Total */
+            total: number;
         };
         /** Page[PaymentOut] */
         Page_PaymentOut_: {
             /** Items */
             items: components["schemas"]["PaymentOut"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
+            /** Total */
+            total: number;
         };
         /** Page[RewardRow] */
         Page_RewardRow_: {
             /** Items */
             items: components["schemas"]["RewardRow"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
+            /** Total */
+            total: number;
         };
         /** Page[SessionRowOut] */
         Page_SessionRowOut_: {
             /** Items */
             items: components["schemas"]["SessionRowOut"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
+            /** Total */
+            total: number;
         };
         /** Page[SubscriptionRow] */
         Page_SubscriptionRow_: {
             /** Items */
             items: components["schemas"]["SubscriptionRow"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
+            /** Total */
+            total: number;
         };
         /** Page[WebhookOut] */
         Page_WebhookOut_: {
             /** Items */
             items: components["schemas"]["WebhookOut"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
+            /** Total */
+            total: number;
         };
         /** PasswordBody */
         PasswordBody: {
@@ -1550,107 +1550,107 @@ export interface components {
         };
         /** PaymentOut */
         PaymentOut: {
-            /** Id */
-            id: number;
-            /** Client Id */
-            client_id: number;
-            /** Subscription Id */
-            subscription_id: number | null;
-            /** Provider */
-            provider: string;
-            /** External Id */
-            external_id: string;
-            /** Plan Id */
-            plan_id: number | null;
             /** Amount */
             amount: number;
+            /** Client Id */
+            client_id: number;
             /** Currency */
             currency: string;
-            /** Status */
-            status: string;
+            /** External Id */
+            external_id: string;
+            /** Id */
+            id: number;
+            /** Plan Id */
+            plan_id: number | null;
+            /** Processed At */
+            processed_at: string | null;
+            /** Provider */
+            provider: string;
             /**
              * Received At
              * Format: date-time
              */
             received_at: string;
-            /** Processed At */
-            processed_at: string | null;
+            /** Status */
+            status: string;
+            /** Subscription Id */
+            subscription_id: number | null;
         };
         /** PlanCreate */
         PlanCreate: {
             /** Code */
             code: string;
-            /** Name I18N */
-            name_i18n: {
-                [key: string]: string;
-            };
+            /** Currency */
+            currency: string;
             /** Description I18N */
             description_i18n?: {
                 [key: string]: string;
             } | null;
-            /** Duration Days */
-            duration_days: number;
             /** Device Limit */
             device_limit: number;
-            /** Traffic Limit Bytes */
-            traffic_limit_bytes?: number | null;
-            /** Speed Limit Kbps */
-            speed_limit_kbps?: number | null;
-            /** Price Amount */
-            price_amount: number;
-            /** Currency */
-            currency: string;
-            /** Provider Product Ids */
-            provider_product_ids?: {
-                [key: string]: unknown;
-            };
+            /** Duration Days */
+            duration_days: number;
             /**
              * Is Active
              * @default true
              */
             is_active: boolean;
+            /** Name I18N */
+            name_i18n: {
+                [key: string]: string;
+            };
+            /** Price Amount */
+            price_amount: number;
+            /** Provider Product Ids */
+            provider_product_ids?: {
+                [key: string]: unknown;
+            };
             /**
              * Sort Order
              * @default 0
              */
             sort_order: number;
+            /** Speed Limit Kbps */
+            speed_limit_kbps?: number | null;
+            /** Traffic Limit Bytes */
+            traffic_limit_bytes?: number | null;
         };
         /** PlanOut */
         PlanOut: {
-            /** Id */
-            id: number;
             /** Code */
             code: string;
-            /** Name I18N */
-            name_i18n: {
-                [key: string]: string;
-            };
+            /** Currency */
+            currency: string;
             /** Description I18N */
             description_i18n: {
                 [key: string]: string;
             } | null;
-            /** Duration Days */
-            duration_days: number;
             /** Device Limit */
             device_limit: number;
-            /** Traffic Limit Bytes */
-            traffic_limit_bytes: number | null;
-            /** Speed Limit Kbps */
-            speed_limit_kbps: number | null;
-            /** Price Amount */
-            price_amount: number;
-            /** Currency */
-            currency: string;
-            /** Provider Product Ids */
-            provider_product_ids: {
-                [key: string]: unknown;
-            };
+            /** Duration Days */
+            duration_days: number;
+            /** Id */
+            id: number;
             /** Is Active */
             is_active: boolean;
             /** Is Trial */
             is_trial: boolean;
+            /** Name I18N */
+            name_i18n: {
+                [key: string]: string;
+            };
+            /** Price Amount */
+            price_amount: number;
+            /** Provider Product Ids */
+            provider_product_ids: {
+                [key: string]: unknown;
+            };
             /** Sort Order */
             sort_order: number;
+            /** Speed Limit Kbps */
+            speed_limit_kbps: number | null;
+            /** Traffic Limit Bytes */
+            traffic_limit_bytes: number | null;
         };
         /**
          * PlanUpdate
@@ -1658,92 +1658,101 @@ export interface components {
          *     не меняются. None допустим лишь там, где он значит «не ограничено» или «нет».
          */
         PlanUpdate: {
-            /** Name I18N */
-            name_i18n?: {
-                [key: string]: string;
-            } | null;
+            /** Currency */
+            currency?: string | null;
             /** Description I18N */
             description_i18n?: {
                 [key: string]: string;
             } | null;
-            /** Duration Days */
-            duration_days?: number | null;
             /** Device Limit */
             device_limit?: number | null;
-            /** Traffic Limit Bytes */
-            traffic_limit_bytes?: number | null;
-            /** Speed Limit Kbps */
-            speed_limit_kbps?: number | null;
+            /** Duration Days */
+            duration_days?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Name I18N */
+            name_i18n?: {
+                [key: string]: string;
+            } | null;
             /** Price Amount */
             price_amount?: number | null;
-            /** Currency */
-            currency?: string | null;
             /** Provider Product Ids */
             provider_product_ids?: {
                 [key: string]: unknown;
             } | null;
-            /** Is Active */
-            is_active?: boolean | null;
             /** Sort Order */
             sort_order?: number | null;
+            /** Speed Limit Kbps */
+            speed_limit_kbps?: number | null;
+            /** Traffic Limit Bytes */
+            traffic_limit_bytes?: number | null;
         };
         /** PromoCreate */
         PromoCreate: {
             /** Code */
             code: string;
+            /** Expires At */
+            expires_at?: string | null;
             /**
              * Kind
              * @enum {string}
              */
             kind: "days" | "traffic";
-            /** Value */
-            value: number;
             /** Max Uses */
             max_uses?: number | null;
-            /** Expires At */
-            expires_at?: string | null;
+            /** Value */
+            value: number;
         };
         /** PromoOut */
         PromoOut: {
-            /** Id */
-            id: number;
             /** Code */
             code: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "days" | "traffic";
-            /** Value */
-            value: number;
-            /** Max Uses */
-            max_uses: number | null;
-            /** Uses */
-            uses: number;
-            /** Expires At */
-            expires_at: string | null;
-            /** Is Active */
-            is_active: boolean;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Expires At */
+            expires_at: string | null;
+            /** Id */
+            id: number;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "days" | "traffic";
+            /** Max Uses */
+            max_uses: number | null;
+            /** Uses */
+            uses: number;
+            /** Value */
+            value: number;
         };
         /**
          * PromoPatch
          * @description Переданное поле меняется; `null` у max_uses/expires_at очищает ограничение.
          */
         PromoPatch: {
+            /** Expires At */
+            expires_at?: string | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Max Uses */
             max_uses?: number | null;
-            /** Expires At */
-            expires_at?: string | null;
         };
         /** ReconcileOut */
         ReconcileOut: {
+            /** Drifts */
+            drifts: components["schemas"]["DriftOut"][];
+            /** Error */
+            error: string | null;
+            /**
+             * Finished At
+             * Format: date-time
+             */
+            finished_at: string;
             /** Node Id */
             node_id: number;
             /**
@@ -1751,67 +1760,58 @@ export interface components {
              * Format: date-time
              */
             started_at: string;
-            /**
-             * Finished At
-             * Format: date-time
-             */
-            finished_at: string;
-            /** Drifts */
-            drifts: components["schemas"]["DriftOut"][];
-            /** Error */
-            error: string | null;
         };
         /** RedemptionOut */
         RedemptionOut: {
-            /** Id */
-            id: number;
             /** Client Id */
             client_id: number;
             /** Client Name */
             client_name: string;
+            /** Id */
+            id: number;
             /**
              * Kind
              * @enum {string}
              */
             kind: "days" | "traffic";
-            /** Value */
-            value: number;
             /**
              * Redeemed At
              * Format: date-time
              */
             redeemed_at: string;
+            /** Value */
+            value: number;
         };
         /** ReferralInfo */
         ReferralInfo: {
-            /** Code */
-            code: string;
-            referred_by: components["schemas"]["ReferrerOut"] | null;
-            /** Invited */
-            invited: number;
-            /** Paying Friends */
-            paying_friends: number;
             /** Bonus Devices */
             bonus_devices: number;
             /** Bonus Traffic Bytes */
             bonus_traffic_bytes: number;
+            /** Code */
+            code: string;
+            /** Invited */
+            invited: number;
+            /** Paying Friends */
+            paying_friends: number;
+            referred_by: components["schemas"]["ReferrerOut"] | null;
         };
         /** ReferralStats */
         ReferralStats: {
-            /** Invited */
-            invited: number;
-            /** Paying */
-            paying: number;
             /** Conversion Percent */
             conversion_percent: number;
             /** Days Given */
             days_given: number;
             /** Devices Given */
             devices_given: number;
-            /** Traffic Bytes Given */
-            traffic_bytes_given: number;
+            /** Invited */
+            invited: number;
+            /** Paying */
+            paying: number;
             /** Tiers */
             tiers: components["schemas"]["TierStat"][];
+            /** Traffic Bytes Given */
+            traffic_bytes_given: number;
         };
         /** ReferrerOut */
         ReferrerOut: {
@@ -1822,15 +1822,15 @@ export interface components {
         };
         /** RevenuePoint */
         RevenuePoint: {
+            /** Amounts */
+            amounts: {
+                [key: string]: number;
+            };
             /**
              * Day
              * Format: date
              */
             day: string;
-            /** Amounts */
-            amounts: {
-                [key: string]: number;
-            };
         };
         /** RevenueStats */
         RevenueStats: {
@@ -1846,158 +1846,159 @@ export interface components {
         };
         /** RewardRow */
         RewardRow: {
-            /** Id */
-            id: number;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Inviter Id */
-            inviter_id: number;
-            /** Inviter Name */
-            inviter_name: string;
+            /** Days */
+            days: number;
+            /** Devices */
+            devices: number;
+            /** Id */
+            id: number;
+            /** Invitee Days */
+            invitee_days: number;
             /** Invitee Id */
             invitee_id: number;
             /** Invitee Name */
             invitee_name: string;
+            /** Inviter Id */
+            inviter_id: number;
+            /** Inviter Name */
+            inviter_name: string;
             /**
              * Kind
              * @enum {string}
              */
             kind: "base" | "tier";
-            /** Tier */
-            tier: number | null;
-            /** Days */
-            days: number;
-            /** Invitee Days */
-            invitee_days: number;
-            /** Devices */
-            devices: number;
-            /** Traffic Bytes */
-            traffic_bytes: number;
+            /** Payment Id */
+            payment_id: number;
+            /** Payment Status */
+            payment_status: string;
             /**
              * Status
              * @enum {string}
              */
             status: "applied" | "pending" | "capped";
-            /** Payment Id */
-            payment_id: number;
-            /** Payment Status */
-            payment_status: string;
+            /** Tier */
+            tier: number | null;
+            /** Traffic Bytes */
+            traffic_bytes: number;
         };
         /** SessionOut */
         SessionOut: {
-            /** Id */
-            id: number;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Current */
+            current: boolean;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: number;
+            /** Ip */
+            ip: string | null;
             /**
              * Last Seen At
              * Format: date-time
              */
             last_seen_at: string;
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /** Ip */
-            ip: string | null;
             /** User Agent */
             user_agent: string | null;
-            /** Current */
-            current: boolean;
         };
         /** SessionRowOut */
         SessionRowOut: {
-            /** Id */
-            id: number;
-            /** Username */
-            username: string;
-            /**
-             * Started At
-             * Format: date-time
-             */
-            started_at: string;
-            /** Ended At */
-            ended_at: string | null;
-            /** Duration Sec */
-            duration_sec: number;
-            /** Client Ip */
-            client_ip: string | null;
-            /** Vpn Ip */
-            vpn_ip: string | null;
             /** Bytes In */
             bytes_in: number;
             /** Bytes Out */
             bytes_out: number;
-        };
-        /** SettingsOut */
-        SettingsOut: {
-            /** Runtime */
-            runtime: {
-                [key: string]: unknown;
-            };
-            environment: components["schemas"]["EnvironmentOut"];
-        };
-        /** SubscriptionOut */
-        SubscriptionOut: {
-            /** Status */
-            status: string;
-            /** Plan Code */
-            plan_code: string;
-            /** Plan Name I18N */
-            plan_name_i18n: {
-                [key: string]: string;
-            };
-            /** Plan Is Trial */
-            plan_is_trial: boolean;
+            /** Client Ip */
+            client_ip: string | null;
+            /** Duration Sec */
+            duration_sec: number;
+            /** Ended At */
+            ended_at: string | null;
+            /** Id */
+            id: number;
             /**
              * Started At
              * Format: date-time
              */
             started_at: string;
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
+            /** Username */
+            username: string;
+            /** Vpn Ip */
+            vpn_ip: string | null;
+        };
+        /** SettingsOut */
+        SettingsOut: {
+            environment: components["schemas"]["EnvironmentOut"];
+            /** Runtime */
+            runtime: {
+                [key: string]: unknown;
+            };
+        };
+        /** SubscriptionOut */
+        SubscriptionOut: {
             /** Auto Renew */
             auto_renew: boolean;
             /** Device Limit */
             device_limit: number;
             /** Devices Active */
             devices_active: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
             /** Over Device Limit */
             over_device_limit: boolean;
+            /** Plan Code */
+            plan_code: string;
+            /** Plan Is Trial */
+            plan_is_trial: boolean;
+            /** Plan Name I18N */
+            plan_name_i18n: {
+                [key: string]: string;
+            };
+            /** Provider */
+            provider: string | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Status */
+            status: string;
             /** Traffic Limit Bytes */
             traffic_limit_bytes: number | null;
-            /** Traffic Used Bytes */
-            traffic_used_bytes: number;
             /**
              * Traffic Period Start
              * Format: date-time
              */
             traffic_period_start: string;
-            /** Provider */
-            provider: string | null;
+            /** Traffic Used Bytes */
+            traffic_used_bytes: number;
         };
         /** SubscriptionRow */
         SubscriptionRow: {
+            /** Auto Renew */
+            auto_renew: boolean;
             /** Client Id */
             client_id: number;
-            /** Telegram Id */
-            telegram_id: number;
-            /** Username */
-            username: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
             /** First Name */
             first_name: string;
-            /** Status */
-            status: string;
             /** Plan Code */
             plan_code: string;
             /** Plan Is Trial */
@@ -2007,17 +2008,16 @@ export interface components {
              * Format: date-time
              */
             started_at: string;
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /** Auto Renew */
-            auto_renew: boolean;
-            /** Traffic Used Bytes */
-            traffic_used_bytes: number;
+            /** Status */
+            status: string;
+            /** Telegram Id */
+            telegram_id: number;
             /** Traffic Limit Bytes */
             traffic_limit_bytes: number | null;
+            /** Traffic Used Bytes */
+            traffic_used_bytes: number;
+            /** Username */
+            username: string | null;
         };
         /** TierStat */
         TierStat: {
@@ -2028,16 +2028,16 @@ export interface components {
         };
         /** TopClient */
         TopClient: {
+            /** Bytes In */
+            bytes_in: number;
+            /** Bytes Out */
+            bytes_out: number;
             /** Client Id */
             client_id: number;
             /** Name */
             name: string;
             /** Username */
             username: string | null;
-            /** Bytes In */
-            bytes_in: number;
-            /** Bytes Out */
-            bytes_out: number;
         };
         /** TotpSetupOut */
         TotpSetupOut: {
@@ -2048,6 +2048,10 @@ export interface components {
         };
         /** TrafficOut */
         TrafficOut: {
+            /** Bytes In */
+            bytes_in: number;
+            /** Bytes Out */
+            bytes_out: number;
             /**
              * From Day
              * Format: date
@@ -2058,22 +2062,18 @@ export interface components {
              * Format: date
              */
             to_day: string;
+        };
+        /** TrafficPoint */
+        TrafficPoint: {
             /** Bytes In */
             bytes_in: number;
             /** Bytes Out */
             bytes_out: number;
-        };
-        /** TrafficPoint */
-        TrafficPoint: {
             /**
              * Day
              * Format: date
              */
             day: string;
-            /** Bytes In */
-            bytes_in: number;
-            /** Bytes Out */
-            bytes_out: number;
         };
         /** TrafficStats */
         TrafficStats: {
@@ -2084,68 +2084,68 @@ export interface components {
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
             msg: string;
             /** Error Type */
             type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
         };
         /** WebhookDetail */
         WebhookDetail: {
-            /** Id */
-            id: number;
-            /** Provider */
-            provider: string;
-            /** External Event Id */
-            external_event_id: string;
-            /** Signature Ok */
-            signature_ok: boolean;
-            /** Status */
-            status: string;
             /** Attempts */
             attempts: number;
+            /** External Event Id */
+            external_event_id: string;
+            /** Id */
+            id: number;
             /** Last Error */
             last_error: string | null;
-            /**
-             * Received At
-             * Format: date-time
-             */
-            received_at: string;
-            /** Processed At */
-            processed_at: string | null;
             /** Payload */
             payload: {
                 [key: string]: unknown;
             };
-        };
-        /** WebhookOut */
-        WebhookOut: {
-            /** Id */
-            id: number;
+            /** Processed At */
+            processed_at: string | null;
             /** Provider */
             provider: string;
-            /** External Event Id */
-            external_event_id: string;
-            /** Signature Ok */
-            signature_ok: boolean;
-            /** Status */
-            status: string;
-            /** Attempts */
-            attempts: number;
-            /** Last Error */
-            last_error: string | null;
             /**
              * Received At
              * Format: date-time
              */
             received_at: string;
+            /** Signature Ok */
+            signature_ok: boolean;
+            /** Status */
+            status: string;
+        };
+        /** WebhookOut */
+        WebhookOut: {
+            /** Attempts */
+            attempts: number;
+            /** External Event Id */
+            external_event_id: string;
+            /** Id */
+            id: number;
+            /** Last Error */
+            last_error: string | null;
             /** Processed At */
             processed_at: string | null;
+            /** Provider */
+            provider: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /** Signature Ok */
+            signature_ok: boolean;
+            /** Status */
+            status: string;
         };
     };
     responses: never;
@@ -2156,9 +2156,18 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_admin_health_get: {
+    list_audit_admin_audit_get: {
         parameters: {
-            query?: never;
+            query?: {
+                actor_type?: ("admin" | "system" | "client") | null;
+                action?: string | null;
+                target_type?: string | null;
+                target_id?: string | null;
+                since?: string | null;
+                until?: string | null;
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2171,9 +2180,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["Page_AuditRow_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2280,7 +2296,7 @@ export interface operations {
             };
         };
     };
-    totp_setup_admin_auth_totp_setup_post: {
+    list_sessions_admin_auth_sessions_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2295,7 +2311,36 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TotpSetupOut"];
+                    "application/json": components["schemas"]["SessionOut"][];
+                };
+            };
+        };
+    };
+    delete_session_admin_auth_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2362,7 +2407,7 @@ export interface operations {
             };
         };
     };
-    list_sessions_admin_auth_sessions_get: {
+    totp_setup_admin_auth_totp_setup_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2377,36 +2422,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionOut"][];
-                };
-            };
-        };
-    };
-    delete_session_admin_auth_sessions__session_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                session_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["TotpSetupOut"];
                 };
             };
         };
@@ -2508,38 +2524,7 @@ export interface operations {
             };
         };
     };
-    unblock_admin_clients__client_id__unblock_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                client_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActionOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    grant_admin_clients__client_id__grant_post: {
+    issue_device_admin_clients__client_id__devices_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2550,7 +2535,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GrantBody"];
+                "application/json": components["schemas"]["IssueBody"];
             };
         };
         responses: {
@@ -2560,7 +2545,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SubscriptionOut"];
+                    "application/json": components["schemas"]["IssuedOut"];
                 };
             };
             /** @description Validation Error */
@@ -2586,6 +2571,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ExtendBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    grant_admin_clients__client_id__grant_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantBody"];
             };
         };
         responses: {
@@ -2640,108 +2660,7 @@ export interface operations {
             };
         };
     };
-    issue_device_admin_clients__client_id__devices_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                client_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IssueBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IssuedOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    download_p12_admin_downloads__token__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_subscriptions_admin_subscriptions_get: {
-        parameters: {
-            query?: {
-                status?: ("pending_payment" | "trial" | "active" | "expired" | "exhausted" | "cancelled" | "blocked") | null;
-                plan?: string | null;
-                expiring_within_days?: number | null;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_SubscriptionRow_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    cancel_auto_renew_admin_subscriptions__client_id__cancel_auto_renew_post: {
+    unblock_admin_clients__client_id__unblock_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2759,257 +2678,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    expire_admin_subscriptions__client_id__expire_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                client_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActionOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_payments_admin_payments_get: {
-        parameters: {
-            query?: {
-                client_id?: number | null;
-                status?: ("succeeded" | "refunded") | null;
-                since?: string | null;
-                until?: string | null;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_PaymentOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_webhooks_admin_webhooks_get: {
-        parameters: {
-            query?: {
-                status?: ("received" | "processed" | "ignored" | "failed" | "dead" | "rejected" | "all") | null;
-                provider?: string | null;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_WebhookOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    webhook_detail_admin_webhooks__webhook_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                webhook_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WebhookDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reprocess_webhook_admin_webhooks__webhook_id__reprocess_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                webhook_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WebhookOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_plans_admin_plans_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlanOut"][];
-                };
-            };
-        };
-    };
-    create_plan_admin_plans_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlanCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlanOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_plan_admin_plans__code__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlanUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlanOut"];
                 };
             };
             /** @description Validation Error */
@@ -3128,124 +2796,13 @@ export interface operations {
             };
         };
     };
-    node_status_admin_node_get: {
+    download_p12_admin_downloads__token__get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NodeStatusOut"];
-                };
+            path: {
+                token: string;
             };
-        };
-    };
-    probe_admin_node_probe_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HealthOut"];
-                };
-            };
-        };
-    };
-    live_sessions_admin_node_sessions_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LiveSessionOut"][];
-                };
-            };
-        };
-    };
-    node_action_admin_node_actions_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ActionBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reconcile_admin_node_reconcile_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReconcileOut"];
-                };
-            };
-        };
-    };
-    node_logs_admin_node_logs_get: {
-        parameters: {
-            query?: {
-                tail?: number;
-            };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -3270,27 +2827,7 @@ export interface operations {
             };
         };
     };
-    overview_admin_overview_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OverviewOut"];
-                };
-            };
-        };
-    };
-    list_audit_admin_audit_get: {
+    export_audit_admin_export_audit_csv_get: {
         parameters: {
             query?: {
                 actor_type?: ("admin" | "system" | "client") | null;
@@ -3299,8 +2836,6 @@ export interface operations {
                 target_id?: string | null;
                 since?: string | null;
                 until?: string | null;
-                limit?: number;
-                offset?: number;
             };
             header?: never;
             path?: never;
@@ -3314,7 +2849,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Page_AuditRow_"];
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -3324,174 +2859,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_settings_admin_settings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SettingsOut"];
-                };
-            };
-        };
-    };
-    patch_settings_admin_settings_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SettingsOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    traffic_admin_stats_traffic_get: {
-        parameters: {
-            query?: {
-                days?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TrafficStats"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    revenue_admin_stats_revenue_get: {
-        parameters: {
-            query?: {
-                days?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RevenueStats"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    clients_admin_stats_clients_get: {
-        parameters: {
-            query?: {
-                days?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ClientsStats"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    economics_admin_stats_economics_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EconomicsStats"];
                 };
             };
         };
@@ -3502,39 +2869,6 @@ export interface operations {
                 q?: string | null;
                 status?: ("pending_payment" | "trial" | "active" | "expired" | "exhausted" | "cancelled" | "blocked" | "none") | null;
                 blocked?: boolean | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    export_subscriptions_admin_export_subscriptions_csv_get: {
-        parameters: {
-            query?: {
-                status?: ("pending_payment" | "trial" | "active" | "expired" | "exhausted" | "cancelled" | "blocked") | null;
-                plan?: string | null;
-                expiring_within_days?: number | null;
             };
             header?: never;
             path?: never;
@@ -3596,15 +2930,12 @@ export interface operations {
             };
         };
     };
-    export_audit_admin_export_audit_csv_get: {
+    export_subscriptions_admin_export_subscriptions_csv_get: {
         parameters: {
             query?: {
-                actor_type?: ("admin" | "system" | "client") | null;
-                action?: string | null;
-                target_type?: string | null;
-                target_id?: string | null;
-                since?: string | null;
-                until?: string | null;
+                status?: ("pending_payment" | "trial" | "active" | "expired" | "exhausted" | "cancelled" | "blocked") | null;
+                plan?: string | null;
+                expiring_within_days?: number | null;
             };
             header?: never;
             path?: never;
@@ -3650,6 +2981,314 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_admin_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    node_status_admin_node_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeStatusOut"];
+                };
+            };
+        };
+    };
+    node_action_admin_node_actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    node_logs_admin_node_logs_get: {
+        parameters: {
+            query?: {
+                tail?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    probe_admin_node_probe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthOut"];
+                };
+            };
+        };
+    };
+    reconcile_admin_node_reconcile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconcileOut"];
+                };
+            };
+        };
+    };
+    live_sessions_admin_node_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveSessionOut"][];
+                };
+            };
+        };
+    };
+    overview_admin_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverviewOut"];
+                };
+            };
+        };
+    };
+    list_payments_admin_payments_get: {
+        parameters: {
+            query?: {
+                client_id?: number | null;
+                status?: ("succeeded" | "refunded") | null;
+                since?: string | null;
+                until?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PaymentOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plans_admin_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"][];
+                };
+            };
+        };
+    };
+    create_plan_admin_plans_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_plan_admin_plans__code__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"];
                 };
             };
             /** @description Validation Error */
@@ -3811,26 +3450,6 @@ export interface operations {
             };
         };
     };
-    stats_admin_referrals_stats_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReferralStats"];
-                };
-            };
-        };
-    };
     rewards_admin_referrals_rewards_get: {
         parameters: {
             query?: {
@@ -3851,6 +3470,387 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_RewardRow_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_admin_referrals_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralStats"];
+                };
+            };
+        };
+    };
+    get_settings_admin_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+        };
+    };
+    patch_settings_admin_settings_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clients_admin_stats_clients_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientsStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    economics_admin_stats_economics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EconomicsStats"];
+                };
+            };
+        };
+    };
+    revenue_admin_stats_revenue_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    traffic_admin_stats_traffic_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrafficStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subscriptions_admin_subscriptions_get: {
+        parameters: {
+            query?: {
+                status?: ("pending_payment" | "trial" | "active" | "expired" | "exhausted" | "cancelled" | "blocked") | null;
+                plan?: string | null;
+                expiring_within_days?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SubscriptionRow_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_auto_renew_admin_subscriptions__client_id__cancel_auto_renew_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    expire_admin_subscriptions__client_id__expire_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_webhooks_admin_webhooks_get: {
+        parameters: {
+            query?: {
+                status?: ("received" | "processed" | "ignored" | "failed" | "dead" | "rejected" | "all") | null;
+                provider?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WebhookOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    webhook_detail_admin_webhooks__webhook_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reprocess_webhook_admin_webhooks__webhook_id__reprocess_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookOut"];
                 };
             };
             /** @description Validation Error */

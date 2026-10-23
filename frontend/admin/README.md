@@ -30,12 +30,15 @@ npm run typecheck && npm run lint && npm test && npm run build
 
 ## Типы API
 
-`src/api/generated.d.ts` сгенерирован из OpenAPI и закоммичен (в CI живого бэкенда нет). После правок
-API обновите его при запущенном `make api-admin`:
+`src/api/generated.d.ts` сгенерирован из OpenAPI и закоммичен. Сервер для этого не нужен: схема берётся прямо
+из кода бэкенда.
 
 ```bash
-npm run api:types
+npm run api:types:offline   # перегенерировать (make admin-types в backend/)
+npm run api:check           # проверить, что типы не отстали (то же делает CI)
 ```
+
+`npm run api:types` берёт схему с запущенного `make api-admin` — тот же результат, если нужно проверить живой сервер.
 
 ## Устройство
 

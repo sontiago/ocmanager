@@ -1,7 +1,7 @@
 # Команды бэкенда. Запускать из каталога backend/.
 COMPOSE_DEV := docker compose -f ../deploy/docker-compose.dev.yml
 
-.PHONY: dev-up dev-down api-public api-admin bot ocserv-up ocserv-down test-ocserv lint fmt typecheck test test-unit check migrate revision boundaries
+.PHONY: admin-types admin-types-check dev-up dev-down api-public api-admin bot ocserv-up ocserv-down test-ocserv lint fmt typecheck test test-unit check migrate revision boundaries
 
 dev-up:     ## Postgres и Redis для разработки и тестов
 	$(COMPOSE_DEV) up -d --wait
@@ -36,4 +36,14 @@ ocserv-down: ## остановить ноду
 	$(COMPOSE_DEV) --profile ocserv stop ocserv
 test-ocserv: ## интеграционные тесты с живым ocserv (нужен make ocserv-up)
 	uv run pytest tests/integration -m ocserv -v
-	
+ADMIN_TYPES := ../frontend/admin/src/api/generated.d.ts
+OPENAPI_TS  := npx --yes openapi-typescript@7.13.0
+admin-types: ## перегенерировать типы админки из кода (без запущенного сервера)
+	uv run python scripts/dump_openapi.py admin > /tmp/ocm-admin-openapi.json
+	$(OPENAPI_TS) /tmp/ocm-admin-openapi.json -o $(ADMIN_TYPES)
+admin-types-check: ## типы админки в репозитории совпадают с кодом бэкенда (CI)
+	uv run python scripts/dump_openapi.py admin > /tmp/ocm-admin-openapi.json
+	$(OPENAPI_TS) /tmp/ocm-admin-openapi.json -o /tmp/ocm-admin-types.d.ts
+	@diff -u $(ADMIN_TYPES) /tmp/ocm-admin-types.d.ts > /tmp/ocm-admin-types.diff \
+	  && echo "типы админки актуальны" \
+	  || { head -40 /tmp/ocm-admin-types.diff; echo "типы админки устарели: make admin-types"; exit 1; }

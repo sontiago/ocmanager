@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "api:types": "npx --yes openapi-typescript@7.13.0 http://127.0.0.1:8080/admin/openapi.json -o src/api/generated.d.ts",
-    "api:check": "npm run api:types && git diff --exit-code src/api/generated.d.ts"
+    "api:check": "make -C ../../backend admin-types-check",
+    "api:types:offline": "make -C ../../backend admin-types"
   },
   "dependencies": {
     "@tailwindcss/vite": "4.3.3",

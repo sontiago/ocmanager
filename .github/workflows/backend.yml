@@ -50,6 +50,8 @@ jobs:
           cache-dependency-glob: backend/uv.lock
       - run: uv sync --frozen
       - run: make check
+      # Типы админки в репозитории не должны отставать от API (нужен только node: он есть в образе).
+      - run: make admin-types-check
 
   images:
     runs-on: ubuntu-latest
