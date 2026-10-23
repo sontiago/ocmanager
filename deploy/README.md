@@ -4,7 +4,10 @@
 
 ## Что нужно
 
-- Сервер Debian 12+/Ubuntu 22.04+, root или sudo, публичный IPv4. Docker 24+ с Compose v2.
+- Сервер Debian 12+/Ubuntu 22.04+, root или sudo, публичный IPv4. Docker 24+ с Compose v2
+  (Ubuntu 24.04: `apt-get install -y docker.io docker-compose-v2`). Памяти от 1 ГБ, но на 1 ГБ сборка образов
+  без swap падает по OOM: `fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile`.
+  Сборка на таком сервере занимает около 5 минут.
 - Две A-записи (`app.…` и `vpn.…`) на IP сервера. Порты **80/tcp, 443/tcp, 443/udp** свободны и открыты.
 - Бот из @BotFather. Ключ API Tribute — позже, вебхуки без него просто отвечают 404.
 
@@ -14,7 +17,7 @@ Docker сам публикует порты в обход `ufw`: закрыва�
 ## Первый запуск
 
 ```bash
-git clone <репозиторий> ocmanager && cd ocmanager/deploy
+git clone <репозиторий> ocmanager && cd ocmanager/deploy   # приватный репозиторий — нужен deploy key на сервере
 cp .env.example .env && chmod 600 .env
 # заполните домены, пароли (openssl rand -hex 24), OCM_SECRET_KEY, OCM_INTERNAL_TOKEN,
 # OCM_CAMOUFLAGE_SECRET, OCM_BOT_TOKEN
@@ -41,7 +44,12 @@ docker compose logs -f caddy      # ждём «certificate obtained successfully
 ../scripts/doctor.sh
 ```
 
-Все строки должны быть зелёными. Что значит красная — в тексте самой проверки.
+Все строки должны быть зелёными. Что значит красная — в тексте самой проверки. Строка про сверку ноды
+(reconcile) на только что поднятом стеке красная до первой сверки: воркер делает её раз в 5 минут. Подождите
+5–6 минут и запустите проверку снова.
+
+В логах Caddy при первом выпуске может мелькнуть `challenge failed … tls-alpn-01 … Connection reset`: Caddy
+стартовал раньше nginx. Он повторяет попытку сам; важна строка `certificate obtained successfully` для обоих доменов.
 
 ## После запуска
 
@@ -51,11 +59,33 @@ docker compose logs -f caddy      # ждём «certificate obtained successfully
    ssh -L 8080:127.0.0.1:8080 user@сервер
    # затем в браузере: http://localhost:8080/admin/docs
    ```
+   В Swagger: `POST /admin/auth/login` → скопируйте `csrf_token` из ответа → кнопка **Authorize** → вставьте в
+   поле `X-CSRF-Token`. Дальше запросы с записью (POST/PATCH/DELETE) уйдут с заголовком; cookie сессии браузер
+   подставляет сам. Токен — это заголовок, а не поле тела запроса.
 3. **Алерты админу.** Напишите боту `/whoami`, получите число — добавьте его в настройку `admin_chat_ids`
-   (`PATCH /admin/settings` в документации админки).
-4. **Тарифы** — `docker compose run --rm cli plan --help` или раздел «Тарифы» админки.
+   (`PATCH /admin/settings`, тело `{"admin_chat_ids": [123456789]}` — список чисел).
+4. **Тарифы.** Скрытый тариф `trial` создаёт миграция, он есть сразу. Платные — `docker compose run --rm cli plan --help` или раздел «Тарифы» админки.
 5. **Tribute.** В кабинете автора укажите вебхук `https://<DOMAIN_APP>/webhooks/tribute` и впишите ключ API
    в `OCM_TRIBUTE_API_KEY`; `docker compose up -d` применит.
+
+## Проверка без Telegram
+
+Пока нет бота, вся цепочка проверяется из CLI (`device issue` по умолчанию — только для dev, поэтому
+`-e OCM_ENV=dev`; `.p12` и пароль — тестовые, после проверки удалите):
+
+```bash
+docker compose run --rm cli plan create --code m1 --name-ru Месяц --name-en Month --days 30 --devices 2 --price 19900
+docker compose run --rm cli client add --telegram-id 1001 --first-name Tester
+docker compose run --rm cli client grant 1001 m1
+mkdir -p /root/certs && chmod 777 /root/certs
+docker compose run --rm -e OCM_ENV=dev -v /root/certs:/out cli device issue 1001 --name laptop --platform linux --out /out/c.p12
+# подключение: openconnect --certificate c.p12 "https://<DOMAIN_VPN>/?<OCM_CAMOUFLAGE_SECRET>"
+docker exec ocm-ocserv occtl show users   # в колонке ip — адрес клиента, не 172.29.10.x
+rm -rf /root/certs
+```
+
+Второе одновременное подключение тем же устройством отклоняется (`405 Method Not Allowed` на CONNECT) —
+это нормально: один сертификат — одна сессия.
 
 ## Обновление
 
