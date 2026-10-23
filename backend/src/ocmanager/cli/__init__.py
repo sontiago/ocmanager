@@ -6,7 +6,18 @@ CLI — слой склейки (как flows/ и apps/): ему можно им
 import typer
 
 import ocmanager.models  # noqa: F401 — регистрирует все таблицы: без этого FK между доменами не разрешаются
-from ocmanager.cli import admin, client, device, node, pki, plan, reconcile, subscription
+from ocmanager.cli import (
+    admin,
+    client,
+    device,
+    node,
+    notify,
+    pki,
+    plan,
+    reconcile,
+    settings,
+    subscription,
+)
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 app.add_typer(admin.app, name="admin", help="Админы панели")
@@ -15,5 +26,7 @@ app.add_typer(node.app, name="node", help="Нода ocserv: статус, сес
 app.add_typer(client.app, name="client", help="Клиенты")
 app.add_typer(plan.app, name="plan", help="Тарифы")
 app.add_typer(device.app, name="device", help="Устройства клиентов")
+app.add_typer(notify.app, name="notify", help="Служебные сообщения админам (для скриптов)")
+app.add_typer(settings.app, name="settings", help="Настройки без админки")
 app.add_typer(subscription.app, name="subscription", help="Подписки (dev-утилиты)")
 app.command("reconcile")(reconcile.reconcile)
