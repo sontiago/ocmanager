@@ -180,19 +180,38 @@ def exhaust(current: SubState) -> SubState:
     raise _refuse("exhaust", current)
 
 
+def _revive(current: SubState, now: datetime) -> SubState:
+    """Статус исчерпанной подписки выводится заново по сроку (решение №13)."""
+    if current.expires_at <= now:
+        return replace(current, status=Status.EXPIRED)
+    if current.plan_is_trial:
+        return replace(current, status=Status.TRIAL)
+    return replace(current, status=Status.ACTIVE if current.auto_renew else Status.CANCELLED)
+
+
 def reset_traffic(current: SubState, now: datetime) -> SubState:
     """Новый расчётный период трафика без оплаты (решение админа). Исчерпанная подписка
-    оживает по сроку, как после разблокировки: статус выводится заново (решение №13)."""
+    оживает по сроку, как после разблокировки."""
     if current.status in LIVE:
         return replace(current, traffic_used_bytes=0, traffic_period_start=now)
     if current.status is not Status.EXHAUSTED:
         raise _refuse("reset traffic", current)
-    fresh = replace(current, traffic_used_bytes=0, traffic_period_start=now)
-    if current.expires_at <= now:
-        return replace(fresh, status=Status.EXPIRED)
-    if current.plan_is_trial:
-        return replace(fresh, status=Status.TRIAL)
-    return replace(fresh, status=Status.ACTIVE if current.auto_renew else Status.CANCELLED)
+    return _revive(replace(current, traffic_used_bytes=0, traffic_period_start=now), now)
+
+
+def grant_traffic(current: SubState, extra_bytes: int, now: datetime) -> SubState:
+    """Бонусный трафик (промокод, уровень): прибавляется к лимиту текущего периода, расход
+    остаётся. Безлимитному тарифу прибавлять нечего. Исчерпанная подписка оживает, если лимит
+    стал выше расхода; иначе остаётся закрытой."""
+    if extra_bytes <= 0:
+        raise InvalidInput("extra traffic must be positive")
+    limit = current.traffic_limit_bytes
+    if limit is None or (current.status not in LIVE and current.status is not Status.EXHAUSTED):
+        raise _refuse("grant traffic", current)
+    raised = replace(current, traffic_limit_bytes=limit + extra_bytes)
+    if raised.status is Status.EXHAUSTED and raised.traffic_used_bytes < limit + extra_bytes:
+        return _revive(raised, now)
+    return raised
 
 
 def expire_now(current: SubState, now: datetime) -> SubState:

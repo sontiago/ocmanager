@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ocmanager.core.errors import (
     InvalidTransition,
+    NotApplicable,
     NotFound,
     SubscriptionInactive,
     TrialAlreadyUsed,
@@ -367,4 +368,74 @@ async def reset_traffic(session: AsyncSession, client_id: int, now: datetime) ->
     _write(sub, fresh)
     if status is Status.EXHAUSTED and fresh.status in LIVE:
         await bus.record(session, TrafficReset(client_id=client_id))
+    return True
+
+
+def _revived_from_exhausted(before: Status, after: SubState) -> bool:
+    return before is Status.EXHAUSTED and after.status in LIVE
+
+
+async def grant_traffic(
+    session: AsyncSession, client_id: int, extra_bytes: int, now: datetime
+) -> bool:
+    """Бонусный трафик к лимиту текущего периода (промокод). Нужна живая или исчерпанная
+    подписка с лимитом; исчерпанная оживает, если трафика теперь хватает, и доступ возвращается."""
+    _, sub = await _lock(session, client_id)
+    if sub is None or (
+        Status(sub.status) not in LIVE and Status(sub.status) is not Status.EXHAUSTED
+    ):
+        raise SubscriptionInactive("no active subscription")
+    if sub.traffic_limit_bytes is None:
+        raise NotApplicable("the plan has no traffic limit")
+    before = Status(sub.status)
+    after = state_mod.grant_traffic(to_state(sub), extra_bytes, now)
+    _write(sub, after)
+    if _revived_from_exhausted(before, after):
+        await bus.record(session, TrafficReset(client_id=client_id))
+    return True
+
+
+async def add_perks(
+    session: AsyncSession, client_id: int, *, devices: int, traffic_bytes: int, now: datetime
+) -> None:
+    """Постоянные бонусы уровня: запоминаются на клиенте (их подмешают в условия при каждой
+    выдаче и продлении) и сразу поднимают лимиты текущей подписки."""
+    client, sub = await _lock(session, client_id)
+    client.bonus_devices += devices
+    client.bonus_traffic_bytes += traffic_bytes
+    if sub is None:
+        return
+    if devices:
+        sub.device_limit += devices
+    status = Status(sub.status)
+    if (
+        traffic_bytes
+        and sub.traffic_limit_bytes is not None
+        and (status in LIVE or status is Status.EXHAUSTED)
+    ):
+        after = state_mod.grant_traffic(to_state(sub), traffic_bytes, now)
+        _write(sub, after)
+        if _revived_from_exhausted(status, after):
+            await bus.record(session, TrafficReset(client_id=client_id))
+    await session.flush()
+
+
+async def find_client_by_referral_code(session: AsyncSession, code: str) -> Client | None:
+    client: Client | None = await session.scalar(
+        select(Client).where(Client.referral_code == code.lower())
+    )
+    return client
+
+
+async def set_referrer(session: AsyncSession, client_id: int, code: str) -> bool:
+    """Привязывает клиента к пригласившему. Один раз: уже привязанного не переписывает;
+    неизвестный код и «пригласить себя» молча игнорируются. True — привязка появилась."""
+    client = await get_client(session, client_id)
+    if client.referred_by is not None:
+        return False
+    referrer = await find_client_by_referral_code(session, code)
+    if referrer is None or referrer.id == client.id:
+        return False
+    client.referred_by = referrer.id
+    await session.flush()
     return True

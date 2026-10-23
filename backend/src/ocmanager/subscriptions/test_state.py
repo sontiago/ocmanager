@@ -17,6 +17,7 @@ from ocmanager.subscriptions.state import (
     expire,
     expire_now,
     extend,
+    grant_traffic,
     has_access,
     renew,
     reset_traffic,
@@ -469,3 +470,57 @@ def test_renew_restarts_an_exhausted_subscription_with_a_fresh_counter() -> None
     fresh = renew(sub(Status.EXHAUSTED, traffic_used_bytes=100 * GIB), MONTH, NOW)
     assert fresh.status is Status.ACTIVE
     assert fresh.traffic_used_bytes == 0
+
+
+# ── бонусный трафик ────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("status", sorted(LIVE))
+def test_grant_traffic_raises_the_limit_of_a_live_subscription(status: Status) -> None:
+    s = sub(status, traffic_limit_bytes=100 * GIB, traffic_used_bytes=40 * GIB)
+    more = grant_traffic(s, 50 * GIB, NOW)
+    assert more.status is status
+    assert more.traffic_limit_bytes == 150 * GIB
+    assert more.traffic_used_bytes == 40 * GIB
+
+
+def test_grant_traffic_revives_an_exhausted_subscription_when_it_is_enough() -> None:
+    s = sub(Status.EXHAUSTED, traffic_limit_bytes=100 * GIB, traffic_used_bytes=100 * GIB)
+    more = grant_traffic(s, 50 * GIB, NOW)
+    assert more.status is Status.CANCELLED  # auto_renew=False у sub(): статус по сроку
+    assert more.traffic_limit_bytes == 150 * GIB
+    assert has_access(more, client_blocked=False, now=NOW)
+
+
+def test_grant_traffic_keeps_an_exhausted_subscription_closed_when_it_is_not_enough() -> None:
+    s = sub(Status.EXHAUSTED, traffic_limit_bytes=100 * GIB, traffic_used_bytes=130 * GIB)
+    more = grant_traffic(s, 10 * GIB, NOW)
+    assert more.status is Status.EXHAUSTED
+    assert more.traffic_limit_bytes == 110 * GIB
+
+
+def test_grant_traffic_revives_an_overdue_exhausted_subscription_as_expired() -> None:
+    s = sub(
+        Status.EXHAUSTED,
+        expires_at=NOW - DAY,
+        traffic_limit_bytes=100 * GIB,
+        traffic_used_bytes=100 * GIB,
+    )
+    assert grant_traffic(s, 50 * GIB, NOW).status is Status.EXPIRED
+
+
+def test_grant_traffic_on_an_unlimited_plan_is_refused() -> None:
+    with pytest.raises(InvalidTransition):
+        grant_traffic(sub(Status.ACTIVE, traffic_limit_bytes=None), GIB, NOW)
+
+
+@pytest.mark.parametrize("status", [Status.PENDING_PAYMENT, Status.EXPIRED, Status.BLOCKED])
+def test_grant_traffic_refused_for_other_statuses(status: Status) -> None:
+    with pytest.raises(InvalidTransition):
+        grant_traffic(sub(status), GIB, NOW)
+
+
+@pytest.mark.parametrize("extra", [0, -1])
+def test_grant_traffic_needs_a_positive_amount(extra: int) -> None:
+    with pytest.raises(InvalidInput):
+        grant_traffic(sub(Status.ACTIVE), extra, NOW)

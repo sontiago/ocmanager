@@ -72,6 +72,23 @@ class SubscriptionInactive(DomainError):
             self.status = 403
 
 
+class NotApplicable(DomainError):
+    """Операция не имеет смысла для этой подписки (бонусный трафик безлимитному тарифу)."""
+
+    code, status = "not_applicable", 409
+
+
+class PromoInvalid(DomainError):
+    """Нет такого кода, он выключен, просрочен или исчерпан: причину не раскрываем — иначе
+    коды можно перебирать и различать."""
+
+    code, status = "promo_invalid", 404
+
+
+class PromoAlreadyUsed(DomainError):
+    code, status = "promo_already_used", 409
+
+
 class InvalidInput(DomainError):
     code, status = "validation_error", 422
 

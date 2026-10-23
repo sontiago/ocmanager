@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ocmanager.core.errors import (
     InvalidTransition,
+    NotApplicable,
     NotFound,
     SubscriptionInactive,
     TrialAlreadyUsed,
@@ -471,3 +472,106 @@ async def test_expire_due_also_closes_overdue_exhausted_subscriptions(
     sub = await service.get_subscription(session, client.id)
     assert sub is not None
     assert sub.status == "expired"
+
+
+# ── бонусный трафик, постоянные бонусы, рефералы ───────────────────────────
+
+
+async def test_grant_traffic_raises_the_limit(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=1000)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    assert await service.grant_traffic(session, client.id, 500, NOW)
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert sub.traffic_limit_bytes == 1500
+
+
+async def test_grant_traffic_revives_an_exhausted_subscription_and_returns_access(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=1000)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await _with_usage(session, client.id, 1000)
+    await service.enforce_quota(session, client.id, NOW)
+    await service.grant_traffic(session, client.id, 500, NOW)
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert sub.status == "active"
+    assert "traffic.reset" in [e for e, _ in await events(session)]
+
+
+async def test_grant_traffic_needs_a_live_limited_subscription(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client = await make_client()
+    with pytest.raises(SubscriptionInactive):
+        await service.grant_traffic(session, client.id, 500, NOW)  # подписки нет
+    plan = await make_plan(traffic_limit_bytes=None)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    with pytest.raises(NotApplicable):
+        await service.grant_traffic(session, client.id, 500, NOW)  # безлимит
+
+
+async def test_grant_traffic_refuses_blocked_and_expired(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(duration_days=1, traffic_limit_bytes=1000)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await service.expire_due(session, NOW + 2 * DAY)
+    with pytest.raises(SubscriptionInactive):
+        await service.grant_traffic(session, client.id, 500, NOW + 2 * DAY)
+    await service.set_blocked(session, client.id, True, NOW)
+    with pytest.raises(SubscriptionInactive):
+        await service.grant_traffic(session, client.id, 500, NOW)
+
+
+async def test_add_perks_stores_bonuses_and_lifts_the_current_subscription(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(device_limit=2, traffic_limit_bytes=1000)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await service.add_perks(session, client.id, devices=1, traffic_bytes=300, now=NOW)
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert (sub.device_limit, sub.traffic_limit_bytes) == (3, 1300)
+    fresh = await service.get_client(session, client.id)
+    assert (fresh.bonus_devices, fresh.bonus_traffic_bytes) == (1, 300)
+
+
+async def test_add_perks_without_a_subscription_only_stores_the_bonuses(
+    session: AsyncSession, make_client: MakeClient
+) -> None:
+    client = await make_client()
+    await service.add_perks(session, client.id, devices=1, traffic_bytes=0, now=NOW)
+    assert (await service.get_client(session, client.id)).bonus_devices == 1
+
+
+async def test_add_perks_on_an_unlimited_plan_keeps_it_unlimited(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=None)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await service.add_perks(session, client.id, devices=0, traffic_bytes=500, now=NOW)
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert sub.traffic_limit_bytes is None
+    assert (await service.get_client(session, client.id)).bonus_traffic_bytes == 500
+
+
+async def test_set_referrer_binds_once(session: AsyncSession, make_client: MakeClient) -> None:
+    inviter, first, second = await make_client(), await make_client(), await make_client()
+    assert await service.set_referrer(session, first.id, inviter.referral_code)
+    assert (await service.get_client(session, first.id)).referred_by == inviter.id
+    assert not await service.set_referrer(session, first.id, second.referral_code)  # уже привязан
+    assert (await service.get_client(session, first.id)).referred_by == inviter.id
+
+
+async def test_set_referrer_ignores_unknown_codes_and_self(
+    session: AsyncSession, make_client: MakeClient
+) -> None:
+    client = await make_client()
+    assert not await service.set_referrer(session, client.id, "nosuchco")
+    assert not await service.set_referrer(session, client.id, client.referral_code)
+    assert (await service.get_client(session, client.id)).referred_by is None
