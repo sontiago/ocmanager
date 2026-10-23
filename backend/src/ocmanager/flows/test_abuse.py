@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ocmanager.core import settings_store
+from ocmanager.core.config import Settings
 from ocmanager.flows import abuse
 from ocmanager.nodes import registry
 from ocmanager.nodes.models import SessionLog, TrafficDaily
@@ -45,9 +46,7 @@ async def add_traffic(
     await session.flush()
 
 
-def _settings():  # type: ignore[no-untyped-def]
-    from ocmanager.core.config import Settings
-
+def _settings() -> Settings:
     return Settings(_env_file=None)
 
 

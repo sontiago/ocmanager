@@ -1,7 +1,7 @@
 # Команды бэкенда. Запускать из каталога backend/.
 COMPOSE_DEV := docker compose -f ../deploy/docker-compose.dev.yml
 
-.PHONY: admin-types admin-types-check dev-up dev-down api-public api-admin bot ocserv-up ocserv-down test-ocserv lint fmt typecheck test test-unit check migrate revision boundaries
+.PHONY: test-load admin-types admin-types-check dev-up dev-down api-public api-admin bot ocserv-up ocserv-down test-ocserv lint fmt typecheck test test-unit check migrate revision boundaries
 
 dev-up:     ## Postgres и Redis для разработки и тестов
 	$(COMPOSE_DEV) up -d --wait
@@ -47,3 +47,5 @@ admin-types-check: ## типы админки в репозитории совп
 	@diff -u $(ADMIN_TYPES) /tmp/ocm-admin-types.d.ts > /tmp/ocm-admin-types.diff \
 	  && echo "типы админки актуальны" \
 	  || { head -40 /tmp/ocm-admin-types.diff; echo "типы админки устарели: make admin-types"; exit 1; }
+test-load:  ## нагрузочные проверки этапа 2 (нужен make dev-up); бюджеты: OCM_LOAD_BUDGET_SCALE=3
+	uv run pytest tests/load -m load -v -s

@@ -61,8 +61,9 @@ testpaths = ["src", "scripts", "tests"]
 markers = [
     "db: нужен Postgres и Redis из deploy/docker-compose.dev.yml",
     "ocserv: нужен живой ocserv и vpn-client (tests/integration)",
+    "load: нагрузочные проверки (tests/load), запускаются отдельно: make test-load",
 ]
-addopts = "-m 'not ocserv' --strict-markers"
+addopts = "-m 'not ocserv and not load' --strict-markers"
 
 [project.scripts]
 ocmanager = "ocmanager.cli:app"
