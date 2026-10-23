@@ -6,8 +6,10 @@ from conftest import MakeClient, MakeDevice, MakeSubscription
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from ocmanager.audit.models import AuditLog
 from ocmanager.core import settings_store
 from ocmanager.core.config import Settings
+from ocmanager.flows import access
 from ocmanager.flows import traffic as flows
 from ocmanager.nodes import registry, traffic
 from ocmanager.nodes.driver.fake import FakeNodeDriver
@@ -215,3 +217,54 @@ async def test_usage_rollup_does_not_undo_a_concurrent_renewal(
         assert sub is not None
         assert sub.traffic_period_start == renewed_at
         assert sub.traffic_used_bytes == 0  # 5000 байт были в прошлом периоде
+
+
+GIB = 1024**3
+
+
+async def test_usage_over_the_limit_exhausts_the_subscription_and_closes_access(
+    session: AsyncSession,
+    settings: Settings,
+    client_with_two_devices: tuple[int, str, str],
+) -> None:
+    client_id, d1, d2 = client_with_two_devices
+    assert {d1, d2} <= await access.desired_usernames(session, T0 + MIN)
+    await push(session, settings, d1, T0 + MIN, bytes_in=60 * GIB, bytes_out=40 * GIB)  # лимит 100
+    await flows.apply_usage(session, [d1], T0 + 2 * MIN)
+
+    sub = await subscriptions.get_subscription(session, client_id)
+    assert sub is not None
+    assert sub.status == "exhausted"
+    assert not ({d1, d2} & await access.desired_usernames(session, T0 + 2 * MIN))
+    audit = await session.scalar(select(AuditLog).where(AuditLog.action == "subscription.exhaust"))
+    assert audit is not None
+    assert audit.target_id == str(client_id)
+    assert audit.actor_type == "system"
+
+
+async def test_usage_below_the_limit_keeps_the_subscription_alive(
+    session: AsyncSession,
+    settings: Settings,
+    client_with_two_devices: tuple[int, str, str],
+) -> None:
+    client_id, d1, _ = client_with_two_devices
+    await push(session, settings, d1, T0 + MIN, bytes_in=99 * GIB)
+    await flows.apply_usage(session, [d1], T0 + 2 * MIN)
+    sub = await subscriptions.get_subscription(session, client_id)
+    assert sub is not None
+    assert sub.status == "active"
+
+
+async def test_exhaustion_is_recorded_only_once(
+    session: AsyncSession,
+    settings: Settings,
+    client_with_two_devices: tuple[int, str, str],
+) -> None:
+    _, d1, _ = client_with_two_devices
+    await push(session, settings, d1, T0 + MIN, bytes_in=100 * GIB)
+    await flows.apply_usage(session, [d1], T0 + 2 * MIN)
+    await flows.apply_usage(session, [d1], T0 + 3 * MIN)
+    rows = list(
+        await session.scalars(select(AuditLog).where(AuditLog.action == "subscription.exhaust"))
+    )
+    assert len(rows) == 1

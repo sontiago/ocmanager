@@ -367,3 +367,107 @@ async def test_extend_to_ignores_nonsense_and_dead_subscriptions(
 
     await service.expire_now(session, client.id, now)
     assert await service.extend_to(session, client.id, now + timedelta(days=40), now) is False
+
+
+# ── квота трафика ──────────────────────────────────────────────────────────
+
+
+async def _with_usage(session: AsyncSession, client_id: int, used: int) -> None:
+    sub = await service.get_subscription(session, client_id)
+    assert sub is not None
+    sub.traffic_used_bytes = used
+    await session.flush()
+
+
+async def test_enforce_quota_closes_access_once(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=1000)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    assert not await service.enforce_quota(session, client.id, NOW)  # 0 из 1000
+    await _with_usage(session, client.id, 1000)
+    assert await service.enforce_quota(session, client.id, NOW)
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert sub.status == "exhausted"
+    assert not await service.client_has_access(session, client.id, NOW)
+    assert not await service.enforce_quota(session, client.id, NOW)  # повтор — ничего
+    assert [e for e, _ in await events(session)].count("traffic.exhausted") == 1
+
+
+async def test_enforce_quota_ignores_unlimited_plans_and_missing_subscriptions(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=None)
+    assert not await service.enforce_quota(session, client.id, NOW)  # подписки нет
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await _with_usage(session, client.id, 10**15)
+    assert not await service.enforce_quota(session, client.id, NOW)
+    assert "traffic.exhausted" not in [e for e, _ in await events(session)]
+
+
+async def test_enforce_quota_leaves_blocked_and_expired_alone(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=1000)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await _with_usage(session, client.id, 5000)
+    await service.set_blocked(session, client.id, True, NOW)
+    assert not await service.enforce_quota(session, client.id, NOW)
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert sub.status == "blocked"
+
+
+async def test_reset_traffic_revives_an_exhausted_subscription(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=1000)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await _with_usage(session, client.id, 1000)
+    await service.enforce_quota(session, client.id, NOW)
+    assert await service.reset_traffic(session, client.id, NOW + DAY)
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert (sub.status, sub.traffic_used_bytes, sub.traffic_period_start) == (
+        "active",
+        0,
+        NOW + DAY,
+    )
+    assert await service.client_has_access(session, client.id, NOW + DAY)
+    assert [e for e, _ in await events(session)].count("traffic.reset") == 1
+
+
+async def test_reset_traffic_of_a_live_subscription_only_zeroes_the_counter(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(traffic_limit_bytes=1000)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await _with_usage(session, client.id, 400)
+    assert await service.reset_traffic(session, client.id, NOW + DAY)
+    assert not await service.reset_traffic(session, client.id, NOW + DAY)  # уже ноль — ничего
+    assert "traffic.reset" not in [e for e, _ in await events(session)]
+
+
+async def test_reset_traffic_without_a_resettable_subscription_changes_nothing(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client = await make_client()
+    assert not await service.reset_traffic(session, client.id, NOW)  # подписки нет
+    plan = await make_plan(duration_days=1)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await service.expire_due(session, NOW + 2 * DAY)
+    assert not await service.reset_traffic(session, client.id, NOW + 2 * DAY)
+
+
+async def test_expire_due_also_closes_overdue_exhausted_subscriptions(
+    session: AsyncSession, make_client: MakeClient, make_plan: MakePlan
+) -> None:
+    client, plan = await make_client(), await make_plan(duration_days=1, traffic_limit_bytes=10)
+    await service.activate(session, client.id, terms(plan), NOW, auto_renew=True)
+    await _with_usage(session, client.id, 10)
+    await service.enforce_quota(session, client.id, NOW)
+    assert await service.expire_due(session, NOW + 2 * DAY) == [client.id]
+    sub = await service.get_subscription(session, client.id)
+    assert sub is not None
+    assert sub.status == "expired"

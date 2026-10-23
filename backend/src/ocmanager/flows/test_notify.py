@@ -20,6 +20,7 @@ from ocmanager.events.types import (
     PaymentRefunded,
     SubscriptionActivated,
     SubscriptionExpired,
+    TrafficExhausted,
     WebhookDeadLettered,
     WebhookRejected,
 )
@@ -393,4 +394,36 @@ async def test_expired_is_silent_for_a_client_without_a_subscription(
 ) -> None:
     client = await make_client()
     await deliver(session, sessionmaker, SubscriptionExpired(client_id=client.id))
+    assert await queued(session) == []
+
+
+# --- квота трафика -----------------------------------------------------------
+
+
+async def test_quota_exhaustion_tells_the_client_once_per_period(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_subscription: MakeSubscription,
+) -> None:
+    client = await make_client()
+    sub = await make_subscription(client, days=30, now=NOW)
+    sub.status = "exhausted"
+    await session.flush()
+
+    await deliver(session, sessionmaker, TrafficExhausted(client_id=client.id))
+    await deliver(session, sessionmaker, TrafficExhausted(client_id=client.id))
+
+    assert await queued(session) == [("client", client.telegram_id, "traffic_exhausted", "ru")]
+
+
+async def test_quota_message_is_silent_if_the_client_was_revived_meanwhile(
+    session: AsyncSession,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    make_client: MakeClient,
+    make_subscription: MakeSubscription,
+) -> None:
+    client = await make_client()
+    await make_subscription(client, days=30, now=NOW)  # живая: событие устарело
+    await deliver(session, sessionmaker, TrafficExhausted(client_id=client.id))
     assert await queued(session) == []

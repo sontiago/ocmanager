@@ -153,3 +153,18 @@ async def sync_period_end(
             session, actor, "subscription.sync_period", client_id, until=until.isoformat()
         )
     return changed
+
+
+async def enforce_quota(session: AsyncSession, client_id: int, now: datetime) -> bool:
+    """Квота выбрана → exhausted. Действует система; в аудит пишется только само закрытие."""
+    exhausted = await service.enforce_quota(session, client_id, now)
+    if exhausted:
+        await _record(session, Actor.system(), "subscription.exhaust", client_id)
+    return exhausted
+
+
+async def reset_traffic(session: AsyncSession, client_id: int, actor: Actor, now: datetime) -> bool:
+    changed = await service.reset_traffic(session, client_id, now)
+    if changed:
+        await _record(session, actor, "subscription.reset_traffic", client_id)
+    return changed

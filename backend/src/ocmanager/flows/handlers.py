@@ -15,6 +15,8 @@ from ocmanager.events.types import (
     SubscriptionActivated,
     SubscriptionExpired,
     SubscriptionRenewed,
+    TrafficExhausted,
+    TrafficReset,
 )
 from ocmanager.flows.access import sync_all_nodes
 
@@ -26,6 +28,8 @@ ACCESS_EVENTS = (
     ClientUnblocked,
     DeviceIssued,
     DeviceRevoked,
+    TrafficExhausted,
+    TrafficReset,
 )
 
 

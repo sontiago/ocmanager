@@ -26,6 +26,7 @@ from ocmanager.events.types import (
     PaymentRefunded,
     SubscriptionActivated,
     SubscriptionExpired,
+    TrafficExhausted,
     WebhookDeadLettered,
     WebhookRejected,
 )
@@ -44,6 +45,11 @@ REMINDER_WINDOW = timedelta(hours=1)
 def money(amount: int, currency: str) -> str:
     """Минорные единицы → «199.00 RUB». Целочисленно: float для денег не используется."""
     return f"{amount // 100}.{amount % 100:02d} {currency}"
+
+
+def gib(size: int) -> str:
+    """Байты → «100 ГБ»: лимиты тарифов задаются в гибибайтах, дробная часть не нужна."""
+    return f"{size // 1024**3} GB"
 
 
 def day(moment: datetime) -> str:
@@ -246,6 +252,25 @@ def register() -> None:
             "expired",
             {},
             dedupe_key=f"expired:client:{event.client_id}:{sub.expires_at.isoformat()}",
+        )
+
+    @bus.on(TrafficExhausted)
+    async def traffic_exhausted(event: TrafficExhausted, session: AsyncSession) -> None:
+        sub = await subscriptions.get_subscription(session, event.client_id)
+        if (
+            sub is None
+            or Status(sub.status) is not Status.EXHAUSTED
+            or sub.traffic_limit_bytes is None
+        ):
+            return  # оживили или продлили, пока событие ждало очереди
+        await to_client(
+            session,
+            event.client_id,
+            "traffic_exhausted",
+            {"limit": gib(sub.traffic_limit_bytes), "expires": day(sub.expires_at)},
+            dedupe_key=(
+                f"traffic_exhausted:client:{event.client_id}:{sub.traffic_period_start.isoformat()}"
+            ),
         )
 
 

@@ -56,6 +56,20 @@ class SubscriptionExpired(DomainEvent):
     client_id: int
 
 
+class TrafficExhausted(DomainEvent):
+    """Квота трафика выбрана: подписка стала exhausted, доступ закрывается."""
+
+    name: ClassVar[str] = "traffic.exhausted"
+    client_id: int
+
+
+class TrafficReset(DomainEvent):
+    """Админ сбросил счётчик исчерпанной подписки: доступ возвращается."""
+
+    name: ClassVar[str] = "traffic.reset"
+    client_id: int
+
+
 class ClientBlocked(DomainEvent):
     name: ClassVar[str] = "client.blocked"
     client_id: int

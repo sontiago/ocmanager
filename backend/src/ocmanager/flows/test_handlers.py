@@ -22,6 +22,8 @@ from ocmanager.events.types import (
     SubscriptionAutoRenewCancelled,
     SubscriptionExpired,
     SubscriptionRenewed,
+    TrafficExhausted,
+    TrafficReset,
 )
 from ocmanager.flows import devices, handlers
 from ocmanager.flows import subscriptions as sub_flows
@@ -60,6 +62,8 @@ def fake(settings: Settings, clock: time_machine.Traveller) -> Iterator[FakeNode
         ClientUnblocked(client_id=1),
         DeviceIssued(client_id=1, device_id=1),
         DeviceRevoked(client_id=1, device_id=1, username="c1-d1"),
+        TrafficExhausted(client_id=1),
+        TrafficReset(client_id=1),
     ],
     ids=lambda e: e.name,
 )

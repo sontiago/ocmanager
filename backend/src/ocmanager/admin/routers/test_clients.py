@@ -25,6 +25,7 @@ ANON_ENDPOINTS = [
     ("POST", "/admin/clients/1/unblock"),
     ("POST", "/admin/clients/1/grant"),
     ("POST", "/admin/clients/1/extend"),
+    ("POST", "/admin/clients/1/reset-traffic"),
     ("POST", "/admin/clients/1/devices"),
     ("GET", "/admin/downloads/0123456789abcdef0123"),
 ]
@@ -501,3 +502,58 @@ async def test_a_missing_ca_is_503_not_500(
     admin_app.state.settings = settings.model_copy(update={"pki_dir": tmp_path / "nowhere"})
     r = await admin_client.post(url, json={"name": "Phone", "platform": "ios"})
     assert (r.status_code, r.json()["error"]["code"]) == (503, "pki_not_ready")
+
+
+async def _exhausted(
+    session: AsyncSession, make_client: MakeClient, make_subscription: MakeSubscription
+) -> int:
+    client = await make_client()
+    sub = await make_subscription(client, days=30, now=utcnow())
+    sub.status = "exhausted"
+    sub.traffic_used_bytes = sub.traffic_limit_bytes or 0
+    await session.flush()
+    return client.id
+
+
+async def test_reset_traffic_revives_an_exhausted_client_with_audit_and_event(
+    admin_client: AsyncClient,
+    session: AsyncSession,
+    redis: ArqRedis,
+    make_client: MakeClient,
+    make_subscription: MakeSubscription,
+) -> None:
+    client_id = await _exhausted(session, make_client, make_subscription)
+    r = await admin_client.post(f"/admin/clients/{client_id}/reset-traffic")
+    assert (r.status_code, r.json()) == (200, {"changed": True})
+
+    sub = (await admin_client.get(f"/admin/clients/{client_id}")).json()["subscription"]
+    assert (sub["status"], sub["traffic_used_bytes"]) == ("active", 0)
+    assert "traffic.reset" in list(await session.scalars(select(EventOutbox.name)))
+    audit = await session.scalar(
+        select(AuditLog).where(AuditLog.action == "subscription.reset_traffic")
+    )
+    assert audit is not None
+    assert audit.actor_type == "admin"
+    assert audit.target_id == str(client_id)
+    assert b"dispatch_events:kick" in await redis.zrange("arq:queue", 0, -1)
+
+
+async def test_reset_traffic_is_idempotent_and_tolerates_missing_subscriptions(
+    admin_client: AsyncClient,
+    session: AsyncSession,
+    make_client: MakeClient,
+    make_subscription: MakeSubscription,
+) -> None:
+    bare = await make_client()
+    r = await admin_client.post(f"/admin/clients/{bare.id}/reset-traffic")
+    assert (r.status_code, r.json()) == (200, {"changed": False})
+
+    client_id = await _exhausted(session, make_client, make_subscription)
+    await admin_client.post(f"/admin/clients/{client_id}/reset-traffic")
+    r = await admin_client.post(f"/admin/clients/{client_id}/reset-traffic")
+    assert r.json() == {"changed": False}
+
+
+async def test_reset_traffic_for_an_unknown_client_is_404(admin_client: AsyncClient) -> None:
+    r = await admin_client.post("/admin/clients/999999/reset-traffic")
+    assert r.status_code == 404

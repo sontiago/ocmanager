@@ -13,11 +13,13 @@ from ocmanager.subscriptions.state import (
     activate,
     block,
     cancel_auto_renew,
+    exhaust,
     expire,
     expire_now,
     extend,
     has_access,
     renew,
+    reset_traffic,
     start_trial,
     unblock,
 )
@@ -285,7 +287,7 @@ def test_expire_is_idempotent() -> None:
     assert expire(expired, NOW) == expired
 
 
-@pytest.mark.parametrize("status", [Status.PENDING_PAYMENT, Status.EXHAUSTED, Status.BLOCKED])
+@pytest.mark.parametrize("status", [Status.PENDING_PAYMENT, Status.BLOCKED])
 def test_expire_refused_for_non_live(status: Status) -> None:
     with pytest.raises(InvalidTransition):
         expire(sub(status, expires_at=NOW - DAY), NOW)
@@ -377,3 +379,93 @@ def test_functions_do_not_mutate_their_input() -> None:
     cancel_auto_renew(before)
     block(before)
     assert before == snapshot
+
+
+# ── квота трафика ──────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("status", sorted(LIVE))
+def test_exhaust_closes_access_when_the_limit_is_reached(status: Status) -> None:
+    over = sub(status, traffic_used_bytes=100 * GIB)
+    closed = exhaust(over)
+    assert closed.status is Status.EXHAUSTED
+    assert not has_access(closed, client_blocked=False, now=NOW)
+    assert closed.traffic_used_bytes == over.traffic_used_bytes
+
+
+def test_exhaust_counts_traffic_above_the_limit_too() -> None:
+    assert exhaust(sub(Status.ACTIVE, traffic_used_bytes=101 * GIB)).status is Status.EXHAUSTED
+
+
+@pytest.mark.parametrize("status", sorted(LIVE))
+def test_exhaust_below_the_limit_is_refused(status: Status) -> None:
+    with pytest.raises(InvalidTransition):
+        exhaust(sub(status, traffic_used_bytes=100 * GIB - 1))
+
+
+def test_exhaust_without_a_limit_is_refused() -> None:
+    with pytest.raises(InvalidTransition):
+        exhaust(sub(Status.ACTIVE, traffic_limit_bytes=None, traffic_used_bytes=10**15))
+
+
+def test_exhaust_is_idempotent() -> None:
+    done = sub(Status.EXHAUSTED, traffic_used_bytes=100 * GIB)
+    assert exhaust(done) == done
+
+
+@pytest.mark.parametrize("status", [Status.PENDING_PAYMENT, Status.EXPIRED, Status.BLOCKED])
+def test_exhaust_refused_for_non_live(status: Status) -> None:
+    with pytest.raises(InvalidTransition):
+        exhaust(sub(status, traffic_used_bytes=100 * GIB))
+
+
+def test_an_exhausted_subscription_expires_when_due() -> None:
+    assert expire(sub(Status.EXHAUSTED, expires_at=NOW - DAY), NOW).status is Status.EXPIRED
+
+
+def test_an_exhausted_subscription_is_not_expired_before_its_time() -> None:
+    with pytest.raises(InvalidTransition):
+        expire(sub(Status.EXHAUSTED, expires_at=NOW + DAY), NOW)
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [(True, Status.ACTIVE), (False, Status.CANCELLED)],
+)
+def test_reset_traffic_revives_an_exhausted_paid_subscription(before: bool, after: Status) -> None:
+    s = sub(Status.EXHAUSTED, auto_renew=before, traffic_used_bytes=100 * GIB)
+    fresh = reset_traffic(s, NOW)
+    assert fresh.status is after
+    assert fresh.traffic_used_bytes == 0
+    assert fresh.traffic_period_start == NOW
+    assert fresh.expires_at == s.expires_at
+    assert has_access(fresh, client_blocked=False, now=NOW)
+
+
+def test_reset_traffic_revives_an_exhausted_trial_as_trial() -> None:
+    s = sub(Status.EXHAUSTED, plan_is_trial=True, auto_renew=False, traffic_used_bytes=100 * GIB)
+    assert reset_traffic(s, NOW).status is Status.TRIAL
+
+
+def test_reset_traffic_of_an_exhausted_but_overdue_subscription_expires_it() -> None:
+    s = sub(Status.EXHAUSTED, expires_at=NOW - DAY, traffic_used_bytes=100 * GIB)
+    assert reset_traffic(s, NOW).status is Status.EXPIRED
+
+
+@pytest.mark.parametrize("status", [Status.ACTIVE, Status.TRIAL, Status.CANCELLED])
+def test_reset_traffic_keeps_a_live_status(status: Status) -> None:
+    fresh = reset_traffic(sub(status, traffic_used_bytes=50 * GIB), NOW)
+    assert fresh.status is status
+    assert fresh.traffic_used_bytes == 0
+
+
+@pytest.mark.parametrize("status", [Status.PENDING_PAYMENT, Status.EXPIRED, Status.BLOCKED])
+def test_reset_traffic_refused_for_other_statuses(status: Status) -> None:
+    with pytest.raises(InvalidTransition):
+        reset_traffic(sub(status), NOW)
+
+
+def test_renew_restarts_an_exhausted_subscription_with_a_fresh_counter() -> None:
+    fresh = renew(sub(Status.EXHAUSTED, traffic_used_bytes=100 * GIB), MONTH, NOW)
+    assert fresh.status is Status.ACTIVE
+    assert fresh.traffic_used_bytes == 0

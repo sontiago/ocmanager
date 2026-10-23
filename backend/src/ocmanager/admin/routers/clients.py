@@ -255,6 +255,17 @@ async def extend(
     return out
 
 
+@router.post("/clients/{client_id}/reset-traffic")
+async def reset_traffic(
+    client_id: BigId, ctx: CurrentAdmin, db: SessionDep, redis: RedisDep
+) -> ActionOut:
+    """Новый период трафика: счётчик в ноль, исчерпанная подписка оживает (если срок не вышел).
+    Без оплаты и без смены тарифа — для разбора жалоб и тестов."""
+    changed = await subscription_flows.reset_traffic(db, client_id, ctx.actor, utcnow())
+    await commit_and_kick(db, redis)
+    return ActionOut(changed=changed)
+
+
 @router.post("/clients/{client_id}/devices")
 async def issue_device(
     client_id: BigId,

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ocmanager.core import settings_store
 from ocmanager.core.config import Settings
+from ocmanager.flows import subscriptions as subscription_flows
 from ocmanager.nodes import registry, traffic
 from ocmanager.nodes.driver.base import NodeUnreachable
 from ocmanager.nodes.occtl.parser import OcctlParseError
@@ -50,6 +51,8 @@ async def apply_usage(session: AsyncSession, usernames: Collection[str], now: da
         used = sum((await traffic.usage_since(session, names, sub.traffic_period_start)).values())
         if used != sub.traffic_used_bytes:
             sub.traffic_used_bytes = used
+        # Квота выбрана — доступ закрывается здесь же, а не ждёт следующего cron.
+        await subscription_flows.enforce_quota(session, client_id, now)
 
 
 async def collect_traffic(

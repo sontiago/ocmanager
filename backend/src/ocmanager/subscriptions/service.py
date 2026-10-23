@@ -24,6 +24,8 @@ from ocmanager.events.types import (
     SubscriptionAutoRenewCancelled,
     SubscriptionExpired,
     SubscriptionRenewed,
+    TrafficExhausted,
+    TrafficReset,
 )
 from ocmanager.subscriptions import state as state_mod
 from ocmanager.subscriptions.models import Client, Subscription
@@ -257,7 +259,7 @@ async def expire_due(session: AsyncSession, now: datetime) -> list[int]:
     """Переводит просроченные живые подписки в expired. Возвращает client_id.
     SKIP LOCKED: два воркера не берут одну подписку, а идущее в этот момент
     продление не теряется (оно держит блокировку)."""
-    live = [s.value for s in LIVE]
+    live = [s.value for s in LIVE] + [Status.EXHAUSTED.value]
     expired: list[int] = []
     while True:
         batch = list(
@@ -331,4 +333,38 @@ async def extend_to(session: AsyncSession, client_id: int, until: datetime, now:
         return False
     sub.expires_at = until
     await session.flush()
+    return True
+
+
+async def enforce_quota(session: AsyncSession, client_id: int, now: datetime) -> bool:
+    """Закрывает доступ, если трафик периода выбран. False — квота не исчерпана, лимита нет,
+    подписка не живая (заблокированной и истёкшей квота не интересна) или уже exhausted."""
+    _, sub = await _lock(session, client_id)
+    if sub is None or not _was_live(sub):
+        return False
+    current = to_state(sub)
+    limit = current.traffic_limit_bytes
+    if limit is None or current.traffic_used_bytes < limit:
+        return False
+    _write(sub, state_mod.exhaust(current))
+    await bus.record(session, TrafficExhausted(client_id=client_id))
+    return True
+
+
+async def reset_traffic(session: AsyncSession, client_id: int, now: datetime) -> bool:
+    """Новый период трафика по решению админа. Исчерпанная подписка оживает (событие
+    TrafficReset вернёт доступ на ноде). False — сбрасывать нечего: подписки нет, она истекла,
+    заблокирована или счётчик и так нулевой."""
+    _, sub = await _lock(session, client_id)
+    if sub is None:
+        return False
+    status = Status(sub.status)
+    if status not in LIVE and status is not Status.EXHAUSTED:
+        return False
+    if status is not Status.EXHAUSTED and sub.traffic_used_bytes == 0:
+        return False
+    fresh = state_mod.reset_traffic(to_state(sub), now)
+    _write(sub, fresh)
+    if status is Status.EXHAUSTED and fresh.status in LIVE:
+        await bus.record(session, TrafficReset(client_id=client_id))
     return True

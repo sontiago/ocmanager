@@ -164,9 +164,35 @@ def cancel_auto_renew(current: SubState) -> SubState:
 def expire(current: SubState, now: datetime) -> SubState:
     if current.status is Status.EXPIRED:
         return current
-    if current.status in LIVE and current.expires_at <= now:
+    if (current.status in LIVE or current.status is Status.EXHAUSTED) and current.expires_at <= now:
         return replace(current, status=Status.EXPIRED)
     raise _refuse("expire", current)
+
+
+def exhaust(current: SubState) -> SubState:
+    """Квота выбрана: доступ закрывается до продления, нового периода или сброса из админки.
+    Идемпотентно. Срок и счётчик не трогаются: админ видит, сколько и до какого дня."""
+    if current.status is Status.EXHAUSTED:
+        return current
+    limit = current.traffic_limit_bytes
+    if current.status in LIVE and limit is not None and current.traffic_used_bytes >= limit:
+        return replace(current, status=Status.EXHAUSTED)
+    raise _refuse("exhaust", current)
+
+
+def reset_traffic(current: SubState, now: datetime) -> SubState:
+    """Новый расчётный период трафика без оплаты (решение админа). Исчерпанная подписка
+    оживает по сроку, как после разблокировки: статус выводится заново (решение №13)."""
+    if current.status in LIVE:
+        return replace(current, traffic_used_bytes=0, traffic_period_start=now)
+    if current.status is not Status.EXHAUSTED:
+        raise _refuse("reset traffic", current)
+    fresh = replace(current, traffic_used_bytes=0, traffic_period_start=now)
+    if current.expires_at <= now:
+        return replace(fresh, status=Status.EXPIRED)
+    if current.plan_is_trial:
+        return replace(fresh, status=Status.TRIAL)
+    return replace(fresh, status=Status.ACTIVE if current.auto_renew else Status.CANCELLED)
 
 
 def expire_now(current: SubState, now: datetime) -> SubState:

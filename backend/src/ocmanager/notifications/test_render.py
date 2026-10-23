@@ -11,6 +11,7 @@ SAMPLES: dict[str, dict[str, Any]] = {
     "device_issued": {"device": "iPhone"},
     "expiring_soon": {"days": 3, "expires": "05.10.2026"},
     "expired": {},
+    "traffic_exhausted": {"limit": "100 ГБ", "expires": "01.11.2026"},
     "device_revoked": {"device": "iPhone"},
     "trial_started": {"days": 3, "expires": "05.10.2026"},
     "node_down": {"node": "local", "state": "offline"},
