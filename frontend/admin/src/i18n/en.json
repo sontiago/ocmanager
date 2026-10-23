@@ -325,5 +325,7 @@
   "promo.delete": "Delete",
   "promo.deleteOf": "Delete {code}",
   "promo.deleteTitle": "Delete promo code {code}?",
-  "promo.deleteBody": "Nobody has used the code yet, so it is removed for good."
+  "promo.deleteBody": "Nobody has used the code yet, so it is removed for good.",
+  "settings.abuseTraffic": "Alert: client traffic per day, GB (0 — off)",
+  "settings.abuseDevices": "Alert: devices from one address per day (0 — off)"
 }

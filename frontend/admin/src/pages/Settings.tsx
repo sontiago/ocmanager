@@ -65,6 +65,12 @@ function Form({ settings }: { settings: S<"SettingsOut"> }) {
       <Field label={t("settings.retentionDays")}>
         <input className={inputClass} type="number" {...bind("traffic_retention_days")} />
       </Field>
+      <Field label={t("settings.abuseTraffic")}>
+        <input className={inputClass} type="number" min={0} {...bind("abuse_daily_traffic_gb")} />
+      </Field>
+      <Field label={t("settings.abuseDevices")}>
+        <input className={inputClass} type="number" min={0} {...bind("abuse_devices_per_ip")} />
+      </Field>
       {invalid && <Notice tone="danger" text={t("settings.fillNumbers")} />}
       {patch.error && <Notice tone="danger" text={errorText(patch.error, t)} />}
       <Notice text={notice} />

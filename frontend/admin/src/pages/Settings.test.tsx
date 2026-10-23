@@ -12,6 +12,8 @@ const SETTINGS = {
     admin_chat_ids: [11, 22],
     expiry_reminder_days: [3, 1],
     traffic_retention_days: 90,
+    abuse_daily_traffic_gb: 100,
+    abuse_devices_per_ip: 10,
   },
   environment: { env: "production", vpn_host: "vpn.example.com", ocserv_container: "ocm-ocserv", version: "1.2.3" },
 };
@@ -134,3 +136,40 @@ test("an_empty_support_link_is_a_valid_clear", async () => {
   await waitFor(() => expect(patches(calls)).toHaveLength(1));
   expect(patches(calls)[0].body).toEqual({ support_url: null });
 });
+
+test("abuse_thresholds_are_shown_and_zero_switches_a_rule_off", async () => {
+  const user = userEvent.setup();
+  const { calls } = page();
+  const traffic = await screen.findByLabelText("Алерт: трафик клиента за сутки, ГБ (0 — выключено)");
+  expect(traffic).toHaveValue(100);
+  await user.clear(traffic);
+  await user.type(traffic, "0");
+  await user.click(screen.getByRole("button", { name: "Сохранить" }));
+  await waitFor(() => expect(patches(calls)).toHaveLength(1));
+  expect(patches(calls)[0].body).toEqual({ abuse_daily_traffic_gb: 0 });
+});
+
+test("the_devices_per_ip_threshold_is_saved", async () => {
+  const user = userEvent.setup();
+  const { calls } = page();
+  const devices = await screen.findByLabelText(
+    "Алерт: устройств с одного адреса за сутки (0 — выключено)",
+  );
+  expect(devices).toHaveValue(10);
+  await user.clear(devices);
+  await user.type(devices, "25");
+  await user.click(screen.getByRole("button", { name: "Сохранить" }));
+  await waitFor(() => expect(patches(calls)).toHaveLength(1));
+  expect(patches(calls)[0].body).toEqual({ abuse_devices_per_ip: 25 });
+});
+
+test("an_empty_abuse_threshold_is_refused", async () => {
+  const user = userEvent.setup();
+  const { calls } = page();
+  const traffic = await screen.findByLabelText("Алерт: трафик клиента за сутки, ГБ (0 — выключено)");
+  await user.clear(traffic);
+  await user.click(screen.getByRole("button", { name: "Сохранить" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Заполните числа");
+  expect(patches(calls)).toHaveLength(0);
+});
+

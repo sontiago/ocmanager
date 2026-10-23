@@ -13,11 +13,19 @@ export interface SettingsForm {
   admin_chat_ids: string;
   expiry_reminder_days: string;
   traffic_retention_days: string;
+  abuse_daily_traffic_gb: string;
+  abuse_devices_per_ip: string;
 }
 
 /** Числа формы заполнены: пустое поле иначе ушло бы на сервер нулём или NaN. */
 export function hasInvalidNumbers(f: SettingsForm): boolean {
-  const single = [f.trial_days, f.trial_traffic_gb, f.traffic_retention_days];
+  const single = [
+    f.trial_days,
+    f.trial_traffic_gb,
+    f.traffic_retention_days,
+    f.abuse_daily_traffic_gb,
+    f.abuse_devices_per_ip,
+  ];
   const lists = [f.admin_chat_ids, f.expiry_reminder_days];
   const bad = (s: string) => s.trim() === "" || !Number.isFinite(Number(s));
   return (
@@ -43,6 +51,8 @@ export function toForm(r: Runtime): SettingsForm {
     admin_chat_ids: list(r.admin_chat_ids),
     expiry_reminder_days: list(r.expiry_reminder_days),
     traffic_retention_days: String(r.traffic_retention_days),
+    abuse_daily_traffic_gb: String(r.abuse_daily_traffic_gb),
+    abuse_devices_per_ip: String(r.abuse_devices_per_ip),
   };
 }
 
@@ -55,6 +65,8 @@ function values(f: SettingsForm): Record<string, unknown> {
     admin_chat_ids: ints(f.admin_chat_ids),
     expiry_reminder_days: ints(f.expiry_reminder_days),
     traffic_retention_days: Number(f.traffic_retention_days),
+    abuse_daily_traffic_gb: Number(f.abuse_daily_traffic_gb),
+    abuse_devices_per_ip: Number(f.abuse_devices_per_ip),
   };
 }
 
