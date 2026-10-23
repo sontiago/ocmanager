@@ -49,3 +49,12 @@ test("date_filters_sent_as_utc_iso", async () => {
   await user.type(screen.getByLabelText("С даты"), "2026-10-01");
   await waitFor(() => expect(last(calls).get("since")).toBe("2026-10-01T00:00:00.000Z"));
 });
+
+test("export_link_carries_current_filters", async () => {
+  page("/audit?actor_type=admin&action=client.block");
+  const link = await screen.findByRole("link", { name: "Экспорт CSV" });
+  const href = new URL(link.getAttribute("href")!, "http://x");
+  expect(href.pathname).toBe("/admin/export/audit.csv");
+  expect(href.searchParams.get("actor_type")).toBe("admin");
+  expect(href.searchParams.get("action")).toBe("client.block");
+});

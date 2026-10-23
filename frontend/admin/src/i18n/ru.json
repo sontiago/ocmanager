@@ -234,5 +234,6 @@
   "stats.tx": "Отдано",
   "stats.revenue": "Выручка",
   "stats.payments": "платежей: {n}",
-  "stats.refunds": "возвраты"
+  "stats.refunds": "возвраты",
+  "export.csv": "Экспорт CSV"
 }

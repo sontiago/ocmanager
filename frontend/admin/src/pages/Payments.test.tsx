@@ -103,3 +103,13 @@ test("webhook_detail_shows_payload", async () => {
   await user.click(await screen.findByRole("button", { name: "Подробнее" }));
   expect(await screen.findByText(/"amount": 1/)).toBeInTheDocument();
 });
+
+test("export_link_carries_the_same_utc_bounds_as_the_list", async () => {
+  page("/payments?status=succeeded&since=2026-10-01&until=2026-10-02");
+  const link = await screen.findByRole("link", { name: "Экспорт CSV" });
+  const href = new URL(link.getAttribute("href")!, "http://x");
+  expect(href.pathname).toBe("/admin/export/payments.csv");
+  expect(href.searchParams.get("status")).toBe("succeeded");
+  expect(href.searchParams.get("since")).toBe("2026-10-01T00:00:00.000Z");
+  expect(href.searchParams.get("until")).toBe("2026-10-03T00:00:00.000Z");
+});

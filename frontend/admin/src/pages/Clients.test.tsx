@@ -67,3 +67,9 @@ test("blocked_filter_is_sent_as_boolean", async () => {
   await user.selectOptions(screen.getByLabelText("Блокировка"), "true");
   await waitFor(() => expect(lastQuery(calls).get("blocked")).toBe("true"));
 });
+
+test("export_link_carries_current_filters", async () => {
+  page("/clients?status=active&blocked=false");
+  const link = await screen.findByRole("link", { name: "Экспорт CSV" });
+  expect(link).toHaveAttribute("href", "/admin/export/clients.csv?status=active&blocked=false");
+});

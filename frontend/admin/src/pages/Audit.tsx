@@ -6,6 +6,7 @@ import { dayStartUtc } from "../lib/dates";
 import { formatDateTime } from "../lib/format";
 import { useUrlFilters } from "../lib/useUrlFilters";
 import { DataTable, type Column } from "../ui/DataTable";
+import { ExportButton } from "../ui/ExportButton";
 import { buttonClass, Field, inputClass } from "../ui/Field";
 import { Pagination } from "../ui/Pagination";
 
@@ -15,16 +16,15 @@ export function AuditPage() {
   const { t } = useT();
   const { values, set, limit, offset, setOffset } = useUrlFilters(KEYS);
   const [open, setOpen] = useState<number | null>(null);
-  const query = useAudit({
+  const filters = {
     actor_type: values.actor_type,
     action: values.action,
     target_type: values.target_type,
     target_id: values.target_id,
     since: dayStartUtc(values.since),
     until: dayStartUtc(values.until, 1),
-    limit,
-    offset,
-  });
+  };
+  const query = useAudit({ ...filters, limit, offset });
 
   const text = (key: (typeof KEYS)[number], label: string) => (
     <Field label={label}>
@@ -99,6 +99,7 @@ export function AuditPage() {
         <Field label={t("payments.until")}>
           <input className={inputClass} type="date" value={values.until ?? ""} onChange={(e) => set({ until: e.target.value || undefined })} />
         </Field>
+        <ExportButton kind="audit" params={filters} />
       </div>
       <DataTable
         columns={columns}

@@ -6,6 +6,7 @@ import { formatDateTime } from "../lib/format";
 import { useDebounced } from "../lib/useDebounced";
 import { useUrlFilters } from "../lib/useUrlFilters";
 import { DataTable, type Column } from "../ui/DataTable";
+import { ExportButton } from "../ui/ExportButton";
 import { Field, inputClass } from "../ui/Field";
 import { Pagination } from "../ui/Pagination";
 import { StatusBadge } from "../ui/StatusBadge";
@@ -114,6 +115,10 @@ export function ClientsPage() {
             <option value="false">{t("common.no")}</option>
           </select>
         </Field>
+        <ExportButton
+          kind="clients"
+          params={{ q: values.q, status: values.status, blocked: values.blocked }}
+        />
       </div>
       <DataTable
         columns={columns}

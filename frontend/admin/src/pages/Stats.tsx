@@ -13,6 +13,7 @@ import { useUrlFilters } from "../lib/useUrlFilters";
 import { Card } from "../ui/Card";
 import { CountChart, RevenueChart, TrafficChart } from "../ui/charts";
 import { DataTable, type Column } from "../ui/DataTable";
+import { ExportButton } from "../ui/ExportButton";
 import { Field, inputClass } from "../ui/Field";
 import { Notice } from "../ui/Notice";
 import { SmallBox } from "../ui/SmallBox";
@@ -56,6 +57,8 @@ export function StatsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-normal">{t("nav.stats")}</h1>
+        <div className="flex items-end gap-3">
+        <ExportButton kind="traffic" params={{ days }} />
         <Field label={t("stats.period")}>
           <select
             className={inputClass}
@@ -69,6 +72,7 @@ export function StatsPage() {
             ))}
           </select>
         </Field>
+        </div>
       </div>
 
       <section aria-label={t("stats.kpis")} className="space-y-3">

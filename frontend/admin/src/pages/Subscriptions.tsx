@@ -9,6 +9,7 @@ import { formatBytes, formatDateTime } from "../lib/format";
 import { useUrlFilters } from "../lib/useUrlFilters";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { DataTable, type Column } from "../ui/DataTable";
+import { ExportButton } from "../ui/ExportButton";
 import { buttonClass, Field, inputClass } from "../ui/Field";
 import { Notice } from "../ui/Notice";
 import { Pagination } from "../ui/Pagination";
@@ -129,6 +130,14 @@ export function SubscriptionsPage() {
             onChange={(e) => set({ expiring_within_days: e.target.value || undefined })}
           />
         </Field>
+        <ExportButton
+          kind="subscriptions"
+          params={{
+            status: values.status,
+            plan: values.plan,
+            expiring_within_days: values.expiring_within_days,
+          }}
+        />
       </div>
       <Notice text={notice} />
       {(cancel.error || expire.error) && (

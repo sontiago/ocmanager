@@ -57,3 +57,12 @@ test("cancel_auto_renew_posts", async () => {
     expect(calls.some((c) => c.url.pathname === "/admin/subscriptions/5/cancel-auto-renew")).toBe(true),
   );
 });
+
+test("export_link_carries_current_filters", async () => {
+  page("/subscriptions?status=active&expiring_within_days=3");
+  const link = await screen.findByRole("link", { name: "Экспорт CSV" });
+  expect(link).toHaveAttribute(
+    "href",
+    "/admin/export/subscriptions.csv?status=active&expiring_within_days=3",
+  );
+});

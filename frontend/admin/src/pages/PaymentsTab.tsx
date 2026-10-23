@@ -6,6 +6,7 @@ import { formatDateTime, formatMoney } from "../lib/format";
 import { dayStartUtc } from "../lib/dates";
 import { useUrlFilters } from "../lib/useUrlFilters";
 import { DataTable, type Column } from "../ui/DataTable";
+import { ExportButton } from "../ui/ExportButton";
 import { Field, inputClass } from "../ui/Field";
 import { Pagination } from "../ui/Pagination";
 import { StatusBadge } from "../ui/StatusBadge";
@@ -16,15 +17,14 @@ export function PaymentsTab() {
   const { t } = useT();
   const { values, set, limit, offset, setOffset } = useUrlFilters(KEYS);
   const clientId = Number(values.client_id);
-  const query = usePayments({
+  const filters = {
     client_id: Number.isInteger(clientId) && clientId > 0 ? clientId : undefined,
     status: values.status,
     since: dayStartUtc(values.since),
     // «По дату» включительно, а бэкенд сравнивает `< until`: уходит начало следующих суток.
     until: dayStartUtc(values.until, 1),
-    limit,
-    offset,
-  });
+  };
+  const query = usePayments({ ...filters, limit, offset });
 
   const columns: Column<S<"PaymentOut">>[] = [
     { key: "at", header: t("payments.received"), render: (p) => formatDateTime(p.received_at) },
@@ -67,6 +67,7 @@ export function PaymentsTab() {
         <Field label={t("payments.clientId")}>
           <input className={inputClass} inputMode="numeric" value={values.client_id ?? ""} onChange={(e) => set({ client_id: e.target.value || undefined })} />
         </Field>
+        <ExportButton kind="payments" params={filters} />
       </div>
       <DataTable
         columns={columns}

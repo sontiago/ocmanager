@@ -126,3 +126,17 @@ test("one_failed_request_does_not_blank_the_page", async () => {
   expect(await screen.findAllByRole("alert")).not.toHaveLength(0);
   expect(await screen.findByRole("region", { name: "Топ клиентов по трафику" })).toBeInTheDocument();
 });
+
+test("export_link_follows_the_period", async () => {
+  const user = userEvent.setup();
+  page();
+  const link = await screen.findByRole("link", { name: "Экспорт CSV" });
+  expect(link).toHaveAttribute("href", "/admin/export/traffic.csv?days=30");
+  await user.selectOptions(screen.getByLabelText("Период"), "90");
+  await waitFor(() =>
+    expect(screen.getByRole("link", { name: "Экспорт CSV" })).toHaveAttribute(
+      "href",
+      "/admin/export/traffic.csv?days=90",
+    ),
+  );
+});

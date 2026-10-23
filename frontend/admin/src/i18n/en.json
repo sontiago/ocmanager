@@ -234,5 +234,6 @@
   "stats.tx": "Sent",
   "stats.revenue": "Revenue",
   "stats.payments": "payments: {n}",
-  "stats.refunds": "refunds"
+  "stats.refunds": "refunds",
+  "export.csv": "Export CSV"
 }
