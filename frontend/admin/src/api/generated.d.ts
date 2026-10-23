@@ -923,6 +923,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/promo-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Promo Codes */
+        get: operations["list_promo_codes_admin_promo_codes_get"];
+        put?: never;
+        /** Create Promo Code */
+        post: operations["create_promo_code_admin_promo_codes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/promo-codes/{promo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Promo Code */
+        patch: operations["update_promo_code_admin_promo_codes__promo_id__patch"];
+        trace?: never;
+    };
+    "/admin/promo-codes/{promo_id}/redemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Redemptions */
+        get: operations["redemptions_admin_promo_codes__promo_id__redemptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/referrals/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stats */
+        get: operations["stats_admin_referrals_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/referrals/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rewards */
+        get: operations["rewards_admin_referrals_rewards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -999,6 +1085,7 @@ export interface components {
             sessions: components["schemas"]["SessionRowOut"][];
             /** Payments */
             payments: components["schemas"]["PaymentOut"][];
+            referral: components["schemas"]["ReferralInfo"];
         };
         /** ClientOut */
         ClientOut: {
@@ -1409,6 +1496,17 @@ export interface components {
             /** Offset */
             offset: number;
         };
+        /** Page[RewardRow] */
+        Page_RewardRow_: {
+            /** Items */
+            items: components["schemas"]["RewardRow"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
         /** Page[SessionRowOut] */
         Page_SessionRowOut_: {
             /** Items */
@@ -1588,6 +1686,61 @@ export interface components {
             /** Sort Order */
             sort_order?: number | null;
         };
+        /** PromoCreate */
+        PromoCreate: {
+            /** Code */
+            code: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "days" | "traffic";
+            /** Value */
+            value: number;
+            /** Max Uses */
+            max_uses?: number | null;
+            /** Expires At */
+            expires_at?: string | null;
+        };
+        /** PromoOut */
+        PromoOut: {
+            /** Id */
+            id: number;
+            /** Code */
+            code: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "days" | "traffic";
+            /** Value */
+            value: number;
+            /** Max Uses */
+            max_uses: number | null;
+            /** Uses */
+            uses: number;
+            /** Expires At */
+            expires_at: string | null;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * PromoPatch
+         * @description Переданное поле меняется; `null` у max_uses/expires_at очищает ограничение.
+         */
+        PromoPatch: {
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Max Uses */
+            max_uses?: number | null;
+            /** Expires At */
+            expires_at?: string | null;
+        };
         /** ReconcileOut */
         ReconcileOut: {
             /** Node Id */
@@ -1606,6 +1759,65 @@ export interface components {
             drifts: components["schemas"]["DriftOut"][];
             /** Error */
             error: string | null;
+        };
+        /** RedemptionOut */
+        RedemptionOut: {
+            /** Id */
+            id: number;
+            /** Client Id */
+            client_id: number;
+            /** Client Name */
+            client_name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "days" | "traffic";
+            /** Value */
+            value: number;
+            /**
+             * Redeemed At
+             * Format: date-time
+             */
+            redeemed_at: string;
+        };
+        /** ReferralInfo */
+        ReferralInfo: {
+            /** Code */
+            code: string;
+            referred_by: components["schemas"]["ReferrerOut"] | null;
+            /** Invited */
+            invited: number;
+            /** Paying Friends */
+            paying_friends: number;
+            /** Bonus Devices */
+            bonus_devices: number;
+            /** Bonus Traffic Bytes */
+            bonus_traffic_bytes: number;
+        };
+        /** ReferralStats */
+        ReferralStats: {
+            /** Invited */
+            invited: number;
+            /** Paying */
+            paying: number;
+            /** Conversion Percent */
+            conversion_percent: number;
+            /** Days Given */
+            days_given: number;
+            /** Devices Given */
+            devices_given: number;
+            /** Traffic Bytes Given */
+            traffic_bytes_given: number;
+            /** Tiers */
+            tiers: components["schemas"]["TierStat"][];
+        };
+        /** ReferrerOut */
+        ReferrerOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
         };
         /** RevenuePoint */
         RevenuePoint: {
@@ -1630,6 +1842,48 @@ export interface components {
         RevokeBody: {
             /** Reason */
             reason: string;
+        };
+        /** RewardRow */
+        RewardRow: {
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Inviter Id */
+            inviter_id: number;
+            /** Inviter Name */
+            inviter_name: string;
+            /** Invitee Id */
+            invitee_id: number;
+            /** Invitee Name */
+            invitee_name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "base" | "tier";
+            /** Tier */
+            tier: number | null;
+            /** Days */
+            days: number;
+            /** Invitee Days */
+            invitee_days: number;
+            /** Devices */
+            devices: number;
+            /** Traffic Bytes */
+            traffic_bytes: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "pending" | "capped";
+            /** Payment Id */
+            payment_id: number;
+            /** Payment Status */
+            payment_status: string;
         };
         /** SessionOut */
         SessionOut: {
@@ -1763,6 +2017,13 @@ export interface components {
             traffic_used_bytes: number;
             /** Traffic Limit Bytes */
             traffic_limit_bytes: number | null;
+        };
+        /** TierStat */
+        TierStat: {
+            /** Friends */
+            friends: number;
+            /** Reached */
+            reached: number;
         };
         /** TopClient */
         TopClient: {
@@ -3388,6 +3649,178 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_promo_codes_admin_promo_codes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoOut"][];
+                };
+            };
+        };
+    };
+    create_promo_code_admin_promo_codes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_promo_code_admin_promo_codes__promo_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                promo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redemptions_admin_promo_codes__promo_id__redemptions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                promo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedemptionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_admin_referrals_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferralStats"];
+                };
+            };
+        };
+    };
+    rewards_admin_referrals_rewards_get: {
+        parameters: {
+            query?: {
+                inviter_id?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_RewardRow_"];
                 };
             };
             /** @description Validation Error */

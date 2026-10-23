@@ -40,6 +40,15 @@ export const queryKeys = {
     clients: (days: number) => ["stats", "clients", days] as const,
     economics: ["stats", "economics"] as const,
   },
+  promo: {
+    all: ["promo"] as const,
+    redemptions: (id: number) => ["promo", "redemptions", id] as const,
+  },
+  referrals: {
+    all: ["referrals"] as const,
+    stats: ["referrals", "stats"] as const,
+    rewards: (f: Filters) => ["referrals", "rewards", f] as const,
+  },
   settings: ["settings"] as const,
   adminSessions: ["admin-sessions"] as const,
 };

@@ -51,6 +51,14 @@ function card(over: Record<string, unknown> = {}) {
     traffic_daily: [],
     sessions: [],
     payments: [],
+    referral: {
+      code: "ab23cd45",
+      referred_by: null,
+      invited: 0,
+      paying_friends: 0,
+      bonus_devices: 0,
+      bonus_traffic_bytes: 0,
+    },
     ...over,
   };
 }
@@ -239,4 +247,42 @@ test("reset_traffic_is_hidden_without_a_subscription", async () => {
   page({ subscription: null });
   await screen.findByText("Профиль");
   expect(screen.queryByRole("button", { name: "Сбросить трафик" })).toBeNull();
+});
+
+
+test("referral_block_shows_the_code_and_counts", async () => {
+  page({
+    referral: {
+      code: "ab23cd45",
+      referred_by: null,
+      invited: 5,
+      paying_friends: 3,
+      bonus_devices: 1,
+      bonus_traffic_bytes: 100 * 1024 ** 3,
+    },
+  });
+  const block = await screen.findByRole("region", { name: "Рефералы" });
+  expect(within(block).getByText("ab23cd45")).toBeInTheDocument();
+  expect(within(block).getByText("5")).toBeInTheDocument();
+  expect(within(block).getByText("3")).toBeInTheDocument();
+  expect(within(block).getByText(/\+1/)).toBeInTheDocument();
+  expect(within(block).getByRole("link", { name: /Награды/ })).toHaveAttribute(
+    "href",
+    "/referrals?inviter_id=5",
+  );
+});
+
+test("referral_block_links_to_the_inviter", async () => {
+  page({
+    referral: {
+      code: "ab23cd45",
+      referred_by: { id: 9, name: "Ivan" },
+      invited: 0,
+      paying_friends: 0,
+      bonus_devices: 0,
+      bonus_traffic_bytes: 0,
+    },
+  });
+  const block = await screen.findByRole("region", { name: "Рефералы" });
+  expect(within(block).getByRole("link", { name: "Ivan" })).toHaveAttribute("href", "/clients/9");
 });

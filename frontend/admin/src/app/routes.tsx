@@ -7,6 +7,8 @@ import { ClientDetailPage } from "../pages/ClientDetail";
 import { ClientsPage } from "../pages/Clients";
 import { DevicesPage } from "../pages/Devices";
 import { PaymentsPage } from "../pages/Payments";
+import { PromoPage } from "../pages/Promo";
+import { ReferralsPage } from "../pages/Referrals";
 import { PlansPage } from "../pages/Plans";
 import { SubscriptionsPage } from "../pages/Subscriptions";
 import { LoginPage } from "../pages/Login";
@@ -29,6 +31,8 @@ export const routes: RouteObject[] = [
           { path: "/stats", element: <StatsPage /> },
           { path: "/subscriptions", element: <SubscriptionsPage /> },
           { path: "/plans", element: <PlansPage /> },
+          { path: "/promo", element: <PromoPage /> },
+          { path: "/referrals", element: <ReferralsPage /> },
           { path: "/payments", element: <PaymentsPage /> },
           { path: "/devices", element: <DevicesPage /> },
           { path: "/node", element: <NodePage /> },

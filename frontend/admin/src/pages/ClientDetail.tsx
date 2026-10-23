@@ -212,6 +212,42 @@ export function ClientDetailPage() {
         </Card>
       </div>
 
+      <Card title={t("client.referral")}>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+          <dt className="text-muted">{t("client.refCode")}</dt>
+          <dd className="font-mono">{query.data.referral.code}</dd>
+          <dt className="text-muted">{t("client.refBy")}</dt>
+          <dd>
+            {query.data.referral.referred_by ? (
+              <Link to={`/clients/${query.data.referral.referred_by.id}`} className="text-accent">
+                {query.data.referral.referred_by.name}
+              </Link>
+            ) : (
+              t("client.none")
+            )}
+          </dd>
+          <dt className="text-muted">{t("client.refInvited")}</dt>
+          <dd>{query.data.referral.invited}</dd>
+          <dt className="text-muted">{t("client.refPaying")}</dt>
+          <dd>{query.data.referral.paying_friends}</dd>
+          <dt className="text-muted">{t("client.refBonuses")}</dt>
+          <dd>
+            {query.data.referral.bonus_devices === 0 && query.data.referral.bonus_traffic_bytes === 0
+              ? t("client.none")
+              : [
+                  query.data.referral.bonus_devices > 0 && `+${query.data.referral.bonus_devices}`,
+                  query.data.referral.bonus_traffic_bytes > 0 &&
+                    `+${formatBytes(query.data.referral.bonus_traffic_bytes)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+          </dd>
+        </dl>
+        <Link to={`/referrals?inviter_id=${client.id}`} className="mt-2 inline-block text-accent">
+          {t("client.refRewards")} →
+        </Link>
+      </Card>
+
       <Card title={t("nav.devices")}>
         <DataTable
           rows={devices}

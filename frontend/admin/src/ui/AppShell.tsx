@@ -11,6 +11,8 @@ const NAV: readonly (readonly [string, string, IconName])[] = [
   ["/subscriptions", "nav.subscriptions", "refresh"],
   ["/plans", "nav.plans", "tag"],
   ["/payments", "nav.payments", "card"],
+  ["/promo", "nav.promo", "gift"],
+  ["/referrals", "nav.referrals", "link"],
   ["/devices", "nav.devices", "phone"],
   ["/node", "nav.node", "server"],
   ["/audit", "nav.audit", "list"],
