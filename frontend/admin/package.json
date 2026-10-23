@@ -1,0 +1,38 @@
+{
+  "name": "admin",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "api:types": "npx --yes openapi-typescript@7.13.0 http://127.0.0.1:8080/admin/openapi.json -o src/api/generated.d.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/react-query": "5.62.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router": "7.9.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.1.0",
+    "@testing-library/user-event": "14.5.2",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.1.0",
+    "jsdom": "25.0.1",
+    "oxlint": "1.81.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
+  }
+}
