@@ -145,5 +145,14 @@
   "webhooks.attempts": "Попытки",
   "webhooks.details": "Подробнее",
   "webhooks.reprocess": "Переобработать",
-  "webhooks.needAttention": "Требуют внимания"
+  "webhooks.needAttention": "Требуют внимания",
+  "devices.revoke": "Отозвать",
+  "devices.revokeTitle": "Отозвать устройство «{name}»?",
+  "devices.revokeBody": "Сертификат попадёт в CRL, отзыв необратим.",
+  "devices.reason": "Причина",
+  "devices.online": "Онлайн",
+  "devices.on": "онлайн",
+  "devices.off": "офлайн",
+  "devices.sessions": "Сессии",
+  "devices.revokedFilter": "Отозвано"
 }

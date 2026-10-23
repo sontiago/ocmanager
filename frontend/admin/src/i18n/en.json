@@ -145,5 +145,14 @@
   "webhooks.attempts": "Attempts",
   "webhooks.details": "Details",
   "webhooks.reprocess": "Reprocess",
-  "webhooks.needAttention": "Needing attention"
+  "webhooks.needAttention": "Needing attention",
+  "devices.revoke": "Revoke",
+  "devices.revokeTitle": "Revoke device “{name}”?",
+  "devices.revokeBody": "The certificate goes to the CRL; revocation is irreversible.",
+  "devices.reason": "Reason",
+  "devices.online": "Online",
+  "devices.on": "online",
+  "devices.off": "offline",
+  "devices.sessions": "Sessions",
+  "devices.revokedFilter": "Revoked"
 }
