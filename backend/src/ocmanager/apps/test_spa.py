@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncClient, Response
 
 from ocmanager.apps.admin_api import create_app
 from ocmanager.core.config import Settings
@@ -17,6 +17,12 @@ def static_dir(tmp_path: Path) -> Path:
     (root / "assets" / "app.js").write_text("console.log(1)")
     (tmp_path / "secret.txt").write_text("top secret")
     return root
+
+
+async def fetch_response(settings: Settings, url: str) -> Response:
+    transport = ASGITransport(app=create_app(settings))
+    async with AsyncClient(transport=transport, base_url="http://localhost") as client:
+        return await client.get(url, headers={"Host": "localhost:8080"})
 
 
 async def fetch(
@@ -75,3 +81,29 @@ async def test_missing_static_dir_is_ignored(settings: Settings, tmp_path: Path)
 async def test_host_guard_still_applies(settings: Settings, static_dir: Path) -> None:
     status, _, _ = await fetch(with_static(settings, static_dir), "/", host="evil.example")
     assert status == 400
+
+
+async def test_a_missing_asset_is_a_real_404_not_the_app_shell(
+    settings: Settings, static_dir: Path
+) -> None:
+    """После выкладки закэшированный index.html ссылается на старый хэшированный файл: ответ
+    index.html с кодом 200 дал бы белый экран и загадочную ошибку про тип содержимого."""
+    for url in ("/assets/gone.js", "/assets/nested/gone.css"):
+        status, ctype, body = await fetch(with_static(settings, static_dir), url)
+        assert status == 404, url
+        assert INDEX not in body
+        assert "text/html" not in ctype
+
+
+async def test_the_app_shell_is_never_cached(settings: Settings, static_dir: Path) -> None:
+    """index.html — единственный файл без хэша в имени: пока он в кэше, браузер не узнает
+    о новой версии."""
+    for url in ("/", "/clients/5", "/index.html"):
+        r = await fetch_response(with_static(settings, static_dir), url)
+        assert r.status_code == 200, url
+        assert r.headers["cache-control"] == "no-cache", url
+
+
+async def test_hashed_assets_are_left_cacheable(settings: Settings, static_dir: Path) -> None:
+    r = await fetch_response(with_static(settings, static_dir), "/assets/app.js")
+    assert r.headers.get("cache-control") != "no-cache"

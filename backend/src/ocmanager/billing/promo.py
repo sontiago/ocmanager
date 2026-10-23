@@ -128,3 +128,17 @@ async def claim(session: AsyncSession, client_id: int, code: str, now: datetime)
     row.uses += 1
     await session.flush()
     return row
+
+
+async def delete(session: AsyncSession, promo_id: int) -> PromoCode:
+    """Удаляет код, которым никто не пользовался. Использованный остаётся: в журнале
+    погашений и аудите на него ссылаются — его только выключают."""
+    row = await get(session, promo_id)
+    used = await session.scalar(
+        select(PromoRedemption.id).where(PromoRedemption.promo_code_id == promo_id).limit(1)
+    )
+    if used is not None or row.uses > 0:
+        raise Conflict("promo code has been used: switch it off instead")
+    await session.delete(row)
+    await session.flush()
+    return row

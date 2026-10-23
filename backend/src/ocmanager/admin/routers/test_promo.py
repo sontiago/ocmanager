@@ -18,6 +18,7 @@ ENDPOINTS = [
     ("POST", "/admin/promo-codes"),
     ("PATCH", "/admin/promo-codes/1"),
     ("GET", "/admin/promo-codes/1/redemptions"),
+    ("DELETE", "/admin/promo-codes/1"),
 ]
 
 
@@ -138,3 +139,46 @@ async def test_redemptions_show_who_used_the_code(
         (client.id, "Anna", "days", 2)
     ]
     assert (await admin_client.get("/admin/promo-codes")).json()[0]["uses"] == 1
+
+
+async def test_an_unused_code_can_be_deleted_with_audit(
+    admin_client: AsyncClient, session: AsyncSession
+) -> None:
+    created = (
+        await admin_client.post(
+            "/admin/promo-codes", json={"code": "oops", "kind": "days", "value": 3}
+        )
+    ).json()
+    r = await admin_client.delete(f"/admin/promo-codes/{created['id']}")
+    assert r.status_code == 204
+    assert (await admin_client.get("/admin/promo-codes")).json() == []
+    audit = await session.scalar(select(AuditLog).where(AuditLog.action == "promo.delete"))
+    assert audit is not None
+    assert audit.details["code"] == "oops"
+
+
+async def test_a_used_code_cannot_be_deleted_only_switched_off(
+    admin_client: AsyncClient,
+    session: AsyncSession,
+    make_client: MakeClient,
+    make_plan: MakePlan,
+) -> None:
+    client = await make_client()
+    plan = await make_plan()
+    await subscriptions.activate(
+        session,
+        client.id,
+        PlanTerms(plan.id, 30, plan.device_limit, plan.traffic_limit_bytes, False),
+        utcnow(),
+        auto_renew=True,
+    )
+    code = await promo.create(session, code="used", kind="days", value=2)
+    await promo.claim(session, client.id, "used", utcnow())
+
+    r = await admin_client.delete(f"/admin/promo-codes/{code.id}")
+    assert (r.status_code, r.json()["error"]["code"]) == (409, "conflict")
+    assert len((await admin_client.get("/admin/promo-codes")).json()) == 1  # код цел, история цела
+
+
+async def test_deleting_an_unknown_code_is_404(admin_client: AsyncClient) -> None:
+    assert (await admin_client.delete("/admin/promo-codes/999")).status_code == 404

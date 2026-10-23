@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
@@ -132,6 +132,21 @@ async def update_promo_code(
     out = PromoOut.of(row)
     await db.commit()
     return out
+
+
+@router.delete("/{promo_id}", status_code=204)
+async def delete_promo_code(promo_id: BigId, ctx: CurrentAdmin, db: SessionDep) -> Response:
+    row = await promo.delete(db, promo_id)
+    await audit.record(
+        db,
+        ctx.actor,
+        "promo.delete",
+        target_type="promo",
+        target_id=str(promo_id),
+        details={"code": row.code, "kind": row.kind},
+    )
+    await db.commit()
+    return Response(status_code=204)
 
 
 @router.get("/{promo_id}/redemptions")
