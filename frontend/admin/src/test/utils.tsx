@@ -18,7 +18,10 @@ export interface MockRequest {
   url: URL;
   body: unknown;
 }
-type Handler = Response | object | ((req: MockRequest) => Response | object | undefined);
+type Handler =
+  | Response
+  | object
+  | ((req: MockRequest) => Response | object | undefined | Promise<Response | object | undefined>);
 
 export function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -52,7 +55,7 @@ export function mockApi(handlers: Record<string, Handler> = {}) {
     calls.push(req);
     const handler = table[`${method} ${url.pathname}`];
     if (handler === undefined) return apiError(404, "not_found");
-    const result = typeof handler === "function" ? handler(req) : handler;
+    const result = typeof handler === "function" ? await handler(req) : handler;
     if (result === undefined) return new Response(null, { status: 204 });
     return result instanceof Response ? result.clone() : json(200, result);
   }) as typeof fetch;

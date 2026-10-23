@@ -17,6 +17,9 @@ export function IssueDeviceDialog({ clientId, onClose }: { clientId: number; onC
   const [platform, setPlatform] = useState<(typeof PLATFORMS)[number]>("ios");
 
   function close() {
+    // Пока запрос идёт, закрывать нельзя: сервер всё равно выпустит устройство, а одноразовый
+    // пароль и ссылка были бы потеряны.
+    if (issue.isPending) return;
     issue.reset();
     onClose();
   }
@@ -71,7 +74,7 @@ export function IssueDeviceDialog({ clientId, onClose }: { clientId: number; onC
         </Field>
         {issue.error && <Notice tone="danger" text={errorText(issue.error, t("common.error"))} />}
         <div className="flex justify-end gap-2">
-          <button type="button" className={buttonClass} onClick={close}>
+          <button type="button" className={buttonClass} onClick={close} disabled={issue.isPending}>
             {t("common.cancel")}
           </button>
           <button type="submit" className={primaryButtonClass} disabled={issue.isPending}>

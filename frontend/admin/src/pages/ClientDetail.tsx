@@ -138,7 +138,9 @@ export function ClientDetailPage() {
         </div>
       </div>
       <Notice text={notice} />
-      {unblock.error && <Notice tone="danger" text={errorText(unblock.error, t("common.error"))} />}
+      {(unblock.error || block.error) && (
+        <Notice tone="danger" text={errorText(unblock.error ?? block.error, t("common.error"))} />
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={t("client.profile")}>
@@ -248,7 +250,12 @@ export function ClientDetailPage() {
         danger
         pending={block.isPending}
         onCancel={() => setDialog(null)}
-        onConfirm={() => block.mutate(undefined, { onSuccess: (r) => done(r.changed) })}
+        onConfirm={() =>
+          block.mutate(undefined, {
+            onSuccess: (r) => done(r.changed),
+            onError: () => setDialog(null),
+          })
+        }
       />
       {dialog === "grant" && (
         <Modal title={t("client.grant")} onClose={() => setDialog(null)}>

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderRoutes } from "../test/utils";
+import { apiError, renderRoutes } from "../test/utils";
 import { ClientDetailPage } from "./ClientDetail";
 
 const DEVICE = {
@@ -163,4 +163,32 @@ test("issue_device_shows_password_once_and_clears_on_close", async () => {
       .filter((m) => JSON.stringify(m.state.data ?? "").includes("s3cret-pass"));
     expect(held).toHaveLength(0);
   });
+});
+
+test("block_failure_is_shown_to_the_operator", async () => {
+  const user = userEvent.setup();
+  page({}, { "POST /admin/clients/5/block": apiError(409, "conflict", "already processing") });
+  await user.click(await screen.findByRole("button", { name: "Заблокировать" }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Заблокировать" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("already processing");
+});
+
+test("issue_dialog_cannot_be_closed_while_request_is_pending", async () => {
+  const user = userEvent.setup();
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  page(
+    {},
+    {
+      "POST /admin/clients/5/devices": () => gate.then(() => undefined),
+    },
+  );
+  await user.click(await screen.findByRole("button", { name: "Выпустить устройство" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.type(within(dialog).getByLabelText("Название"), "Pixel");
+  await user.click(within(dialog).getByRole("button", { name: "Выпустить" }));
+  await waitFor(() => expect(within(dialog).getByRole("button", { name: "Отмена" })).toBeDisabled());
+  await user.keyboard("{Escape}");
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  release();
 });

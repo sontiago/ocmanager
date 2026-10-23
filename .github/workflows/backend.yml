@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Образ бэкенда собирается и знает роли
         run: |
-          docker build -t ocmanager/backend:ci backend
+          docker build -t ocmanager/backend:ci --build-context admin=frontend/admin backend
           docker run --rm ocmanager/backend:ci cli --help >/dev/null
           test "$(docker run --rm ocmanager/backend:ci nonsense 2>/dev/null; echo $?)" = 64
       - name: Образ ocserv собирается
