@@ -268,3 +268,71 @@ async def test_exhaustion_is_recorded_only_once(
         await session.scalars(select(AuditLog).where(AuditLog.action == "subscription.exhaust"))
     )
     assert len(rows) == 1
+
+
+async def test_quota_enforcement_does_not_deadlock_with_a_concurrent_client_lock(
+    committed_sessionmaker: async_sessionmaker[AsyncSession], settings: Settings
+) -> None:
+    """Все операции берут блокировки в одном порядке: клиент, затем подписка. Подсчёт трафика,
+    который сначала брал подписку, а клиента — уже при проверке квоты, замыкался в кольцо с
+    любой операцией, взявшей клиента первой: Postgres обрывал одну из транзакций."""
+    async with committed_sessionmaker() as s, s.begin():
+        client = Client(telegram_id=1, first_name="A", lang="ru")
+        s.add(client)
+        await s.flush()
+        plan_id = await s.scalar(
+            text(
+                "INSERT INTO plans (code, name_i18n, duration_days, device_limit, price_amount,"
+                " currency) VALUES ('m1', '{}', 30, 1, 1, 'RUB') RETURNING id"
+            )
+        )
+        assert plan_id is not None
+        await subscriptions.activate(
+            s, client.id, PlanTerms(plan_id, 30, 1, 1000, False), T0, auto_renew=True
+        )
+        s.add(
+            Device(
+                client_id=client.id,
+                seq=1,
+                name="d",
+                platform="linux",
+                ocserv_username=f"c{client.id}-d1",
+                cert_serial="1",
+                cert_fingerprint="00",
+                issued_at=T0,
+                cert_expires_at=T0 + 300 * DAY,
+            )
+        )
+        client_id, username = client.id, f"c{client.id}-d1"
+        node = await registry.ensure_local_node(s, settings)
+        fake = FakeNodeDriver()
+        fake.add_session(username, bytes_in=5000, session_id="1", connected_at=T0)
+        await traffic.collect(s, node.id, fake.sessions, T0 + MIN)  # 5000 при лимите 1000
+
+    client_locked = asyncio.Event()
+
+    async def holder() -> None:
+        async with committed_sessionmaker() as a, a.begin():
+            await a.scalar(select(Client.id).where(Client.id == client_id).with_for_update())
+            client_locked.set()
+            await asyncio.sleep(0.4)  # подсчёт трафика уже стартовал и ждёт
+            await subscriptions.get_subscription(a, client_id)  # вторая половина _lock
+            await a.execute(
+                text("SELECT id FROM subscriptions WHERE client_id = :c FOR UPDATE"),
+                {"c": client_id},
+            )
+
+    async def rolling_up() -> None:
+        await client_locked.wait()
+        async with committed_sessionmaker() as b, b.begin():
+            await flows.apply_usage(b, [username], T0 + 2 * MIN)
+
+    outcomes = await asyncio.wait_for(
+        asyncio.gather(holder(), rolling_up(), return_exceptions=True), timeout=15
+    )
+    assert list(outcomes) == [None, None]
+
+    async with committed_sessionmaker() as c:
+        sub = await subscriptions.get_subscription(c, client_id)
+        assert sub is not None
+        assert sub.status == "exhausted"

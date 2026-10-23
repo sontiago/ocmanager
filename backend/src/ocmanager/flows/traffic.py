@@ -16,7 +16,7 @@ from ocmanager.nodes.driver.base import NodeUnreachable
 from ocmanager.nodes.occtl.parser import OcctlParseError
 from ocmanager.nodes.traffic import CollectResult
 from ocmanager.provisioning.models import Device
-from ocmanager.subscriptions.models import Subscription
+from ocmanager.subscriptions.models import Client, Subscription
 
 log = structlog.get_logger(__name__)
 
@@ -36,6 +36,9 @@ async def apply_usage(session: AsyncSession, usernames: Collection[str], now: da
         await session.scalars(select(Device.client_id).where(Device.ocserv_username.in_(usernames)))
     )
     for client_id in sorted(client_ids):
+        # Порядок блокировок один на все операции (subscriptions.service._lock): клиент, затем
+        # подписка. Иначе проверка квоты ниже замкнулась бы в кольцо с продлением или блокировкой.
+        await session.scalar(select(Client.id).where(Client.id == client_id).with_for_update())
         # FOR UPDATE: параллельное продление сбрасывает счётчик, и наш устаревший
         # результат не должен его затереть.
         sub = await session.scalar(
