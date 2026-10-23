@@ -178,3 +178,31 @@ def test_an_interrupted_write_leaves_the_old_env_intact(
         config.write_env(target, "NEW=2\n")
     assert target.read_text() == "OLD=1\n"
     assert not list((root / "deploy").glob(".env.tmp*"))
+
+
+def test_the_backup_is_never_readable_by_others_even_for_an_instant(
+    root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Права должны быть правильными с момента создания: `chmod` после записи оставлял бы
+    окно, в котором секреты читаются всеми. Здесь chmod отключён, остаётся только режим создания."""
+    target = root / "deploy" / ".env"
+    target.write_text("SECRET=1\n")
+    old_umask = os.umask(0)
+    monkeypatch.setattr(os, "chmod", lambda *a, **k: None)
+    try:
+        config.write_env(target, "NEW=2\n")
+    finally:
+        os.umask(old_umask)
+    assert stat.S_IMODE((root / "deploy" / ".env.bak").stat().st_mode) == 0o600
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+
+
+def test_an_existing_loose_backup_is_tightened(root: Path) -> None:
+    target = root / "deploy" / ".env"
+    target.write_text("SECRET=1\n")
+    bak = root / "deploy" / ".env.bak"
+    bak.write_text("OLDER=1\n")
+    bak.chmod(0o644)
+    config.write_env(target, "NEW=2\n")
+    assert stat.S_IMODE(bak.stat().st_mode) == 0o600
+    assert bak.read_text() == "SECRET=1\n"

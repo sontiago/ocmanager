@@ -116,18 +116,23 @@ def render_env(values: dict[str, str], example: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _write_private(path: Path, text: str) -> None:
+    """Файл с секретами: права 0600 с момента создания (не chmod после записи) и принудительно
+    для уже существующего файла — через дескриптор, чтобы не было окна между созданием и ужатием."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        os.fchmod(handle.fileno(), 0o600)
+        handle.write(text)
+
+
 def write_env(path: Path, text: str) -> None:
     """Атомарная запись с правами 0600. Прежний файл сначала копируется в `.env.bak`, а в
     своё место новый встаёт одним `os.replace`: обрыв посередине оставляет старый `.env`."""
     tmp = path.with_name(f"{path.name}.tmp{os.getpid()}")
     try:
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w") as handle:
-            handle.write(text)
+        _write_private(tmp, text)
         if path.exists():
-            backup = path.with_name(f"{path.name}.bak")
-            backup.write_text(path.read_text())
-            os.chmod(backup, 0o600)
+            _write_private(path.with_name(f"{path.name}.bak"), path.read_text())
         os.replace(tmp, path)
     finally:
         tmp.unlink(missing_ok=True)
