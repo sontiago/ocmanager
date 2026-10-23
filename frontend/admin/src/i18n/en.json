@@ -1,0 +1,11 @@
+{
+  "common.loading": "Loading…",
+  "common.error": "Failed to load",
+  "common.empty": "Nothing here",
+  "common.cancel": "Cancel",
+  "common.confirm": "Confirm",
+  "common.prev": "Back",
+  "common.next": "Next",
+  "common.range": "{from}–{to} of {total}",
+  "common.noData": "no data"
+}

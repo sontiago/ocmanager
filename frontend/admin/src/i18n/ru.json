@@ -1,0 +1,11 @@
+{
+  "common.loading": "Загрузка…",
+  "common.error": "Не удалось загрузить",
+  "common.empty": "Ничего нет",
+  "common.cancel": "Отмена",
+  "common.confirm": "Подтвердить",
+  "common.prev": "Назад",
+  "common.next": "Вперёд",
+  "common.range": "{from}–{to} из {total}",
+  "common.noData": "нет данных"
+}
