@@ -20,7 +20,8 @@ Docker сам публикует порты в обход `ufw`: закрыва�
 git clone <репозиторий> ocmanager && cd ocmanager/deploy   # приватный репозиторий — нужен deploy key на сервере
 cp .env.example .env && chmod 600 .env
 # заполните домены, пароли (openssl rand -hex 24), OCM_SECRET_KEY, OCM_INTERNAL_TOKEN,
-# OCM_CAMOUFLAGE_SECRET, OCM_BOT_TOKEN
+# OCM_CAMOUFLAGE_SECRET, OCM_BOT_TOKEN; OCM_BOT_USERNAME (без @) — чтобы в Mini App собиралась
+# реферальная ссылка t.me/<бот>?start=ref_<код>; пусто — клиент увидит только код
 docker compose build
 ```
 
