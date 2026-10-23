@@ -6,6 +6,8 @@ import type {
   IssuedDevice,
   Me,
   Plan,
+  PromoResult,
+  Referral,
   Subscription,
 } from "./types";
 
@@ -33,4 +35,8 @@ export interface ApiClient {
   revokeDevice(deviceId: string): Promise<void>;
   /** GET /tma/connection */
   getConnection(): Promise<ConnectionInfo>;
+  /** GET /tma/referral — код, уровни, прогресс и история наград */
+  getReferral(): Promise<Referral>;
+  /** POST /tma/promo/redeem — promo_invalid / promo_already_used / subscription_inactive */
+  redeemPromo(code: string): Promise<PromoResult>;
 }

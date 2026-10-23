@@ -139,4 +139,37 @@ describe("http client", () => {
     expect(init.method).toBe("POST");
     expect(init.body).toBe('{"name":"Планшет","platform":"android"}');
   });
+
+  it("getReferral: GET /tma/referral", async () => {
+    const body = { code: "ab23cd45", link: null, tiers: [] };
+    const fetchImpl = vi.fn().mockResolvedValue(json(body));
+    expect(await make(fetchImpl).getReferral()).toEqual(body);
+    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/tma/referral");
+    expect(init.method).toBe("GET");
+  });
+
+  it("redeemPromo: POST /tma/promo/redeem с кодом в теле", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(json({ kind: "days", value: 7 }));
+    expect(await make(fetchImpl).redeemPromo("SPRING7")).toEqual({
+      kind: "days",
+      value: 7,
+    });
+    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/tma/promo/redeem");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ code: "SPRING7" });
+  });
+
+  it.each(["promo_invalid", "promo_already_used"] as const)(
+    "код ошибки %s бэкенда не превращается в internal",
+    async (code) => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(json({ error: { code, message: "x" } }, 404));
+      await expect(make(fetchImpl).redeemPromo("X")).rejects.toMatchObject({
+        code,
+      });
+    },
+  );
 });

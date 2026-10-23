@@ -43,6 +43,7 @@ export const ru = {
   "title.deviceGuide": "Подключение",
   "title.renew": "Продление",
   "title.account": "Аккаунт",
+  "title.friends": "Друзья",
   "title.onboarding": "ocmanager",
 
   // Тарифы
@@ -214,6 +215,35 @@ export const ru = {
   "account.themeLight": "Светлая",
   "account.themeDark": "Тёмная",
   "account.support": "Поддержка",
+  "account.friends": "Друзья и бонусы",
+  "account.promo": "Промокод",
+
+  // Промокод
+  "promo.title": "Промокод",
+  "promo.label": "Код промокода",
+  "promo.placeholder": "Например, WELCOME7",
+  "promo.apply": "Применить",
+  "promo.doneDays": "Готово: +{days} дн. к подписке",
+  "promo.doneTraffic": "Готово: +{traffic} трафика",
+
+  // Друзья
+  "friends.code": "Ваш код",
+  "friends.share": "Поделиться ссылкой",
+  "friends.shareText": "Подключайся к ocmanager по моей ссылке и получи бонусные дни:",
+  "friends.noLink": "Пусть друг отправит боту команду: /start ref_{code}",
+  "friends.hint": "Когда друг впервые оплатит подписку, вы получите +7 дней, а он +3.",
+  "friends.invited": "Приглашено: {n}",
+  "friends.progress": "Платящих друзей: {n} из {goal}",
+  "friends.allDone": "Все уровни пройдены",
+  "friends.tiers": "Уровни",
+  "friends.badge.friend": "значок «Друг сети»",
+  "friends.badge.ambassador": "значок «Амбассадор»",
+  "friends.history": "История наград",
+  "friends.empty": "Наград пока нет",
+  "friends.rewardBase": "+{days} дн. за друга",
+  "friends.rewardPending": "{days} дн. ждут подписку",
+  "friends.rewardCapped": "Лимит наград в месяц",
+  "friends.rewardTier": "Уровень {n}: {reward}",
 
   // Онбординг
   "onboarding.title1": "Доступ",
@@ -244,6 +274,12 @@ export const ruPlural = {
     few: "{n} дня",
     many: "{n} дней",
     other: "{n} дня",
+  },
+  "unit.friend": {
+    one: "{n} друг",
+    few: "{n} друга",
+    many: "{n} друзей",
+    other: "{n} друга",
   },
   "unit.dayBare": {
     one: "день",

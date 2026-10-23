@@ -37,6 +37,9 @@ const Renew = lazy(() =>
 const Account = lazy(() =>
   import("../screens/Account").then((m) => ({ default: m.Account })),
 );
+const Friends = lazy(() =>
+  import("../screens/Friends").then((m) => ({ default: m.Friends })),
+);
 const Onboarding = lazy(() =>
   import("../screens/Onboarding").then((m) => ({ default: m.Onboarding })),
 );
@@ -124,6 +127,14 @@ export function AppRoutes() {
           element={
             <Suspense fallback={<ScreenFallback />}>
               <Account />
+            </Suspense>
+          }
+        />
+        <Route
+          path={PATHS.friends}
+          element={
+            <Suspense fallback={<ScreenFallback />}>
+              <Friends />
             </Suspense>
           }
         />

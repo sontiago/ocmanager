@@ -40,6 +40,7 @@ export const en: Record<MessageKey, string> = {
   "title.deviceGuide": "Setup",
   "title.renew": "Renewal",
   "title.account": "Account",
+  "title.friends": "Friends",
   "title.onboarding": "ocmanager",
 
   "plans.title": "Plans",
@@ -202,6 +203,35 @@ export const en: Record<MessageKey, string> = {
   "account.themeLight": "Light",
   "account.themeDark": "Dark",
   "account.support": "Support",
+  "account.friends": "Friends & bonuses",
+  "account.promo": "Promo code",
+
+  // Promo code
+  "promo.title": "Promo code",
+  "promo.label": "Promo code value",
+  "promo.placeholder": "For example, WELCOME7",
+  "promo.apply": "Apply",
+  "promo.doneDays": "Done: +{days} d added to your subscription",
+  "promo.doneTraffic": "Done: +{traffic} of traffic",
+
+  // Friends
+  "friends.code": "Your code",
+  "friends.share": "Share the link",
+  "friends.shareText": "Join ocmanager with my link and get bonus days:",
+  "friends.noLink": "Ask your friend to send the bot: /start ref_{code}",
+  "friends.hint": "When a friend pays for the first time, you get +7 days and they get +3.",
+  "friends.invited": "Invited: {n}",
+  "friends.progress": "Paying friends: {n} of {goal}",
+  "friends.allDone": "All tiers completed",
+  "friends.tiers": "Tiers",
+  "friends.badge.friend": "“Friend of the network” badge",
+  "friends.badge.ambassador": "“Ambassador” badge",
+  "friends.history": "Reward history",
+  "friends.empty": "No rewards yet",
+  "friends.rewardBase": "+{days} d for a friend",
+  "friends.rewardPending": "{days} d waiting for a subscription",
+  "friends.rewardCapped": "Monthly reward limit",
+  "friends.rewardTier": "Tier {n}: {reward}",
 
   "onboarding.title1": "Access",
   "onboarding.title2": "in two minutes",
@@ -233,6 +263,12 @@ export const enPlural: Record<
     few: "{n} days",
     many: "{n} days",
     other: "{n} days",
+  },
+  "unit.friend": {
+    one: "{n} friend",
+    few: "{n} friends",
+    many: "{n} friends",
+    other: "{n} friends",
   },
   "unit.dayBare": {
     one: "day",

@@ -8,6 +8,8 @@ import type {
   IssuedDevice,
   Me,
   Plan,
+  PromoResult,
+  Referral,
   Subscription,
 } from "./types";
 
@@ -111,5 +113,10 @@ export function createHttpClient(deps: HttpDeps): ApiClient {
       request<void>("DELETE", `/tma/devices/${encodeURIComponent(deviceId)}`),
 
     getConnection: () => request<ConnectionInfo>("GET", "/tma/connection"),
+
+    getReferral: () => request<Referral>("GET", "/tma/referral"),
+
+    redeemPromo: (code: string) =>
+      request<PromoResult>("POST", "/tma/promo/redeem", { code }),
   };
 }

@@ -94,6 +94,49 @@ export interface Checkout {
   payment_id: string;
 }
 
+export interface ReferralTier {
+  /** Сколько платящих друзей нужно для уровня. */
+  friends: number;
+  days: number;
+  devices: number;
+  traffic_bytes: number;
+  badge: "friend" | "ambassador" | null;
+  reached: boolean;
+}
+
+export interface RewardEntry {
+  /** ISO 8601 UTC. */
+  created_at: string;
+  kind: "base" | "tier";
+  tier: number | null;
+  days: number;
+  devices: number;
+  traffic_bytes: number;
+  /** pending — дни ждут подписку; capped — месячный лимит наград исчерпан. */
+  status: "applied" | "pending" | "capped";
+}
+
+export interface Referral {
+  code: string;
+  /** null — имя бота не настроено на сервере: показываем только код. */
+  link: string | null;
+  invited: number;
+  paying_friends: number;
+  badges: ("friend" | "ambassador")[];
+  tiers: ReferralTier[];
+  /** null — все уровни пройдены. */
+  next_tier_friends: number | null;
+  bonus_devices: number;
+  bonus_traffic_bytes: number;
+  history: RewardEntry[];
+}
+
+export interface PromoResult {
+  kind: "days" | "traffic";
+  /** Дни или байты. */
+  value: number;
+}
+
 export interface ConnectionInfo {
   /** Хост шлюза: vpn.example.com */
   server_host: string;

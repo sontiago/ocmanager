@@ -1,4 +1,4 @@
-import type { ConnectionInfo, Me, Plan } from "../types";
+import type { ConnectionInfo, Me, Plan, PromoResult, Referral } from "../types";
 
 const GB = 1024 ** 3;
 
@@ -75,4 +75,36 @@ export const ME: Me = {
   lang: "ru",
   is_blocked: false,
   trial_available: true,
+};
+
+
+/** Реферальная программа новичка: ни друзей, ни наград. Правила уровней — как на бэкенде. */
+export const REFERRAL: Referral = {
+  code: "mk4d9x2q",
+  link: "https://t.me/ocmanager_bot?start=ref_mk4d9x2q",
+  invited: 0,
+  paying_friends: 0,
+  badges: [],
+  tiers: [
+    { friends: 3, days: 30, devices: 0, traffic_bytes: 0, badge: "friend", reached: false },
+    { friends: 5, days: 0, devices: 1, traffic_bytes: 0, badge: null, reached: false },
+    {
+      friends: 10,
+      days: 0,
+      devices: 0,
+      traffic_bytes: 100 * GB,
+      badge: "ambassador",
+      reached: false,
+    },
+  ],
+  next_tier_friends: 3,
+  bonus_devices: 0,
+  bonus_traffic_bytes: 0,
+  history: [],
+};
+
+/** Промокоды мока: код (строчными) → награда. */
+export const PROMOS: Record<string, PromoResult> = {
+  welcome7: { kind: "days", value: 7 },
+  gb50: { kind: "traffic", value: 50 * GB },
 };

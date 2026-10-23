@@ -1,5 +1,12 @@
-import type { ConnectionInfo, Device, Me, Plan, Subscription } from "../types";
-import { CONNECTION, ME, PLANS, TRIAL_PLAN } from "./fixtures";
+import type {
+  ConnectionInfo,
+  Device,
+  Me,
+  Plan,
+  Referral,
+  Subscription,
+} from "../types";
+import { CONNECTION, ME, PLANS, REFERRAL, TRIAL_PLAN } from "./fixtures";
 import {
   buildScenario,
   DEFAULT_SCENARIO,
@@ -22,6 +29,9 @@ export interface MockState {
   subscription: Subscription | null;
   devices: Device[];
   connection: ConnectionInfo;
+  referral: Referral;
+  /** Промокоды, уже погашенные этим клиентом (строчными). */
+  promoUsed: string[];
   /** Счётчик для генерации id и CN новых устройств. */
   deviceSeq: number;
   latencyMs: number;
@@ -58,6 +68,8 @@ function build(scenario: ScenarioId): MockState {
     subscription: structuredClone(s.subscription),
     devices: structuredClone(s.devices),
     connection: { ...CONNECTION },
+    referral: structuredClone(REFERRAL),
+    promoUsed: [],
     deviceSeq: s.devices.length,
     latencyMs: 350,
     fault: "none",

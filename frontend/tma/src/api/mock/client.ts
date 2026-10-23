@@ -8,9 +8,12 @@ import type {
   IssuedDevice,
   Me,
   Plan,
+  PromoResult,
+  Referral,
   Subscription,
   SubscriptionStatus,
 } from "../types";
+import { PROMOS } from "./fixtures";
 import { getState, type FaultId } from "./store";
 
 const DAY = 86_400_000;
@@ -188,6 +191,41 @@ export function createMockClient(): ApiClient {
     async getConnection(): Promise<ConnectionInfo> {
       await transport();
       return copy(getState().connection);
+    },
+
+    async getReferral(): Promise<Referral> {
+      await transport();
+      return copy(getState().referral);
+    },
+
+    async redeemPromo(code: string): Promise<PromoResult> {
+      await transport();
+      const state = getState();
+      const sub = state.subscription;
+      // Как на бэкенде: сначала право на промокод вообще, потом сам код.
+      if (state.me.is_blocked) throw new ApiError("subscription_inactive", 403);
+      if (!sub) throw new ApiError("subscription_inactive", 409);
+
+      const key = code.trim().toLowerCase();
+      const promo = PROMOS[key];
+      if (!promo) throw new ApiError("promo_invalid", 404);
+      if (state.promoUsed.includes(key)) {
+        throw new ApiError("promo_already_used", 409);
+      }
+      if (promo.kind === "traffic" && sub.traffic_limit_bytes === null) {
+        throw new ApiError("promo_invalid", 404); // безлимитному трафик не добавить
+      }
+
+      if (promo.kind === "days" && sub.expires_at) {
+        sub.expires_at = new Date(
+          Date.parse(sub.expires_at) + promo.value * DAY,
+        ).toISOString();
+      }
+      if (promo.kind === "traffic" && sub.traffic_limit_bytes !== null) {
+        sub.traffic_limit_bytes += promo.value;
+      }
+      state.promoUsed.push(key);
+      return { ...promo };
     },
   };
 }

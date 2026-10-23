@@ -16,6 +16,8 @@ import type {
   IssuedDevice,
   Me,
   Plan,
+  PromoResult,
+  Referral,
   Subscription,
 } from "./types";
 
@@ -136,5 +138,23 @@ export function useCheckoutLink(
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+  });
+}
+
+export function useReferral(): UseQueryResult<Referral, ApiError> {
+  const api = useApi();
+  return useQuery({
+    queryKey: queryKeys.referral,
+    queryFn: () => api.getReferral(),
+  });
+}
+
+/** Награда за промокод меняет срок и лимиты подписки, а вместе с ними — «меня» и устройства. */
+export function useRedeemPromo(): UseMutationResult<PromoResult, ApiError, string> {
+  const api = useApi();
+  const invalidate = useInvalidateAccount();
+  return useMutation({
+    mutationFn: (code: string) => api.redeemPromo(code),
+    onSuccess: () => invalidate(),
   });
 }

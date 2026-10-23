@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetStore, setLatency } from "../api/mock/store";
 import { renderWithProviders } from "../test/renderWithProviders";
@@ -98,5 +99,71 @@ describe("экран аккаунта", () => {
     expect(await screen.findByRole("button", { name: /Тема/ })).toBeVisible();
     expect(screen.queryByText("Что-то пошло не так")).toBeNull();
     setFault("none");
+  });
+
+  it("«Друзья и бонусы» ведут на экран друзей", async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<Account />} />
+        <Route path="/friends" element={<p>экран друзей</p>} />
+      </Routes>,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: /Друзья и бонусы/ }));
+    expect(await screen.findByText("экран друзей")).toBeVisible();
+  });
+
+  it("промокод: пустое поле не отправляется", async () => {
+    renderWithProviders(<Account />);
+    await userEvent.click(await screen.findByRole("button", { name: /Промокод/ }));
+    const sheet = within(screen.getByRole("dialog"));
+    expect(sheet.getByRole("button", { name: "Применить" })).toBeDisabled();
+  });
+
+  it("промокод: успех показывает награду", async () => {
+    renderWithProviders(<Account />);
+    await userEvent.click(await screen.findByRole("button", { name: /Промокод/ }));
+    const sheet = within(screen.getByRole("dialog"));
+    await userEvent.type(sheet.getByLabelText("Код промокода"), "welcome7");
+    await userEvent.click(sheet.getByRole("button", { name: "Применить" }));
+    expect(await sheet.findByText("Готово: +7 дн. к подписке")).toBeVisible();
+  });
+
+  it("промокод на трафик показывает гигабайты", async () => {
+    renderWithProviders(<Account />);
+    await userEvent.click(await screen.findByRole("button", { name: /Промокод/ }));
+    const sheet = within(screen.getByRole("dialog"));
+    await userEvent.type(sheet.getByLabelText("Код промокода"), "gb50");
+    await userEvent.click(sheet.getByRole("button", { name: "Применить" }));
+    expect(await sheet.findByText("Готово: +50 ГБ трафика")).toBeVisible();
+  });
+
+  it("промокод: неверный код — сообщение об ошибке, поле остаётся", async () => {
+    renderWithProviders(<Account />);
+    await userEvent.click(await screen.findByRole("button", { name: /Промокод/ }));
+    const sheet = within(screen.getByRole("dialog"));
+    await userEvent.type(sheet.getByLabelText("Код промокода"), "nosuch");
+    await userEvent.click(sheet.getByRole("button", { name: "Применить" }));
+    expect(
+      await sheet.findByText("Промокод недействителен или закончился."),
+    ).toBeVisible();
+    expect(sheet.getByLabelText("Код промокода")).toHaveValue("nosuch");
+  });
+
+  it("промокод: повторный ввод — «уже использовали»", async () => {
+    renderWithProviders(<Account />);
+    for (let i = 0; i < 2; i++) {
+      await userEvent.click(await screen.findByRole("button", { name: /Промокод/ }));
+      const sheet = within(screen.getByRole("dialog"));
+      await userEvent.clear(sheet.getByLabelText("Код промокода"));
+      await userEvent.type(sheet.getByLabelText("Код промокода"), "welcome7");
+      await userEvent.click(sheet.getByRole("button", { name: "Применить" }));
+      if (i === 0) {
+        await sheet.findByText(/Готово/);
+        await userEvent.keyboard("{Escape}");
+      }
+    }
+    expect(
+      await within(screen.getByRole("dialog")).findByText("Вы уже использовали этот промокод."),
+    ).toBeVisible();
   });
 });

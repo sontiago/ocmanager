@@ -7,6 +7,10 @@ import type {
   IssuedDevice,
   Me,
   Plan,
+  PromoResult,
+  Referral,
+  ReferralTier,
+  RewardEntry,
   Subscription,
 } from "./types";
 
@@ -24,3 +28,7 @@ export const issuedMatches: AssertSame<IssuedDevice, Schemas["IssuedDeviceOut"]>
 export const connectionMatches: AssertSame<ConnectionInfo, Schemas["ConnectionOut"]> = true;
 export const createInputMatches: AssertSame<CreateDeviceInput, Schemas["CreateDeviceIn"]> = true;
 export const checkoutMatches: AssertSame<Checkout, Schemas["CheckoutOut"]> = true;
+export const referralMatches: AssertSame<Referral, Schemas["ReferralOut"]> = true;
+export const tierMatches: AssertSame<ReferralTier, Schemas["TierOut"]> = true;
+export const rewardMatches: AssertSame<RewardEntry, Schemas["RewardOut"]> = true;
+export const promoMatches: AssertSame<PromoResult, Schemas["PromoOut"]> = true;

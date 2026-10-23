@@ -159,3 +159,58 @@ describe("mock/client — соединение", () => {
     expect(getState().devices[0].name).not.toBe("подменено");
   });
 });
+
+describe("реферальная программа и промокоды в моке", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    resetStore("active");
+    setLatency(0);
+  });
+
+  it("getReferral: код, уровни и пустая история у нового клиента", async () => {
+    const ref = await createMockClient().getReferral();
+    expect(ref.code).toMatch(/^[a-z0-9]{8}$/);
+    expect(ref.paying_friends).toBe(0);
+    expect(ref.next_tier_friends).toBe(3);
+    expect(ref.tiers.every((t) => !t.reached)).toBe(true);
+  });
+
+  it("WELCOME7 добавляет 7 дней к подписке", async () => {
+    const api = createMockClient();
+    const before = (await api.getSubscription())!.expires_at!;
+    const result = await api.redeemPromo("welcome7");
+    expect(result).toEqual({ kind: "days", value: 7 });
+    const after = (await api.getSubscription())!.expires_at!;
+    expect(Date.parse(after) - Date.parse(before)).toBe(7 * 86_400_000);
+  });
+
+  it("GB50 добавляет 50 ГБ к лимиту", async () => {
+    const api = createMockClient();
+    const before = (await api.getSubscription())!.traffic_limit_bytes!;
+    expect(await api.redeemPromo("GB50")).toEqual({
+      kind: "traffic",
+      value: 50 * 1024 ** 3,
+    });
+    expect((await api.getSubscription())!.traffic_limit_bytes).toBe(
+      before + 50 * 1024 ** 3,
+    );
+  });
+
+  it("неизвестный код — promo_invalid, повтор — promo_already_used", async () => {
+    const api = createMockClient();
+    await expect(api.redeemPromo("nosuch")).rejects.toMatchObject({
+      code: "promo_invalid",
+    });
+    await api.redeemPromo("WELCOME7");
+    await expect(api.redeemPromo("WELCOME7")).rejects.toMatchObject({
+      code: "promo_already_used",
+    });
+  });
+
+  it("без подписки промокод даёт subscription_inactive", async () => {
+    resetStore("new_user");
+    await expect(createMockClient().redeemPromo("WELCOME7")).rejects.toMatchObject(
+      { code: "subscription_inactive" },
+    );
+  });
+});

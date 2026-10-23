@@ -1,13 +1,19 @@
-import { useState } from "react";
-import { useMe } from "../api/hooks";
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router";
+import { useMe, useRedeemPromo } from "../api/hooks";
+import type { PromoResult } from "../api/types";
+import { ROUTES } from "../app/routes";
 import { useTheme, type ThemeChoice } from "../app/ThemeProvider";
 import { env } from "../env";
 import { useTranslation } from "../i18n/useTranslation";
+import { formatBytes } from "../lib/format";
 import type { MessageKey } from "../i18n/ru";
 import type { Lang } from "../telegram/auth";
 import { openInTelegram } from "../telegram/links";
+import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Cell } from "../ui/Cell";
+import { Note } from "../ui/Note";
 import { Sheet } from "../ui/Sheet";
 
 /** Имена языков — самоназвания: одинаковы в любой локали, в каталог не идут. */
@@ -21,12 +27,69 @@ const THEME_KEYS: Record<ThemeChoice, MessageKey> = {
 
 const THEME_ORDER: ThemeChoice[] = ["system", "light", "dark"];
 
+/** Лист ввода промокода: награда или причина отказа показываются тут же, лист не закрывается. */
+function PromoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t, lang } = useTranslation();
+  const redeem = useRedeemPromo();
+  const [code, setCode] = useState("");
+  const [done, setDone] = useState<PromoResult | null>(null);
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    setDone(null);
+    redeem.mutate(code.trim(), {
+      onSuccess: (result) => {
+        setDone(result);
+        setCode("");
+      },
+    });
+  }
+
+  return (
+    <Sheet open={open} onClose={onClose} title={t("promo.title")}>
+      <form onSubmit={submit} className="space-y-3 px-5 pt-2 pb-3">
+        <input
+          aria-label={t("promo.label")}
+          value={code}
+          placeholder={t("promo.placeholder")}
+          autoCapitalize="characters"
+          autoComplete="off"
+          maxLength={64}
+          onChange={(e) => {
+            setCode(e.target.value);
+            setDone(null);
+            redeem.reset();
+          }}
+          className="w-full rounded-btn bg-fill p-3.5 text-[15px] outline-none"
+        />
+        {redeem.error && (
+          <Note tone="danger" size="lg">
+            {t(redeem.error.messageKey())}
+          </Note>
+        )}
+        {done && (
+          <Note size="lg">
+            {done.kind === "days"
+              ? t("promo.doneDays", { days: done.value })
+              : t("promo.doneTraffic", { traffic: formatBytes(done.value, lang) })}
+          </Note>
+        )}
+        <Button type="submit" loading={redeem.isPending} disabled={code.trim() === ""}>
+          {t("promo.apply")}
+        </Button>
+      </form>
+    </Sheet>
+  );
+}
+
 export function Account() {
   const { t, lang } = useTranslation();
+  const navigate = useNavigate();
   const { choice, setChoice } = useTheme();
   const me = useMe();
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
 
   const supportUrl = `https://t.me/${env.supportHandle.replace(/^@/, "")}`;
 
@@ -52,12 +115,22 @@ export function Account() {
         />
 
         <Cell
+          title={t("account.friends")}
+          chevron
+          onClick={() => void navigate(ROUTES.friends)}
+        />
+
+        <Cell title={t("account.promo")} chevron onClick={() => setPromoOpen(true)} />
+
+        <Cell
           title={t("account.support")}
           value={env.supportHandle}
           chevron
           onClick={() => openInTelegram(supportUrl)}
         />
       </Card>
+
+      <PromoSheet open={promoOpen} onClose={() => setPromoOpen(false)} />
 
       <Sheet
         open={sheetOpen}

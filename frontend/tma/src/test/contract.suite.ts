@@ -59,6 +59,17 @@ export function runContractSuite(
       expect(devices.length).toBeLessThanOrEqual(sub.device_limit);
     });
 
+    it("реферальная программа: код, три уровня, историю и счётчики", async () => {
+      const ref = await (await makeClient()).getReferral();
+      expect(ref.code).toMatch(/^[a-z0-9]{8}$/);
+      expect(ref.tiers.map((t) => t.friends)).toEqual([3, 5, 10]);
+      expect(ref.paying_friends).toBeLessThanOrEqual(ref.invited);
+      for (const t of ref.tiers) {
+        expect(t.reached).toBe(ref.paying_friends >= t.friends);
+      }
+      expect(Array.isArray(ref.history)).toBe(true);
+    });
+
     it("gateway_url содержит server_host", async () => {
       const conn = await (await makeClient()).getConnection();
       expect(conn.gateway_url).toContain(conn.server_host);

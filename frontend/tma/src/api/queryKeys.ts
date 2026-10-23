@@ -4,5 +4,6 @@ export const queryKeys = {
   subscription: ["subscription"] as const,
   devices: ["devices"] as const,
   connection: ["connection"] as const,
+  referral: ["referral"] as const,
   checkout: (planCode: string) => ["checkout", planCode] as const,
 };

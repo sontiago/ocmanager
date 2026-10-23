@@ -10,6 +10,7 @@ export const ROUTES = {
   deviceGuide: (platform: string) => `/devices/guide/${platform}`,
   renew: "/renew",
   account: "/account",
+  friends: "/friends",
   onboarding: "/onboarding",
 } as const;
 
@@ -25,6 +26,7 @@ export const PATHS = {
   deviceGuide: "/devices/guide/:platform",
   renew: "/renew",
   account: "/account",
+  friends: "/friends",
   onboarding: "/onboarding",
 } as const;
 
@@ -56,6 +58,7 @@ export function titleFor(pathname: string): MessageKey | null {
   if (pathname === ROUTES.devices) return "title.devices";
   if (pathname === ROUTES.renew) return "title.renew";
   if (pathname === ROUTES.account) return "title.account";
+  if (pathname === ROUTES.friends) return "title.friends";
   if (pathname === ROUTES.onboarding) return "title.onboarding";
   return null;
 }
@@ -70,5 +73,6 @@ export function backTargetFor(pathname: string): string | null {
   if (pathname === ROUTES.onboarding) return null;
   if (pathname.endsWith("/checkout")) return ROUTES.plans;
   if (pathname.startsWith("/devices/")) return ROUTES.devices;
+  if (pathname === ROUTES.friends) return ROUTES.account;
   return ROUTES.home;
 }
