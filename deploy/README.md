@@ -57,13 +57,13 @@ docker compose logs -f caddy      # ждём «certificate obtained successfully
 2. **Админка** — только через SSH-туннель:
    ```bash
    ssh -L 8080:127.0.0.1:8080 user@сервер
-   # затем в браузере: http://localhost:8080/admin/docs
+   # затем в браузере: http://localhost:8080/
    ```
-   В Swagger: `POST /admin/auth/login` → скопируйте `csrf_token` из ответа → кнопка **Authorize** → вставьте в
-   поле `X-CSRF-Token`. Дальше запросы с записью (POST/PATCH/DELETE) уйдут с заголовком; cookie сессии браузер
-   подставляет сам. Токен — это заголовок, а не поле тела запроса.
+   Войдите логином и паролем админа (создаётся `docker compose run --rm cli admin create`). Документация API
+   осталась на `http://localhost:8080/admin/docs`: там `POST /admin/auth/login` → `csrf_token` из ответа →
+   кнопка **Authorize** → поле `X-CSRF-Token`; cookie сессии браузер подставляет сам.
 3. **Алерты админу.** Напишите боту `/whoami`, получите число — добавьте его в настройку `admin_chat_ids`
-   (`PATCH /admin/settings`, тело `{"admin_chat_ids": [123456789]}` — список чисел).
+   (раздел «Настройки» админки или `PATCH /admin/settings`, тело `{"admin_chat_ids": [123456789]}`).
 4. **Тарифы.** Скрытый тариф `trial` создаёт миграция, он есть сразу. Платные — `docker compose run --rm cli plan --help` или раздел «Тарифы» админки.
 5. **Tribute.** В кабинете автора укажите вебхук `https://<DOMAIN_APP>/webhooks/tribute` и впишите ключ API
    в `OCM_TRIBUTE_API_KEY`; `docker compose up -d` применит.
