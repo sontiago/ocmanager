@@ -116,7 +116,7 @@ def render_env(values: dict[str, str], example: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _write_private(path: Path, text: str) -> None:
+def write_private(path: Path, text: str) -> None:
     """Файл с секретами: права 0600 с момента создания (не chmod после записи) и принудительно
     для уже существующего файла — через дескриптор, чтобы не было окна между созданием и ужатием."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -130,9 +130,9 @@ def write_env(path: Path, text: str) -> None:
     своё место новый встаёт одним `os.replace`: обрыв посередине оставляет старый `.env`."""
     tmp = path.with_name(f"{path.name}.tmp{os.getpid()}")
     try:
-        _write_private(tmp, text)
+        write_private(tmp, text)
         if path.exists():
-            _write_private(path.with_name(f"{path.name}.bak"), path.read_text())
+            write_private(path.with_name(f"{path.name}.bak"), path.read_text())
         os.replace(tmp, path)
     finally:
         tmp.unlink(missing_ok=True)

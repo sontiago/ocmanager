@@ -76,3 +76,16 @@ def test_an_unreachable_telegram_is_told_apart_from_a_wrong_token() -> None:
     with pytest.raises(NetError) as err:
         net.telegram_get_me("123456:abcdefghijklmnopqrstuvwx")
     assert err.value.unreachable is True
+
+
+def test_a_rule_can_be_a_function_with_side_effects(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    target = tmp_path / "made-by-the-command"
+
+    def create(cmd: list[str]) -> Result:
+        target.write_text(cmd[-1])
+        return Result(0, "done")
+
+    fake = FakeRunner()
+    fake.on("make-file", create)
+    assert fake.run(["make-file", "payload"]).stdout == "done"
+    assert target.read_text() == "payload"

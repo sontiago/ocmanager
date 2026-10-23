@@ -6,7 +6,7 @@ import socket
 import subprocess
 import urllib.error
 import urllib.request
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -79,17 +79,21 @@ def _base_env() -> dict[str, str]:
     return dict(os.environ)
 
 
+Outcome = Result | BaseException | Callable[[list[str]], Result]
+
+
 @dataclass
 class FakeRunner:
     """Подмена для тестов: записывает вызовы, отвечает по подстроке команды."""
 
     calls: list[list[str]] = field(default_factory=list)
     inputs: list[str | None] = field(default_factory=list)
-    _rules: list[tuple[str, Result | BaseException]] = field(default_factory=list)
+    _rules: list[tuple[str, Outcome]] = field(default_factory=list)
 
-    def on(self, needle: str, outcome: Result | BaseException) -> None:
-        """Первое правило, чья подстрока входит в команду, выигрывает. Ответ — Result или
-        исключение, которое нужно бросить."""
+    def on(self, needle: str, outcome: Outcome) -> None:
+        """Первое правило, чья подстрока входит в команду, выигрывает. Ответ — Result, исключение,
+        которое нужно бросить, или функция от команды (побочные эффекты, например создание
+        файла, который в жизни создала бы сама команда)."""
         self._rules.append((needle, outcome))
 
     def run(
@@ -104,11 +108,13 @@ class FakeRunner:
         self.calls.append(list(cmd))
         self.inputs.append(input)
         joined = " ".join(cmd)
-        outcome: Result | BaseException = Result(0)
+        outcome: Outcome = Result(0)
         for needle, rule in self._rules:
             if needle in joined:
                 outcome = rule
                 break
+        if callable(outcome):
+            outcome = outcome(list(cmd))
         if isinstance(outcome, BaseException):
             raise outcome
         if check and outcome.code != 0:

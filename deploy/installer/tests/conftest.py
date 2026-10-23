@@ -1,8 +1,15 @@
+import shutil
+from datetime import datetime, timezone
 from pathlib import Path
+from pathlib import Path as _Path
 
 import pytest
 
+from installer.backup import BackupPaths
+from installer.runner import CommandError as _CommandError
 from installer.runner import FakeNet, FakeRunner
+from installer.runner import Result as _Result
+from installer.runner import SubprocessRunner as _SubprocessRunner
 
 
 @pytest.fixture
@@ -72,3 +79,59 @@ class Keyed:
 
     def confirm(self, key, text, *, default=True):  # type: ignore[no-untyped-def]
         return bool(self._value(key, default))
+
+
+NOW = datetime(2026, 10, 23, 3, 30, tzinfo=timezone.utc)
+DUMP_BYTES = b"PGDMP-pretend-custom-format-dump"
+PKI_BYTES = b"pretend-pki-tarball"
+
+
+class Stack(FakeRunner):
+    """Подмена docker/git для бэкапа: «команды» создают файлы, как создали бы настоящие, а
+    openssl настоящий — иначе шифрование не проверить."""
+
+    def __init__(self, paths: "BackupPaths") -> None:
+        super().__init__()
+        self._real = _SubprocessRunner()
+        self.paths = paths
+        self.pki_restored: bytes | None = None
+        self.dump_loaded: bytes | None = None
+        self.on("compose cp postgres:", self._dump_out)
+        self.on("compose cp ", self._dump_in)
+        self.on("alpine tar czf", self._pki_out)
+        self.on("alpine sh -c", self._pki_in)
+        self.on("git rev-parse", _Result(0, "abc1234\n"))
+
+    def run(self, cmd, **kwargs):  # type: ignore[no-untyped-def]
+        if cmd[0] == "openssl":
+            self.calls.append(list(cmd))
+            self.inputs.append(kwargs.get("input"))
+            return self._real.run(cmd, **{k: v for k, v in kwargs.items() if k != "cwd"})
+        return super().run(cmd, **kwargs)
+
+    @staticmethod
+    def _mount_dir(cmd: list[str], target: str) -> _Path:
+        for i, part in enumerate(cmd):
+            if part == "-v" and cmd[i + 1].split(":")[1] == target:
+                return _Path(cmd[i + 1].split(":")[0])
+        raise AssertionError(f"нет монтирования {target} в {cmd}")
+
+    def _dump_out(self, cmd: list[str]) -> _Result:
+        _Path(cmd[-1]).write_bytes(DUMP_BYTES)
+        return _Result(0)
+
+    def _dump_in(self, cmd: list[str]) -> _Result:
+        self.dump_loaded = _Path(cmd[-2]).read_bytes()
+        return _Result(0)
+
+    def _pki_out(self, cmd: list[str]) -> _Result:
+        (self._mount_dir(cmd, "/out") / "pki.tgz").write_bytes(PKI_BYTES)
+        return _Result(0)
+
+    def _pki_in(self, cmd: list[str]) -> _Result:
+        self.pki_restored = (self._mount_dir(cmd, "/in") / "pki.tgz").read_bytes()
+        return _Result(0)
+
+
+requires_openssl = pytest.mark.skipif(shutil.which("openssl") is None, reason="нет openssl")
+_ = (_CommandError,)
