@@ -19,3 +19,12 @@ if (typeof localStorage === "undefined" || typeof localStorage.setItem !== "func
     },
   });
 }
+
+// Recharts измеряет контейнер через ResizeObserver, которого в jsdom нет.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}

@@ -745,6 +745,78 @@ export interface paths {
         patch: operations["patch_settings_admin_settings_patch"];
         trace?: never;
     };
+    "/admin/stats/traffic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Traffic */
+        get: operations["traffic_admin_stats_traffic_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stats/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Revenue */
+        get: operations["revenue_admin_stats_revenue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stats/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Clients */
+        get: operations["clients_admin_stats_clients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stats/economics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Economics
+         * @description MRR — оценка по живым платным подпискам: цена тарифа за 30 суток. Цена берётся из тарифа
+         *     сейчас, а не на момент покупки: снимка цены в подписке нет.
+         */
+        get: operations["economics_admin_stats_economics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -874,10 +946,44 @@ export interface components {
             /** Devices Active */
             devices_active: number;
         };
+        /** ClientsPoint */
+        ClientsPoint: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Count */
+            count: number;
+        };
+        /** ClientsStats */
+        ClientsStats: {
+            /** Series */
+            series: components["schemas"]["ClientsPoint"][];
+            /** Total */
+            total: number;
+            /** New In Period */
+            new_in_period: number;
+            /** Paying In Period */
+            paying_in_period: number;
+        };
         /** CodeBody */
         CodeBody: {
             /** Code */
             code: string;
+        };
+        /** CurrencyTotal */
+        CurrencyTotal: {
+            /** Currency */
+            currency: string;
+            /** Amount */
+            amount: number;
+            /** Count */
+            count: number;
+            /** Refunded Amount */
+            refunded_amount: number;
+            /** Refunded Count */
+            refunded_count: number;
         };
         /** DailyTrafficOut */
         DailyTrafficOut: {
@@ -971,6 +1077,19 @@ export interface components {
             details: {
                 [key: string]: unknown;
             };
+        };
+        /** EconomicsStats */
+        EconomicsStats: {
+            /** Mrr */
+            mrr: {
+                [key: string]: number;
+            };
+            /** Arpu */
+            arpu: {
+                [key: string]: number;
+            };
+            /** Active Paid */
+            active_paid: number;
         };
         /**
          * EnvironmentOut
@@ -1382,6 +1501,25 @@ export interface components {
             /** Error */
             error: string | null;
         };
+        /** RevenuePoint */
+        RevenuePoint: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Amounts */
+            amounts: {
+                [key: string]: number;
+            };
+        };
+        /** RevenueStats */
+        RevenueStats: {
+            /** Series */
+            series: components["schemas"]["RevenuePoint"][];
+            /** Totals */
+            totals: components["schemas"]["CurrencyTotal"][];
+        };
         /** RevokeBody */
         RevokeBody: {
             /** Reason */
@@ -1520,6 +1658,19 @@ export interface components {
             /** Traffic Limit Bytes */
             traffic_limit_bytes: number | null;
         };
+        /** TopClient */
+        TopClient: {
+            /** Client Id */
+            client_id: number;
+            /** Name */
+            name: string;
+            /** Username */
+            username: string | null;
+            /** Bytes In */
+            bytes_in: number;
+            /** Bytes Out */
+            bytes_out: number;
+        };
         /** TotpSetupOut */
         TotpSetupOut: {
             /** Otpauth Uri */
@@ -1543,6 +1694,25 @@ export interface components {
             bytes_in: number;
             /** Bytes Out */
             bytes_out: number;
+        };
+        /** TrafficPoint */
+        TrafficPoint: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Bytes In */
+            bytes_in: number;
+            /** Bytes Out */
+            bytes_out: number;
+        };
+        /** TrafficStats */
+        TrafficStats: {
+            /** Days */
+            days: components["schemas"]["TrafficPoint"][];
+            /** Top Clients */
+            top_clients: components["schemas"]["TopClient"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -2810,6 +2980,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    traffic_admin_stats_traffic_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrafficStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revenue_admin_stats_revenue_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clients_admin_stats_clients_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientsStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    economics_admin_stats_economics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EconomicsStats"];
                 };
             };
         };

@@ -33,6 +33,13 @@ export const queryKeys = {
     sessions: ["node", "sessions"] as const,
   },
   audit: (f: Filters) => ["audit", f] as const,
+  stats: {
+    all: ["stats"] as const,
+    traffic: (days: number) => ["stats", "traffic", days] as const,
+    revenue: (days: number) => ["stats", "revenue", days] as const,
+    clients: (days: number) => ["stats", "clients", days] as const,
+    economics: ["stats", "economics"] as const,
+  },
   settings: ["settings"] as const,
   adminSessions: ["admin-sessions"] as const,
 };

@@ -1,6 +1,7 @@
 import type { RouteObject } from "react-router";
 import { AuditPage } from "../pages/Audit";
 import { ProfilePage } from "../pages/Profile";
+import { StatsPage } from "../pages/Stats";
 import { SettingsPage } from "../pages/Settings";
 import { ClientDetailPage } from "../pages/ClientDetail";
 import { ClientsPage } from "../pages/Clients";
@@ -25,6 +26,7 @@ export const routes: RouteObject[] = [
           { path: "/", element: <OverviewPage /> },
           { path: "/clients", element: <ClientsPage /> },
           { path: "/clients/:id", element: <ClientDetailPage /> },
+          { path: "/stats", element: <StatsPage /> },
           { path: "/subscriptions", element: <SubscriptionsPage /> },
           { path: "/plans", element: <PlansPage /> },
           { path: "/payments", element: <PaymentsPage /> },

@@ -6,6 +6,7 @@ import { Icon, type IconName } from "./Icon";
 
 const NAV: readonly (readonly [string, string, IconName])[] = [
   ["/", "nav.overview", "home"],
+  ["/stats", "nav.stats", "activity"],
   ["/clients", "nav.clients", "users"],
   ["/subscriptions", "nav.subscriptions", "refresh"],
   ["/plans", "nav.plans", "tag"],
