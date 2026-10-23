@@ -132,3 +132,41 @@ class CheckoutIntent(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     __table_args__ = (Index("ix_checkout_intents_client_created", "client_id", "created_at"),)
+
+
+class PromoCode(Base, TimestampMixin):
+    """Промокод: бонусные дни или трафик. Код хранится в нижнем регистре."""
+
+    __tablename__ = "promo_codes"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    code: Mapped[str] = mapped_column(unique=True)
+    kind: Mapped[str]  # days | traffic
+    value: Mapped[int] = mapped_column(BigInteger)  # дни или байты
+    max_uses: Mapped[int | None]
+    uses: Mapped[int] = mapped_column(server_default=text("0"))
+    expires_at: Mapped[datetime | None]
+    is_active: Mapped[bool] = mapped_column(server_default=true())
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('days', 'traffic')", name="kind"),
+        CheckConstraint("value > 0", name="value"),
+        CheckConstraint("max_uses IS NULL OR max_uses > 0", name="max_uses"),
+        CheckConstraint("uses >= 0", name="uses"),
+    )
+
+
+class PromoRedemption(Base):
+    __tablename__ = "promo_redemptions"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    promo_code_id: Mapped[int] = mapped_column(ForeignKey("promo_codes.id"))
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    kind: Mapped[str]
+    value: Mapped[int] = mapped_column(BigInteger)
+    redeemed_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("promo_code_id", "client_id", name="uq_promo_redemptions_code_client"),
+        Index("ix_promo_redemptions_client", "client_id"),
+    )

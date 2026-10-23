@@ -7,11 +7,13 @@ from sqlalchemy import (
     Identity,
     Index,
     false,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ocmanager.core.db import Base, TimestampMixin
+from ocmanager.subscriptions.referral import new_referral_code
 
 
 class Client(Base, TimestampMixin):
@@ -27,8 +29,57 @@ class Client(Base, TimestampMixin):
     lang: Mapped[str]
     trial_used_at: Mapped[datetime | None]
     is_blocked: Mapped[bool] = mapped_column(server_default=false())
+    # Реферальная программа: свой код, кто пригласил, постоянные бонусы уровней (spec 2026-10-23).
+    referral_code: Mapped[str] = mapped_column(unique=True, default=new_referral_code)
+    referred_by: Mapped[int | None] = mapped_column(ForeignKey("clients.id"))
+    bonus_devices: Mapped[int] = mapped_column(server_default=text("0"))
+    bonus_traffic_bytes: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
 
-    __table_args__ = (CheckConstraint("lang IN ('ru', 'en')", name="lang"),)
+    __table_args__ = (
+        CheckConstraint("lang IN ('ru', 'en')", name="lang"),
+        CheckConstraint("bonus_devices >= 0 AND bonus_traffic_bytes >= 0", name="bonuses"),
+        Index("ix_clients_referred_by", "referred_by"),
+    )
+
+
+class ReferralReward(Base):
+    """Журнал наград. Базовая награда — одна на платёж приглашённого, уровень — один на
+    пригласившего; уникальность обеспечивают частичные индексы, а не код."""
+
+    __tablename__ = "referral_rewards"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    inviter_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    invitee_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"))
+    kind: Mapped[str]  # base | tier
+    tier: Mapped[int | None]  # для tier: порог числа друзей (3, 5, 10)
+    days: Mapped[int] = mapped_column(server_default=text("0"))  # пригласившему
+    invitee_days: Mapped[int] = mapped_column(server_default=text("0"))  # приглашённому (base)
+    devices: Mapped[int] = mapped_column(server_default=text("0"))
+    traffic_bytes: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
+    status: Mapped[str]  # applied | pending | capped
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    applied_at: Mapped[datetime | None]
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('base', 'tier')", name="kind"),
+        CheckConstraint("status IN ('applied', 'pending', 'capped')", name="status"),
+        Index(
+            "ux_referral_base_payment",
+            "payment_id",
+            unique=True,
+            postgresql_where=text("kind = 'base'"),
+        ),
+        Index(
+            "ux_referral_tier",
+            "inviter_id",
+            "tier",
+            unique=True,
+            postgresql_where=text("kind = 'tier'"),
+        ),
+        Index("ix_referral_rewards_inviter", "inviter_id", "created_at"),
+    )
 
 
 class Subscription(Base, TimestampMixin):
