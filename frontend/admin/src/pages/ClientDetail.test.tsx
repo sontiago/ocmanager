@@ -1,0 +1,166 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderRoutes } from "../test/utils";
+import { ClientDetailPage } from "./ClientDetail";
+
+const DEVICE = {
+  id: 11,
+  client_id: 5,
+  seq: 1,
+  name: "iPhone",
+  platform: "ios",
+  username: "c5-d1",
+  issued_at: "2026-10-01T00:00:00Z",
+  cert_expires_at: "2027-10-01T00:00:00Z",
+  revoked_at: null,
+  revocation_reason: null,
+  last_seen_at: null,
+  is_online: null,
+  traffic_bytes: 0,
+};
+
+function card(over: Record<string, unknown> = {}) {
+  return {
+    client: {
+      id: 5,
+      telegram_id: 777,
+      username: "bob",
+      first_name: "Bob",
+      lang: "ru",
+      is_blocked: false,
+      trial_used_at: null,
+      created_at: "2026-10-01T00:00:00Z",
+    },
+    subscription: {
+      status: "active",
+      plan_code: "pro",
+      plan_name_i18n: { ru: "Про", en: "Pro" },
+      plan_is_trial: false,
+      started_at: "2026-10-01T00:00:00Z",
+      expires_at: "2026-11-01T00:00:00Z",
+      auto_renew: true,
+      device_limit: 1,
+      devices_active: 2,
+      over_device_limit: true,
+      traffic_limit_bytes: null,
+      traffic_used_bytes: 0,
+      traffic_period_start: "2026-10-01T00:00:00Z",
+      provider: "tribute",
+    },
+    devices: [DEVICE],
+    traffic_daily: [],
+    sessions: [],
+    payments: [],
+    ...over,
+  };
+}
+
+const PLANS = [
+  { id: 1, code: "pro", name_i18n: { ru: "Про", en: "Pro" }, is_active: true, is_trial: false },
+];
+
+function page(over: Record<string, unknown> = {}, extra: Record<string, never | object> = {}) {
+  return renderRoutes([{ path: "/clients/:id", element: <ClientDetailPage /> }], {
+    route: "/clients/5",
+    handlers: {
+      "GET /admin/clients/5": card(over),
+      "GET /admin/plans": PLANS,
+      ...extra,
+    },
+  });
+}
+
+const posts = (calls: { method: string; url: URL; body: unknown }[], path: string) =>
+  calls.filter((c) => c.method === "POST" && c.url.pathname === path);
+
+test("over_device_limit_is_flagged", async () => {
+  page();
+  expect(await screen.findByText(/превышен лимит устройств/i)).toBeInTheDocument();
+});
+
+test("block_requires_confirmation", async () => {
+  const user = userEvent.setup();
+  const { calls } = page({}, { "POST /admin/clients/5/block": { changed: true } });
+  await user.click(await screen.findByRole("button", { name: "Заблокировать" }));
+  expect(posts(calls, "/admin/clients/5/block")).toHaveLength(0);
+  const dialog = screen.getByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Заблокировать" }));
+  await waitFor(() => expect(posts(calls, "/admin/clients/5/block")).toHaveLength(1));
+});
+
+test("unchanged_action_shows_no_change_notice", async () => {
+  const user = userEvent.setup();
+  page(
+    { client: { ...card().client, is_blocked: true } },
+    { "POST /admin/clients/5/unblock": { changed: false } },
+  );
+  await user.click(await screen.findByRole("button", { name: "Разблокировать" }));
+  expect(await screen.findByText("Изменений нет")).toBeInTheDocument();
+});
+
+test("grant_sends_plan_code_and_days", async () => {
+  const user = userEvent.setup();
+  const { calls } = page({}, { "POST /admin/clients/5/grant": { changed: true } });
+  await user.click(await screen.findByRole("button", { name: "Выдать подписку" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.selectOptions(await within(dialog).findByLabelText("Тариф"), "pro");
+  await user.type(within(dialog).getByLabelText("Дней (необязательно)"), "30");
+  await user.click(within(dialog).getByRole("button", { name: "Выдать" }));
+  await waitFor(() => expect(posts(calls, "/admin/clients/5/grant")).toHaveLength(1));
+  expect(posts(calls, "/admin/clients/5/grant")[0].body).toEqual({ plan_code: "pro", days: 30 });
+});
+
+test("grant_without_days_omits_days", async () => {
+  const user = userEvent.setup();
+  const { calls } = page({}, { "POST /admin/clients/5/grant": { changed: true } });
+  await user.click(await screen.findByRole("button", { name: "Выдать подписку" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.selectOptions(await within(dialog).findByLabelText("Тариф"), "pro");
+  await user.click(within(dialog).getByRole("button", { name: "Выдать" }));
+  await waitFor(() => expect(posts(calls, "/admin/clients/5/grant")).toHaveLength(1));
+  expect(posts(calls, "/admin/clients/5/grant")[0].body).toEqual({ plan_code: "pro" });
+});
+
+test("extend_sends_days", async () => {
+  const user = userEvent.setup();
+  const { calls } = page({}, { "POST /admin/clients/5/extend": { changed: true } });
+  await user.click(await screen.findByRole("button", { name: "Продлить" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.type(within(dialog).getByLabelText("Дней"), "7");
+  await user.click(within(dialog).getByRole("button", { name: "Продлить" }));
+  await waitFor(() => expect(posts(calls, "/admin/clients/5/extend")).toHaveLength(1));
+  expect(posts(calls, "/admin/clients/5/extend")[0].body).toEqual({ days: 7 });
+});
+
+test("issue_device_shows_password_once_and_clears_on_close", async () => {
+  const user = userEvent.setup();
+  const { queryClient, calls } = page(
+    {},
+    {
+      "POST /admin/clients/5/devices": {
+        device: DEVICE,
+        p12_password: "s3cret-pass",
+        download_path: "/admin/downloads/tok",
+        download_expires_at: "2026-10-23T12:00:00Z",
+      },
+    },
+  );
+  await user.click(await screen.findByRole("button", { name: "Выпустить устройство" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.type(within(dialog).getByLabelText("Название"), "Pixel");
+  await user.selectOptions(within(dialog).getByLabelText("Платформа"), "android");
+  await user.click(within(dialog).getByRole("button", { name: "Выпустить" }));
+  expect(await screen.findByText("s3cret-pass")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Скачать/ })).toHaveAttribute("href", "/admin/downloads/tok");
+  expect(posts(calls, "/admin/clients/5/devices")[0].body).toEqual({ name: "Pixel", platform: "android" });
+
+  await user.click(screen.getByRole("button", { name: "Закрыть" }));
+  expect(screen.queryByText("s3cret-pass")).toBeNull();
+  await waitFor(() => {
+    const held = queryClient
+      .getMutationCache()
+      .getAll()
+      .filter((m) => JSON.stringify(m.state.data ?? "").includes("s3cret-pass"));
+    expect(held).toHaveLength(0);
+  });
+});
