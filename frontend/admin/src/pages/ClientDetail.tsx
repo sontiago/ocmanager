@@ -5,6 +5,7 @@ import {
   useClient,
   useExtend,
   useGrant,
+  useResetTraffic,
   useUnblockClient,
 } from "../api/hooks/clients";
 import { usePlans } from "../api/hooks/plans";
@@ -21,7 +22,24 @@ import { Notice } from "../ui/Notice";
 import { StatusBadge } from "../ui/StatusBadge";
 import { IssueDeviceDialog } from "./IssueDeviceDialog";
 
-type Dialog = "block" | "grant" | "extend" | "issue" | null;
+type Dialog = "block" | "grant" | "extend" | "issue" | "reset" | null;
+
+function QuotaBar({ used, limit, label }: { used: number; limit: number; label: string }) {
+  const percent = limit > 0 ? Math.min(100, Math.floor((used / limit) * 100)) : 100;
+  const color = percent >= 100 ? "bg-danger" : percent >= 80 ? "bg-[#ffc107]" : "bg-ok";
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+      className="mt-1 h-2 w-full overflow-hidden rounded-sm bg-black/10"
+    >
+      <div className={`h-full ${color}`} style={{ width: `${percent}%` }} />
+    </div>
+  );
+}
 
 function GrantForm({ clientId, onDone }: { clientId: number; onDone(changed: boolean): void }) {
   const { t, lang } = useT();
@@ -91,6 +109,7 @@ export function ClientDetailPage() {
   const query = useClient(id);
   const block = useBlockClient(id);
   const unblock = useUnblockClient(id);
+  const resetTraffic = useResetTraffic(id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -117,6 +136,11 @@ export function ClientDetailPage() {
           <button className={buttonClass} onClick={() => setDialog("extend")} disabled={!sub}>
             {t("client.extend")}
           </button>
+          {query.data.subscription && (
+            <button className={buttonClass} onClick={() => setDialog("reset")}>
+              {t("client.resetTraffic")}
+            </button>
+          )}
           <button className={buttonClass} onClick={() => setDialog("issue")}>
             {t("device.issue")}
           </button>
@@ -137,9 +161,13 @@ export function ClientDetailPage() {
           )}
         </div>
       </div>
+      {sub?.status === "exhausted" && <Notice tone="danger" text={t("client.exhausted")} />}
       <Notice text={notice} />
-      {(unblock.error || block.error) && (
-        <Notice tone="danger" text={errorText(unblock.error ?? block.error, t("common.error"))} />
+      {(unblock.error || block.error || resetTraffic.error) && (
+        <Notice
+          tone="danger"
+          text={errorText(unblock.error ?? block.error ?? resetTraffic.error, t("common.error"))}
+        />
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -175,6 +203,9 @@ export function ClientDetailPage() {
               <dd>
                 {formatBytes(sub.traffic_used_bytes)}
                 {sub.traffic_limit_bytes !== null && ` / ${formatBytes(sub.traffic_limit_bytes)}`}
+                {sub.traffic_limit_bytes !== null && (
+                  <QuotaBar used={sub.traffic_used_bytes} limit={sub.traffic_limit_bytes} label={t("client.trafficPeriod")} />
+                )}
               </dd>
             </dl>
           )}
@@ -252,6 +283,20 @@ export function ClientDetailPage() {
         onCancel={() => setDialog(null)}
         onConfirm={() =>
           block.mutate(undefined, {
+            onSuccess: (r) => done(r.changed),
+            onError: () => setDialog(null),
+          })
+        }
+      />
+      <ConfirmDialog
+        open={dialog === "reset"}
+        title={t("client.resetTrafficTitle")}
+        body={t("client.resetTrafficBody")}
+        confirmLabel={t("client.resetConfirm")}
+        pending={resetTraffic.isPending}
+        onCancel={() => setDialog(null)}
+        onConfirm={() =>
+          resetTraffic.mutate(undefined, {
             onSuccess: (r) => done(r.changed),
             onError: () => setDialog(null),
           })

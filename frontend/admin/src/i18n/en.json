@@ -235,5 +235,11 @@
   "stats.revenue": "Revenue",
   "stats.payments": "payments: {n}",
   "stats.refunds": "refunds",
-  "export.csv": "Export CSV"
+  "export.csv": "Export CSV",
+  "client.resetTraffic": "Reset traffic",
+  "client.resetTrafficTitle": "Reset traffic?",
+  "client.resetTrafficBody": "The period counter drops to zero and an exhausted subscription gets access back. The subscription term does not change.",
+  "client.resetConfirm": "Reset",
+  "client.exhausted": "Traffic quota used up: access is closed",
+  "client.trafficPeriod": "Period traffic"
 }

@@ -37,6 +37,9 @@ export const useBlockClient = (id: number) =>
 export const useUnblockClient = (id: number) =>
   useApiMutation<void, S<"ActionOut">>((c) => c.post(`/clients/${id}/unblock`), refresh);
 
+export const useResetTraffic = (id: number) =>
+  useApiMutation<void, S<"ActionOut">>((c) => c.post(`/clients/${id}/reset-traffic`), refresh);
+
 export const useGrant = (id: number) =>
   useApiMutation<{ plan_code: string; days?: number }, S<"ActionOut">>(
     (c, body) => c.post(`/clients/${id}/grant`, body),

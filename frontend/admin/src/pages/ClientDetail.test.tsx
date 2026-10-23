@@ -192,3 +192,51 @@ test("issue_dialog_cannot_be_closed_while_request_is_pending", async () => {
   expect(screen.getByRole("dialog")).toBeInTheDocument();
   release();
 });
+
+function withSub(over: Record<string, unknown>) {
+  return { subscription: { ...(card().subscription as object), ...over } };
+}
+
+test("quota_progress_shows_used_share_of_the_limit", async () => {
+  page(withSub({ traffic_limit_bytes: 1000, traffic_used_bytes: 250 }));
+  const bar = await screen.findByRole("progressbar", { name: "Трафик периода" });
+  expect(bar).toHaveAttribute("aria-valuenow", "25");
+});
+
+test("quota_progress_is_capped_at_100", async () => {
+  page(withSub({ traffic_limit_bytes: 1000, traffic_used_bytes: 5000 }));
+  expect(await screen.findByRole("progressbar", { name: "Трафик периода" })).toHaveAttribute(
+    "aria-valuenow",
+    "100",
+  );
+});
+
+test("unlimited_plan_has_no_progress_bar", async () => {
+  page(withSub({ traffic_limit_bytes: null, traffic_used_bytes: 5000 }));
+  await screen.findByText("Профиль");
+  expect(screen.queryByRole("progressbar")).toBeNull();
+});
+
+test("exhausted_subscription_is_called_out", async () => {
+  page(withSub({ status: "exhausted", traffic_limit_bytes: 1000, traffic_used_bytes: 1000 }));
+  expect(await screen.findByText("Квота трафика исчерпана: доступ закрыт")).toBeInTheDocument();
+});
+
+test("reset_traffic_asks_confirmation_then_posts", async () => {
+  const user = userEvent.setup();
+  const { calls } = page(
+    withSub({ status: "exhausted", traffic_limit_bytes: 1000, traffic_used_bytes: 1000 }),
+    { "POST /admin/clients/5/reset-traffic": { changed: true } },
+  );
+  await user.click(await screen.findByRole("button", { name: "Сбросить трафик" }));
+  expect(posts(calls, "/admin/clients/5/reset-traffic")).toHaveLength(0);
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Сбросить" }));
+  await waitFor(() => expect(posts(calls, "/admin/clients/5/reset-traffic")).toHaveLength(1));
+  expect(await screen.findByText("Готово")).toBeInTheDocument();
+});
+
+test("reset_traffic_is_hidden_without_a_subscription", async () => {
+  page({ subscription: null });
+  await screen.findByText("Профиль");
+  expect(screen.queryByRole("button", { name: "Сбросить трафик" })).toBeNull();
+});

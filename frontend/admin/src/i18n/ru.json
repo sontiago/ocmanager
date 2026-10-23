@@ -235,5 +235,11 @@
   "stats.revenue": "Выручка",
   "stats.payments": "платежей: {n}",
   "stats.refunds": "возвраты",
-  "export.csv": "Экспорт CSV"
+  "export.csv": "Экспорт CSV",
+  "client.resetTraffic": "Сбросить трафик",
+  "client.resetTrafficTitle": "Сбросить трафик?",
+  "client.resetTrafficBody": "Счётчик периода обнулится, исчерпанная подписка снова получит доступ. Срок подписки не меняется.",
+  "client.resetConfirm": "Сбросить",
+  "client.exhausted": "Квота трафика исчерпана: доступ закрыт",
+  "client.trafficPeriod": "Трафик периода"
 }
