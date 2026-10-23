@@ -205,6 +205,9 @@ export const en: Record<MessageKey, string> = {
   "account.support": "Support",
   "account.friends": "Friends & bonuses",
   "account.promo": "Promo code",
+  "account.badges": "Badges",
+  "badge.friend": "Friend of the network",
+  "badge.ambassador": "Ambassador",
 
   // Promo code
   "promo.title": "Promo code",

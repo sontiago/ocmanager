@@ -2,6 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../api/errors";
+import { createMockClient } from "../api/mock/client";
 import { resetStore, setLatency } from "../api/mock/store";
 import { renderWithProviders } from "../test/renderWithProviders";
 import { Account } from "./Account";
@@ -165,5 +167,41 @@ describe("экран аккаунта", () => {
     expect(
       await within(screen.getByRole("dialog")).findByText("Вы уже использовали этот промокод."),
     ).toBeVisible();
+  });
+
+  it("значки реферальной программы показаны в аккаунте", async () => {
+    const base = createMockClient();
+    renderWithProviders(<Account />, {
+      client: {
+        ...base,
+        getReferral: async () => ({
+          ...(await base.getReferral()),
+          badges: ["friend", "ambassador"],
+        }),
+      },
+    });
+    const row = await screen.findByText("Значки");
+    expect(row).toBeVisible();
+    expect(screen.getByText("Друг сети · Амбассадор")).toBeVisible();
+  });
+
+  it("без значков строки «Значки» нет", async () => {
+    renderWithProviders(<Account />);
+    await screen.findByText("99281932");
+    expect(screen.queryByText("Значки")).toBeNull();
+  });
+
+  it("если реферальные данные не загрузились, аккаунт всё равно работает", async () => {
+    const base = createMockClient();
+    renderWithProviders(<Account />, {
+      client: {
+        ...base,
+        getReferral: async () => {
+          throw new ApiError("internal", 500);
+        },
+      },
+    });
+    expect(await screen.findByText("99281932")).toBeVisible();
+    expect(screen.queryByText("Значки")).toBeNull();
   });
 });

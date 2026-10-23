@@ -217,6 +217,9 @@ export const ru = {
   "account.support": "Поддержка",
   "account.friends": "Друзья и бонусы",
   "account.promo": "Промокод",
+  "account.badges": "Значки",
+  "badge.friend": "Друг сети",
+  "badge.ambassador": "Амбассадор",
 
   // Промокод
   "promo.title": "Промокод",

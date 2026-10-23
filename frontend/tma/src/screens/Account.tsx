@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
-import { useMe, useRedeemPromo } from "../api/hooks";
+import { useMe, useReferral, useRedeemPromo } from "../api/hooks";
 import type { PromoResult } from "../api/types";
 import { ROUTES } from "../app/routes";
 import { useTheme, type ThemeChoice } from "../app/ThemeProvider";
@@ -87,6 +87,9 @@ export function Account() {
   const navigate = useNavigate();
   const { choice, setChoice } = useTheme();
   const me = useMe();
+  // Значки — украшение: не загрузились, строки просто нет, аккаунт не ждёт и не падает.
+  const referral = useReferral();
+  const badges = referral.data?.badges ?? [];
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
@@ -113,6 +116,13 @@ export function Account() {
           chevron
           onClick={() => setSheetOpen(true)}
         />
+
+        {badges.length > 0 && (
+          <Cell
+            title={t("account.badges")}
+            value={badges.map((b) => t(`badge.${b}`)).join(" · ")}
+          />
+        )}
 
         <Cell
           title={t("account.friends")}
