@@ -69,6 +69,20 @@ async def publish_if_changed(driver: NodeDriver, desired: set[str]) -> Allowlist
     )
 
 
+async def publish_routes_if_changed(
+    driver: NodeDriver, desired: list[str]
+) -> tuple[list[str], list[str]] | None:
+    """Пишет default-user.conf при расхождении. None — файл уже верный; иначе (было, стало).
+    Файл без маршрутов, которого ещё нет, создаётся молча: ocserv ждёт его при каждом входе."""
+    current = await driver.read_routes()
+    if current is not None and sorted(current) == sorted(desired):
+        return None
+    await driver.publish_routes(desired)
+    if current is None and not desired:
+        return None
+    return current or [], desired
+
+
 async def kick_rogue_sessions(driver: NodeDriver, desired: set[str]) -> frozenset[str]:
     """Разрывает сессии тех, кого нет в desired: только что лишённых доступа и «чужих»."""
     rogue = {s.username for s in await driver.list_sessions()} - desired

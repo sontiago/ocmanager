@@ -42,6 +42,10 @@ done
 # Пустой allowed.list = всем отказ: безопасный дефолт.
 [ -e "$STATE_DIR/allowed.list" ] || : >"$STATE_DIR/allowed.list"
 
+# Маршруты мимо VPN: файл должен существовать, иначе ocserv ругается при каждом входе.
+# Каталог может быть смонтирован только на чтение — тогда файл создаст панель.
+[ -e "$STATE_DIR/default-user.conf" ] || : >"$STATE_DIR/default-user.conf" 2>/dev/null || true
+
 # Секреты для хуков — в файлах (решение №12): окружение контейнера
 # до скриптов ocserv не доходит.
 mkdir -p "$RUNTIME_DIR"
