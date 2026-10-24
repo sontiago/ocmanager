@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from installer import backup
+from installer import backup, systemd
 from installer.backup import BackupError, BackupPaths
 from installer.config import validate_admin_password, write_private
 from installer.prompts import Prompter, TerminalPrompter
@@ -21,6 +21,7 @@ USAGE = """Использование: ocm <команда>
 
   status                         проверка состояния (doctor)
   logs [сервис] [-f]             журналы сервисов
+  backup-enable                  включить ежедневные резервные копии
   backup                         резервная копия сейчас
   restore <файл> [--with-env] [--no-emergency]
                                  восстановить базу и CA из копии
@@ -41,6 +42,7 @@ class Ocm:
     now: Callable[[], datetime]
     out: Callable[[str], None]
     exec_fn: ExecFn
+    unit_dir: Path = systemd.UNIT_DIR
 
     @property
     def root(self) -> Path:
@@ -93,9 +95,40 @@ class Ocm:
         except CommandError as exc:
             self.out(f"Алерт админу не поставлен: {exc}")
 
+    def backups_enabled(self) -> bool:
+        return self.paths.key_file.exists()
+
+    def backup_enable(self) -> int:
+        existed = self.backups_enabled()
+        try:
+            key = backup.ensure_key(self.paths.key_file)
+            systemd.install(self.runner, self.root, unit_dir=self.unit_dir, ocm=systemd.OCM_LINK)
+        except (BackupError, CommandError, OSError) as exc:
+            self.out(f"Ошибка: {exc}")
+            return 1
+        state = State(self.deploy / ".install-state")
+        remote = self.prompter.ask(
+            "backup_remote",
+            "Куда дополнительно копировать: пользователь@сервер:/путь или каталог. Enter — никуда",
+            default=state.answers().get("backup_remote", ""),
+            validate=backup.validate_remote,
+        )
+        state.remember(backup_enabled="yes", backup_remote=remote)
+        if not existed:
+            self.out(
+                f"КЛЮЧ ШИФРОВАНИЯ КОПИЙ (показан один раз): {key}\n"
+                f"Он лежит в {self.paths.key_file}. Сохраните его отдельно от сервера: "
+                "без него копии не расшифровать."
+            )
+        self.out("Ежедневные копии включены (03:30). Первая копия сейчас: ocm backup")
+        return 0
+
     def make_backup(self) -> Path | None:
         """Копия + уборка + метка + (необязательно) вторая копия на другой сервер. При любой
         ошибке — алерт админу и None; старые копии не удаляются."""
+        if not self.backups_enabled():
+            self.out("Резервные копии не включены. Включить: sudo ocm backup-enable")
+            return None
         try:
             path = backup.create(self.paths, self.runner, self.now())
             backup.record_success(self.paths.backup_dir, self.now())
@@ -177,12 +210,23 @@ class Ocm:
         except CommandError as exc:
             self.out(f"Не удалось проверить репозиторий: {exc}")
             return 1
-        saved = self.make_backup()
-        if saved is None:
-            self.out("Копия не создана — обновление остановлено, ничего не изменено.")
+        saved: Path | None = None
+        if self.backups_enabled():
+            saved = self.make_backup()
+            if saved is None:
+                self.out("Копия не создана — обновление остановлено, ничего не изменено.")
+                return 1
+        elif not self.prompter.confirm(
+            "update_without_backup",
+            "Резервные копии не включены: откатить базу после обновления будет нечем. "
+            "Обновить без копии?",
+            default=False,
+        ):
+            self.out("Отменено. Включить копии: sudo ocm backup-enable")
             return 1
         write_private(
-            self.previous, json.dumps({"rev": head, "branch": branch, "backup": str(saved)})
+            self.previous,
+            json.dumps({"rev": head, "branch": branch, "backup": str(saved) if saved else ""}),
         )
         try:
             self.git("pull", "--ff-only")
@@ -202,7 +246,8 @@ class Ocm:
     def rollback(self) -> int:
         try:
             record = json.loads(self.previous.read_text())
-            rev, branch, saved = record["rev"], record["branch"], Path(record["backup"])
+            rev, branch = record["rev"], record["branch"]
+            saved = Path(record["backup"]) if record["backup"] else None
         except (OSError, ValueError, KeyError):
             self.out(
                 "Нет записи о предыдущей версии: откатывать нечего "
@@ -222,7 +267,7 @@ class Ocm:
             self.out(f"Ошибка отката: {exc}")
             return 1
         self.out(f"Код возвращён на {rev[:12]}. Чтобы потом снова обновляться: git switch {branch}")
-        if self.prompter.confirm(
+        if saved is not None and self.prompter.confirm(
             "rollback_restore_db",
             f"Восстановить и данные из копии до обновления ({saved.name})? Изменения после "
             "обновления будут потеряны.",
@@ -275,6 +320,7 @@ def main(
     now: Callable[[], datetime] | None = None,
     out: Callable[[str], None] = print,
     exec_fn: ExecFn | None = None,
+    unit_dir: Path = systemd.UNIT_DIR,
 ) -> int:
     root = Path(__file__).resolve().parents[2]
     ocm = Ocm(
@@ -283,6 +329,7 @@ def main(
         paths=paths or BackupPaths(root=root),
         now=now or datetime.now().astimezone,
         out=out,
+        unit_dir=unit_dir,
         exec_fn=exec_fn or (lambda cmd: os.execvp(cmd[0], list(cmd))),  # noqa: S606
     )
     command, args = (argv[0], list(argv[1:])) if argv else ("", [])
@@ -290,6 +337,8 @@ def main(
         return ocm.status()
     if command == "logs":
         return ocm.logs(args)
+    if command == "backup-enable":
+        return ocm.backup_enable()
     if command == "backup":
         return ocm.backup()
     if command == "restore":

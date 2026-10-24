@@ -320,7 +320,7 @@ def test_existing_env_is_left_alone_when_reuse_is_chosen(root: Path) -> None:
 
 def test_backup_step_creates_the_key_enables_the_timer_and_notes_the_key(root: Path) -> None:
     runner = FakeRunner()
-    ctx = make_ctx(root, runner)
+    ctx = make_ctx(root, runner, want_backup=True)
     steps._backup(ctx)
     assert ctx.key_file.exists()
     assert any("enable --now ocm-backup.timer" in c for c in runner.joined())
@@ -335,3 +335,13 @@ def test_ocm_step_links_the_wrapper(root: Path) -> None:
     ctx = make_ctx(root, runner)
     steps._ocm(ctx)
     assert runner.joined() == [f"ln -sfn {root}/deploy/ocm {root}/ocm-link"]
+
+
+def test_backup_step_does_nothing_unless_the_buyer_asked_for_it(root: Path) -> None:
+    runner = FakeRunner()
+    ctx = make_ctx(root, runner)
+    assert steps._backup(ctx) is False  # шаг не отмечается выполненным: включить можно позже
+    assert not ctx.key_file.exists()
+    assert not (ctx.unit_dir / "ocm-backup.timer").exists()
+    assert runner.calls == []
+    assert any("ocm backup-enable" in n for n in ctx.notes)

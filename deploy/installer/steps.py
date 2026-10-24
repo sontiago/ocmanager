@@ -86,6 +86,7 @@ class Context:
     dry_run: bool = False
     want_swap: bool = False
     want_docker: bool = False
+    want_backup: bool = False
     reuse_env: bool = False
     swapfile: Path = Path("/swapfile")
     fstab: Path = Path("/etc/fstab")
@@ -237,6 +238,12 @@ def _doctor(ctx: Context) -> bool:
 def _backup(ctx: Context) -> bool:
     """Ключ шифрования копий и ежедневный таймер. Первую копию снимаем сразу: проверка, что
     всё работает, и точка возврата до первой настройки покупателем."""
+    if not ctx.want_backup:
+        ctx.notes.append(
+            "Резервные копии выключены. Включить: sudo ocm backup-enable. "
+            "Без копий потеря сервера означает потерю базы и CA (ключей всех клиентов)."
+        )
+        return False
     existed = ctx.key_file.exists()
     key = backup.ensure_key(ctx.key_file)
     systemd.install(ctx.runner, ctx.root, unit_dir=ctx.unit_dir, ocm=ctx.ocm_link)
