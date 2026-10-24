@@ -54,6 +54,15 @@ class NodeDriver(Protocol):
         """None — файла нет."""
         ...
 
+    async def publish_routes(self, routes: Iterable[str]) -> None:
+        """Атомарно заменяет default-user.conf (адреса мимо VPN). ValueError на невалидном
+        адресе — файл не меняется. Действует на новые подключения, reload не нужен."""
+        ...
+
+    async def read_routes(self) -> list[str] | None:
+        """Подсети из файла, отсортированные. None — файла нет."""
+        ...
+
     async def publish_crl(self, pem: bytes) -> None:
         """Атомарно заменяет crl.pem. ValueError, если это не PEM-CRL.
         ocserv 1.3 применяет новый CRL к новым подключениям без reload."""

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ocmanager.audit.models import AuditLog
+from ocmanager.core import settings_store
 from ocmanager.core.config import Settings
 from ocmanager.flows import reconcile
 from ocmanager.nodes import registry
@@ -34,7 +35,7 @@ def healthy(test_ca: CertificateAuthority) -> FakeNodeDriver:
 
 
 def writes(fake: FakeNodeDriver) -> list[str]:
-    changing = {"publish_allowlist", "publish_crl", "reload", "disconnect_user"}
+    changing = {"publish_allowlist", "publish_routes", "publish_crl", "reload", "disconnect_user"}
     return [name for name, _ in fake.calls if name in changing]
 
 
@@ -68,6 +69,26 @@ async def test_clean_node_means_no_drift_and_no_writes(
     report = await run(session, node, healthy, test_ca)
     assert (report.drifts, report.error) == ((), None)
     assert writes(healthy) == []
+
+
+async def test_routes_missing_on_the_node_are_published(
+    session: AsyncSession, node: Node, healthy: FakeNodeDriver, test_ca: CertificateAuthority
+) -> None:
+    await settings_store.update(session, {"bypass_routes": ["85.142.247.47"]})
+    healthy.routes = []
+    report = await run(session, node, healthy, test_ca)
+    assert kinds(report) == ["routes_diff"]
+    assert report.drifts[0].details == {"before": [], "after": ["85.142.247.47/32"]}
+    assert healthy.routes == ["85.142.247.47/32"]
+
+
+async def test_a_missing_routes_file_is_created_silently_when_there_are_no_routes(
+    session: AsyncSession, node: Node, healthy: FakeNodeDriver, test_ca: CertificateAuthority
+) -> None:
+    healthy.routes = None
+    report = await run(session, node, healthy, test_ca)
+    assert (report.drifts, report.error) == ((), None)
+    assert healthy.routes == []
 
 
 async def test_missing_allowlist_is_restored(

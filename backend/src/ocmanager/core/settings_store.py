@@ -9,13 +9,14 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import structlog
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, ValidationError
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ocmanager.core.errors import InvalidInput
 from ocmanager.core.models import SettingRow
+from ocmanager.core.routes import MAX_ROUTES, normalize_routes
 
 log = structlog.get_logger(__name__)
 
@@ -33,6 +34,13 @@ class RuntimeSettings(BaseModel):
     # Алерты админу о подозрении на злоупотребление; 0 выключает правило.
     abuse_daily_traffic_gb: int = Field(100, ge=0)  # трафик одного клиента за сутки
     abuse_devices_per_ip: int = Field(10, ge=0)  # разных устройств с одного адреса за 24 часа
+    # Адреса и подсети, которые клиенты открывают напрямую, мимо VPN (`no-route` в ocserv).
+    bypass_routes: list[str] = Field(default_factory=list, max_length=MAX_ROUTES)
+
+    @field_validator("bypass_routes")
+    @classmethod
+    def _normalize_routes(cls, value: list[str]) -> list[str]:
+        return normalize_routes(value)
 
 
 @dataclass(frozen=True)

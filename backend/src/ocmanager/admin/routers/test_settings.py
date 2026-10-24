@@ -124,3 +124,53 @@ async def test_the_next_trial_uses_the_new_length(
         session, client_id=(await make_client()).id, actor=Actor.system(), now=now
     )
     assert sub.expires_at == now + timedelta(days=7)
+
+
+async def test_bypass_routes_are_normalized_saved_and_published_to_the_node(
+    admin_client: AsyncClient,
+) -> None:
+    from ocmanager.nodes import registry
+    from ocmanager.nodes.driver.fake import FakeNodeDriver
+
+    driver = FakeNodeDriver()
+    with registry.override_driver(driver):
+        r = await admin_client.patch(
+            "/admin/settings",
+            json={"bypass_routes": ["178.176.128.202", "85.142.247.47/32", "85.142.247.47"]},
+        )
+    assert r.status_code == 200, r.text
+    assert r.json()["runtime"]["bypass_routes"] == ["85.142.247.47/32", "178.176.128.202/32"]
+    assert driver.routes == ["85.142.247.47/32", "178.176.128.202/32"]
+
+
+@pytest.mark.parametrize("bad", ["0.0.0.0/0", "abc", "1.2.3.4\nauth = plain", "::1"])
+async def test_a_bad_bypass_route_is_rejected_and_nothing_is_published(
+    admin_client: AsyncClient, bad: str
+) -> None:
+    from ocmanager.nodes import registry
+    from ocmanager.nodes.driver.fake import FakeNodeDriver
+
+    driver = FakeNodeDriver()
+    with registry.override_driver(driver):
+        r = await admin_client.patch("/admin/settings", json={"bypass_routes": [bad]})
+    assert r.status_code == 422
+    assert ("publish_routes", ()) not in [(n, ()) for n, _ in driver.calls]
+
+
+async def test_an_unreachable_node_does_not_fail_saving_the_routes(
+    admin_client: AsyncClient,
+) -> None:
+    from ocmanager.nodes import registry
+    from ocmanager.nodes.driver.base import NodeUnreachable
+    from ocmanager.nodes.driver.fake import FakeNodeDriver
+
+    class Down(FakeNodeDriver):
+        async def publish_routes(self, routes):  # type: ignore[no-untyped-def]
+            raise NodeUnreachable("down")
+
+    with registry.override_driver(Down()):
+        r = await admin_client.patch("/admin/settings", json={"bypass_routes": ["1.2.3.4"]})
+    assert r.status_code == 200
+    assert (await admin_client.get("/admin/settings")).json()["runtime"]["bypass_routes"] == [
+        "1.2.3.4/32"
+    ]

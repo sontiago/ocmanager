@@ -23,6 +23,7 @@ from ocmanager.nodes.occtl.parser import OcSession, OcStatus
 class FakeNodeDriver:
     sessions: list[OcSession] = field(default_factory=list)
     allowlist: set[str] | None = field(default_factory=set)
+    routes: list[str] | None = field(default_factory=list)
     crl: bytes | None = None
     server_cert: bytes | None = None
     container_state: str = "running"
@@ -100,6 +101,15 @@ class FakeNodeDriver:
     async def read_allowlist(self) -> set[str] | None:
         self.calls.append(("read_allowlist", ()))
         return None if self.allowlist is None else set(self.allowlist)
+
+    async def publish_routes(self, routes: Iterable[str]) -> None:
+        data = files.render_routes(routes)
+        self.calls.append(("publish_routes", (data,)))
+        self.routes = files.parse_routes(data)
+
+    async def read_routes(self) -> list[str] | None:
+        self.calls.append(("read_routes", ()))
+        return None if self.routes is None else list(self.routes)
 
     async def publish_crl(self, pem: bytes) -> None:
         files.validate_crl(pem)

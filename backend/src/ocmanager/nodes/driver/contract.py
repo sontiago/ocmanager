@@ -49,6 +49,24 @@ class DriverContract:
             await driver.publish_allowlist(["c1-d1", "../etc/passwd"])
         assert await driver.read_allowlist() == {"c1-d1"}
 
+    async def test_routes_roundtrip_normalized_and_sorted(self, driver: NodeDriver) -> None:
+        await driver.publish_routes(["178.176.128.202", "85.142.247.47/32", "10.1.2.3/8"])
+        assert await driver.read_routes() == [
+            "10.0.0.0/8",
+            "85.142.247.47/32",
+            "178.176.128.202/32",
+        ]
+
+    async def test_routes_empty(self, driver: NodeDriver) -> None:
+        await driver.publish_routes([])
+        assert await driver.read_routes() == []
+
+    async def test_invalid_route_rejected_and_file_unchanged(self, driver: NodeDriver) -> None:
+        await driver.publish_routes(["1.2.3.4"])
+        with pytest.raises(ValueError, match=r"0\.0\.0\.0/0"):
+            await driver.publish_routes(["1.2.3.4", "0.0.0.0/0"])
+        assert await driver.read_routes() == ["1.2.3.4/32"]
+
     async def test_crl_roundtrip(self, driver: NodeDriver) -> None:
         pem = make_crl_pem()
         await driver.publish_crl(pem)

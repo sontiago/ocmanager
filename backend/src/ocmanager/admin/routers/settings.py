@@ -1,5 +1,6 @@
 from typing import Any
 
+import structlog
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -8,6 +9,10 @@ from ocmanager.admin.deps import CurrentAdmin, SettingsDep
 from ocmanager.audit import service as audit
 from ocmanager.core import settings_store
 from ocmanager.core.db import SessionDep
+from ocmanager.nodes import registry
+from ocmanager.nodes.driver.base import NodeUnreachable
+
+log = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["settings"])
 
@@ -60,4 +65,10 @@ async def patch_settings(
             details={"changed": {k: [old, new] for k, (old, new) in change.changed.items()}},
         )
     await db.commit()
+    if "bypass_routes" in change.changed:
+        # Нода недоступна — настройка уже сохранена, а сверка (раз в 5 минут) доставит файл.
+        try:
+            await registry.local_driver(settings).publish_routes(change.settings.bypass_routes)
+        except (NodeUnreachable, OSError) as exc:
+            log.warning("bypass_routes_publish_failed", error=str(exc)[:300])
     return _out(change.settings, settings)

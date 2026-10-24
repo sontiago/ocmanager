@@ -54,3 +54,21 @@ def test_atomic_write_failure_keeps_original_and_no_tmp(
         files.atomic_write(target, b"new")
     assert target.read_bytes() == b"original"
     assert list(tmp_path.iterdir()) == [target]
+
+
+def test_render_routes_is_an_ocserv_no_route_file() -> None:
+    data = files.render_routes(["178.176.128.202", "85.142.247.47/32"]).decode()
+    assert "no-route = 178.176.128.202/32\n" in data
+    assert "no-route = 85.142.247.47/32\n" in data
+    assert data.startswith("#")
+
+
+def test_render_routes_rejects_injection_before_writing() -> None:
+    with pytest.raises(ValueError):  # noqa: PT011
+        files.render_routes(["1.2.3.4\nauth = plain"])
+
+
+def test_routes_roundtrip() -> None:
+    routes = ["85.142.247.47/32", "10.0.0.0/8"]
+    assert files.parse_routes(files.render_routes(routes)) == ["10.0.0.0/8", "85.142.247.47/32"]
+    assert files.parse_routes(files.render_routes([])) == []

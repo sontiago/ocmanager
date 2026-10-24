@@ -19,6 +19,7 @@ from ocmanager.nodes.occtl.parser import OcctlParseError, OcSession
 
 ALLOWLIST_FILE = "allowed.list"
 CRL_FILE = "crl.pem"
+ROUTES_FILE = "default-user.conf"
 CONTAINER_ACTION_TIMEOUT_S = 60.0
 
 
@@ -86,6 +87,14 @@ class LocalDockerDriver:
     async def read_allowlist(self) -> set[str] | None:
         data = await _read(self.state_dir / ALLOWLIST_FILE)
         return None if data is None else files.parse_allowlist(data)
+
+    async def publish_routes(self, routes: Iterable[str]) -> None:
+        data = files.render_routes(routes)  # ValueError — до записи
+        await asyncio.to_thread(files.atomic_write, self.state_dir / ROUTES_FILE, data)
+
+    async def read_routes(self) -> list[str] | None:
+        data = await _read(self.state_dir / ROUTES_FILE)
+        return None if data is None else files.parse_routes(data)
 
     async def publish_crl(self, pem: bytes) -> None:
         files.validate_crl(pem)

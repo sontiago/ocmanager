@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ocmanager.audit import service as audit
 from ocmanager.audit.service import Actor
+from ocmanager.core import settings_store
 from ocmanager.core.clock import utcnow
 from ocmanager.core.config import Settings
 from ocmanager.flows import access
@@ -31,6 +32,7 @@ log = structlog.get_logger(__name__)
 DriftKind = Literal[
     "allowlist_missing",
     "allowlist_diff",
+    "routes_diff",
     "rogue_session",
     "crl_missing",
     "crl_diff",
@@ -141,6 +143,11 @@ async def reconcile_node(
                         {"added": sorted(change.added), "removed": sorted(change.removed)},
                     )
                 )
+            wanted = (await settings_store.load(session)).bypass_routes
+            routes_change = await access.publish_routes_if_changed(driver, wanted)
+            if routes_change is not None:
+                before, after = routes_change
+                drifts.append(Drift("routes_diff", {"before": before, "after": after}))
             crl_drifts, republished = await _check_crl(session, driver, ca, now)
             drifts += crl_drifts
             if republished:

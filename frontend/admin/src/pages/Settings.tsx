@@ -7,6 +7,7 @@ import { hasInvalidNumbers, toForm, toPatch, type SettingsForm } from "../lib/se
 import { Card } from "../ui/Card";
 import { Field, inputClass, primaryButtonClass } from "../ui/Field";
 import { Notice } from "../ui/Notice";
+import { BypassRoutes } from "./BypassRoutes";
 
 function Form({ settings }: { settings: S<"SettingsOut"> }) {
   const { t } = useT();
@@ -95,6 +96,7 @@ export function SettingsPage() {
         <Card title={t("settings.runtime")}>
           <Form settings={query.data} />
         </Card>
+        <BypassRoutes saved={(query.data.runtime.bypass_routes as string[] | undefined) ?? []} />
         <Card title={t("settings.environment")}>
           <p className="mb-2 text-muted">{t("settings.environmentHint")}</p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
