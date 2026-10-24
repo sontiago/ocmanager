@@ -82,6 +82,10 @@ def run_main(root: Path, answers: dict, *, runner=None, net=None, sys_info=None,
         clock=clock.monotonic,
         swapfile=root / "swapfile",
         fstab=root / "fstab",
+        backup_dir=root / "backups",
+        key_file=root / "backup-key",
+        unit_dir=root / "units",
+        ocm_link=root / "ocm-link",
     )
     return code, prompter, runner
 

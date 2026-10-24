@@ -49,6 +49,10 @@ def make_ctx(root: Path, runner: FakeRunner, **over) -> steps.Context:  # type: 
         out=lambda _text: None,
         swapfile=root / "swapfile",
         fstab=root / "fstab",
+        backup_dir=root / "backups",
+        key_file=root / "backup-key",
+        unit_dir=root / "units",
+        ocm_link=root / "ocm-link",
         **over,
     )
     ctx.clock_obj = clock  # type: ignore[attr-defined]
@@ -76,6 +80,8 @@ def test_the_step_names_and_order() -> None:
         "admin",
         "stack",
         "certs",
+        "ocm",
+        "backup",
         "doctor",
     ]
 
@@ -310,3 +316,22 @@ def test_existing_env_is_left_alone_when_reuse_is_chosen(root: Path) -> None:
     ctx = make_ctx(root, tls_ok(FakeRunner()), reuse_env=True)
     steps.run_steps(ctx, steps.build_steps())
     assert env_hash(root) == before
+
+
+def test_backup_step_creates_the_key_enables_the_timer_and_notes_the_key(root: Path) -> None:
+    runner = FakeRunner()
+    ctx = make_ctx(root, runner)
+    steps._backup(ctx)
+    assert ctx.key_file.exists()
+    assert any("enable --now ocm-backup.timer" in c for c in runner.joined())
+    assert any(ctx.key_file.read_text().strip() in n for n in ctx.notes)
+    ctx.notes.clear()
+    steps._backup(ctx)  # повтор: ключ не показывается заново
+    assert ctx.notes == []
+
+
+def test_ocm_step_links_the_wrapper(root: Path) -> None:
+    runner = FakeRunner()
+    ctx = make_ctx(root, runner)
+    steps._ocm(ctx)
+    assert runner.joined() == [f"ln -sfn {root}/deploy/ocm {root}/ocm-link"]

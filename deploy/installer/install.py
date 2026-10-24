@@ -9,7 +9,7 @@ import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from installer import checks, config
+from installer import backup, checks, config, systemd
 from installer.checks import Finding, SystemInfo
 from installer.prompts import AnswersPrompter, Prompter, TerminalPrompter
 from installer.runner import Net, NetError, Runner, SubprocessRunner, SystemNet
@@ -227,6 +227,16 @@ def _ask_admin(prompter: Prompter, state: State) -> tuple[str, str, bool]:
     return user, password, False
 
 
+def _ask_backup_remote(prompter: Prompter, state: State) -> str:
+    return prompter.ask(
+        "backup_remote",
+        "Куда дополнительно копировать резервные копии: пользователь@сервер:/путь "
+        "(по ключу SSH) или каталог. Enter — только на этом сервере",
+        default=state.answers().get("backup_remote", ""),
+        validate=backup.validate_remote,
+    )
+
+
 def _final_screen(
     say: Callable[[str], None],
     values: dict[str, str],
@@ -281,6 +291,10 @@ def main(
     clock: Callable[[], float] = time.monotonic,
     swapfile: Path = Path("/swapfile"),
     fstab: Path = Path("/etc/fstab"),
+    backup_dir: Path = backup.BACKUP_DIR,
+    key_file: Path = backup.KEY_FILE,
+    unit_dir: Path = systemd.UNIT_DIR,
+    ocm_link: Path = systemd.OCM_LINK,
 ) -> int:
     args = parse_args(argv)
     runner = runner or SubprocessRunner()
@@ -299,6 +313,7 @@ def main(
         if not state.is_done("stack"):
             _check_domains(prompter, net, values)
         admin_user, admin_password, generated = _ask_admin(prompter, state)
+        backup_remote = _ask_backup_remote(prompter, state)
     except _Stop:
         return 1
 
@@ -308,6 +323,7 @@ def main(
             domain_vpn=values["DOMAIN_VPN"],
             acme_email=values["ACME_EMAIL"],
             admin_user=admin_user,
+            backup_remote=backup_remote,
         )
 
     ctx = Context(
@@ -328,6 +344,10 @@ def main(
         reuse_env=reuse,
         swapfile=swapfile,
         fstab=fstab,
+        backup_dir=backup_dir,
+        key_file=key_file,
+        unit_dir=unit_dir,
+        ocm_link=ocm_link,
     )
     say("")
     try:

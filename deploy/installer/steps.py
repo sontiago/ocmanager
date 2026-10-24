@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from installer import backup, systemd
 from installer.config import render_env, write_env
 from installer.runner import CommandError, Net, Result, Runner
 
@@ -88,6 +89,10 @@ class Context:
     reuse_env: bool = False
     swapfile: Path = Path("/swapfile")
     fstab: Path = Path("/etc/fstab")
+    backup_dir: Path = backup.BACKUP_DIR
+    key_file: Path = backup.KEY_FILE
+    unit_dir: Path = systemd.UNIT_DIR
+    ocm_link: Path = systemd.OCM_LINK
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -229,6 +234,27 @@ def _doctor(ctx: Context) -> bool:
     return True
 
 
+def _backup(ctx: Context) -> bool:
+    """Ключ шифрования копий и ежедневный таймер. Первую копию снимаем сразу: проверка, что
+    всё работает, и точка возврата до первой настройки покупателем."""
+    existed = ctx.key_file.exists()
+    key = backup.ensure_key(ctx.key_file)
+    systemd.install(ctx.runner, ctx.root, unit_dir=ctx.unit_dir, ocm=ctx.ocm_link)
+    if not existed:
+        ctx.notes.append(
+            "КЛЮЧ ШИФРОВАНИЯ РЕЗЕРВНЫХ КОПИЙ (показан один раз):\n"
+            f"  {key}\n"
+            f"Он же лежит в {ctx.key_file}. Сохраните его отдельно от сервера (менеджер паролей): "
+            "без ключа копии не расшифровать, а при потере сервера этот файл пропадёт вместе с ним."
+        )
+    return True
+
+
+def _ocm(ctx: Context) -> bool:
+    ctx.runner.run(["ln", "-sfn", str(ctx.root / "deploy" / "ocm"), str(ctx.ocm_link)])
+    return True
+
+
 def build_steps() -> list[Step]:
     return [
         Step("env", "Записываю настройки (.env)", _env),
@@ -240,6 +266,8 @@ def build_steps() -> list[Step]:
         Step("admin", "Создаю первого администратора", _admin),
         Step("stack", "Запускаю все сервисы", _stack),
         Step("certs", "Жду сертификаты Let's Encrypt (1–3 минуты)", _certs),
+        Step("ocm", "Ставлю команду ocm", _ocm),
+        Step("backup", "Настраиваю ежедневные резервные копии", _backup),
         Step("doctor", "Проверяю установку", _doctor),
     ]
 

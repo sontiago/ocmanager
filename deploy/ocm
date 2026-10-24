@@ -11,4 +11,11 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-PYTHONPATH="$root/deploy" exec python3 -m installer.ocm "$@"
+# Мы root и импортируем код из каталога установки: он не должен быть доступен на запись другим.
+if [ -n "$(find "$root/deploy/installer" -maxdepth 0 -perm /022)" ]; then
+  echo "Каталог $root/deploy/installer доступен на запись другим пользователям: исправьте права." >&2
+  exit 1
+fi
+
+# -I: интерпретатор не берёт модули из текущего каталога и из PYTHONPATH.
+exec python3 -I -c 'import sys; sys.path.insert(0, sys.argv[1]); from installer.ocm import main; sys.exit(main(sys.argv[2:]))' "$root/deploy" "$@"

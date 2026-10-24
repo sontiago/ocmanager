@@ -15,4 +15,5 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
-PYTHONPATH="$PWD/deploy" exec python3 -m installer.install "$@"
+# -I: интерпретатор не берёт модули из текущего каталога и из PYTHONPATH — мы root.
+exec python3 -I -c 'import sys; sys.path.insert(0, sys.argv[1]); from installer.install import main; sys.exit(main(sys.argv[2:]))' "$PWD/deploy" "$@"

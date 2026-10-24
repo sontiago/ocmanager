@@ -64,6 +64,14 @@ class Manifest:
     format: int
 
 
+def validate_remote(raw: str) -> str:
+    """Пусто — не копировать; `user@host:/путь` или абсолютный путь (смонтированный диск)."""
+    value = raw.strip()
+    if value and not REMOTE.match(value) and not value.startswith("/"):
+        raise ValueError("Ожидается пользователь@сервер:/путь или абсолютный путь к каталогу.")
+    return value
+
+
 def name_for(now: datetime, prefix: str = PREFIX) -> str:
     return f"{prefix}-{now:%Y-%m-%d-%H%M}.tar.gz.enc"
 
