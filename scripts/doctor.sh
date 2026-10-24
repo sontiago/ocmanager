@@ -14,6 +14,8 @@ bad() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; fails=$((fails + 1)); }
 check() { local name=$1; shift; if "$@" >/dev/null 2>&1; then ok "$name"; else bad "$name"; fi; }
 
 compose() { docker compose "$@"; }
+# shellcheck disable=SC1091
+. "$(dirname "$0")/lib-backup-age.sh"
 
 # --- контейнеры ----------------------------------------------------------------------------------
 no_dead_services() {
@@ -91,6 +93,10 @@ docker_proxy_restricts() { ! compose exec -T worker docker ps; }
 check "worker не может выполнить docker ps (прокси ограничивает)" docker_proxy_restricts
 proxy_protocol_enforced() { ! docker exec ocm-ocserv curl -ks --max-time 3 -o /dev/null https://localhost:443/; }
 check "ocserv требует PROXY-заголовок на TCP (адрес клиента не теряется)" proxy_protocol_enforced
+
+# --- резервные копии ---------------------------------------------------------------------------------
+backup_fresh() { backup_is_fresh /var/backups/ocmanager/last-ok "$(date +%s)"; }
+check "последняя успешная резервная копия не старше 36 часов (если FAIL: ocm backup)" backup_fresh
 
 echo
 if [ "$fails" -eq 0 ]; then

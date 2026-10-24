@@ -1,0 +1,28 @@
+name: installer
+
+on:
+  push:
+    branches: [main]
+    paths: ["install.sh", "deploy/**", "scripts/**", ".github/workflows/installer.yml"]
+  pull_request:
+    paths: ["install.sh", "deploy/**", "scripts/**", ".github/workflows/installer.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --project backend
+      - name: Installer tests (Python of the project)
+        run: uv run --project backend pytest deploy/installer -c deploy/installer/pytest.ini
+      - name: Installer tests (Python 3.10, the minimum on the server)
+        run: uv run --python 3.10 --with pytest pytest -c deploy/installer/pytest.ini deploy/installer
+      - name: Installer lint
+        run: uv run --project backend ruff check deploy/installer
+      - name: shellcheck
+        run: shellcheck install.sh deploy/ocm scripts/*.sh
+      - name: bash -n
+        run: for f in install.sh deploy/ocm scripts/*.sh; do bash -n "$f"; done
+      - name: Deploy configs
+        run: scripts/check-deploy-configs.sh

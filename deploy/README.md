@@ -1,4 +1,7 @@
-# Развёртывание ocmanager
+# Развёртывание ocmanager: техническая справка
+
+Обычная установка — одной командой `sudo ./install.sh`, см. [INSTALL.md](INSTALL.md). Ниже — устройство стека
+и ручной путь без мастера.
 
 Один сервер, два домена: `DOMAIN_APP` (Mini App, вебхуки) и `DOMAIN_VPN` (шлюз ocserv).
 
@@ -97,17 +100,10 @@ docker compose up -d      # миграции накатываются сами (
 ../scripts/doctor.sh
 ```
 
-## Резервные копии (пока вручную)
+## Резервные копии
 
-Автоматических бэкапов нет. **Потеря тома `pki` — это потеря CA: все выданные клиентам ключи придётся
-выпускать заново.** Делайте копию после `pki init` и по расписанию:
-
-```bash
-docker compose exec -T postgres pg_dump -U ocm ocmanager | gzip > ocmanager-$(date +%F).sql.gz
-docker run --rm -v ocmanager_pki:/pki:ro -v "$PWD":/out alpine tar czf /out/pki-$(date +%F).tgz -C /pki .
-```
-
-Храните копии вне сервера. Файл с `pki` содержит приватный ключ CA — шифруйте его.
+Автоматические шифрованные копии и восстановление — `ocm backup` / `ocm restore`, см. [INSTALL.md](INSTALL.md).
+Формат: один файл с `pg_dump`, томом `pki` и `.env`, `openssl enc -aes-256-cbc -pbkdf2`.
 
 ## Если что-то не так
 
