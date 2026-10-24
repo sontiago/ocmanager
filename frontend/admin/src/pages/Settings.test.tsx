@@ -173,3 +173,46 @@ test("an_empty_abuse_threshold_is_refused", async () => {
   expect(patches(calls)).toHaveLength(0);
 });
 
+
+describe("bypass routes constructor", () => {
+  const routes = (calls: { method: string; body: unknown }[]) =>
+    patches(calls).map((c) => (c.body as { bypass_routes?: string[] }).bypass_routes);
+
+  test("adds_normalizes_and_saves_the_rules", async () => {
+    const user = userEvent.setup();
+    const { calls } = page({ ...SETTINGS, runtime: { ...SETTINGS.runtime, bypass_routes: ["85.142.247.47/32", "178.176.128.202/32"] } });
+    const input = await screen.findByLabelText("Адрес или подсеть");
+    await user.type(input, "85.142.247.47, 178.176.128.202");
+    await user.click(screen.getByRole("button", { name: "Добавить" }));
+    expect(screen.getByText("85.142.247.47/32")).toBeInTheDocument();
+    expect(screen.getByText("178.176.128.202/32")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Сохранить маршруты" }));
+    await waitFor(() => expect(routes(calls)).toHaveLength(1));
+    expect(routes(calls)[0]).toEqual(["85.142.247.47/32", "178.176.128.202/32"]);
+  });
+
+  test("a_bad_address_is_refused_in_the_form_and_nothing_is_added", async () => {
+    const user = userEvent.setup();
+    page();
+    await user.type(await screen.findByLabelText("Адрес или подсеть"), "0.0.0.0/0");
+    await user.click(screen.getByRole("button", { name: "Добавить" }));
+    expect(screen.getByText(/весь интернет/)).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Маршруты мимо VPN" })).toBeNull();
+  });
+
+  test("a_rule_can_be_removed_and_save_is_disabled_without_changes", async () => {
+    const user = userEvent.setup();
+    renderRoutes([{ path: "/settings", element: <SettingsPage /> }], {
+      route: "/settings",
+      handlers: {
+        "GET /admin/settings": { ...SETTINGS, runtime: { ...SETTINGS.runtime, bypass_routes: ["1.2.3.4/32"] } },
+        "PATCH /admin/settings": SETTINGS,
+      },
+    });
+    const save = await screen.findByRole("button", { name: "Сохранить маршруты" });
+    expect(save).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Убрать 1.2.3.4/32" }));
+    expect(save).toBeEnabled();
+    expect(screen.getByText("Правил нет: через VPN идёт весь трафик.")).toBeInTheDocument();
+  });
+});

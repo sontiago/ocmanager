@@ -327,5 +327,16 @@
   "promo.deleteTitle": "Delete promo code {code}?",
   "promo.deleteBody": "Nobody has used the code yet, so it is removed for good.",
   "settings.abuseTraffic": "Alert: client traffic per day, GB (0 — off)",
-  "settings.abuseDevices": "Alert: devices from one address per day (0 — off)"
+  "settings.abuseDevices": "Alert: devices from one address per day (0 — off)",
+  "routes.title": "Routes that bypass the VPN",
+  "routes.hint": "Clients reach these addresses and subnets directly, not through the tunnel (ocserv no-route). Applies to new connections: connected clients must reconnect.",
+  "routes.add": "Address or subnet",
+  "routes.addButton": "Add",
+  "routes.empty": "No rules: all traffic goes through the VPN.",
+  "routes.remove": "Remove {value}",
+  "routes.saved": "Saved. New connections will use these rules.",
+  "routes.error.format": "\"{value}\": expected an IPv4 address or subnet, e.g. 85.142.247.47 or 10.0.0.0/8.",
+  "routes.error.default": "\"{value}\": 0.0.0.0/0 is the whole internet; the tunnel would be pointless.",
+  "routes.error.special": "\"{value}\": reserved range.",
+  "routes.save": "Save routes"
 }
