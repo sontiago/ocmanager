@@ -12,9 +12,15 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Мы root и импортируем код из каталога установки: он не должен быть доступен на запись другим.
-if [ -n "$(find "$root" "$root/deploy" -maxdepth 0 -perm /022; \
-  find "$root/deploy/installer" "$root/deploy/ocm" ! -type l -perm /022)" ]; then
-  echo "Код в $root доступен на запись другим пользователям: исправьте права (chmod -R go-w)." >&2
+# Всё, что root исполняет или читает как код, и все каталоги над клоном.
+bad="$(find "$root" "$root/deploy" "$root/scripts" -maxdepth 0 -perm /022
+  find "$root/deploy/installer" "$root/deploy/ocm" "$root/deploy/docker-compose.yml" \
+    "$root/scripts" ! -type l -perm /022
+  dir="$(dirname "$root")"
+  while [ "$dir" != "/" ]; do find "$dir" -maxdepth 0 -perm /022; dir="$(dirname "$dir")"; done)"
+if [ -n "$bad" ]; then
+  echo "Небезопасные права (запись для группы или всех) — исправьте (chmod go-w):" >&2
+  echo "$bad" >&2
   exit 1
 fi
 
