@@ -13,3 +13,4 @@
 - [ ] Остановить Postgres, выполнить `ocm backup`: код 1, алерт админу пришёл в Telegram (после `ocm admin-chat`).
 - [ ] Состарить метку `/var/backups/ocmanager/last-ok` (>36 ч): `ocm status` красный по копиям.
 - [ ] Копирование на второй сервер (`backup_remote`) работает и при недоступном сервере даёт алерт.
+- [ ] Установка с ответом «нет» на резервные копии: ключа и таймера нет, `ocm status` показывает SKIP, `ocm backup` подсказывает `backup-enable`; `ocm update` просит подтверждение; `ocm backup-enable` включает копии.

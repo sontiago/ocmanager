@@ -364,3 +364,50 @@ def test_admin_chat_rejects_a_non_number(paths: BackupPaths) -> None:
     code, _, _ = run(["admin-chat", "@bob"], runner, paths)
     assert code == 2
     assert runner.calls == []
+
+
+def test_backup_without_a_key_says_how_to_enable_and_sends_no_alert(paths: BackupPaths) -> None:
+    runner = FakeRunner()
+    code, out, _ = run(["backup"], runner, paths)
+    assert code == 1
+    assert "backup-enable" in out
+    assert "notify backup-failed" not in names(runner)
+
+
+def test_backup_enable_creates_the_key_and_the_timer(paths: BackupPaths, tmp_path: Path) -> None:
+    runner = FakeRunner()
+    code, out, _ = run(["backup-enable"], runner, paths, answers=[""], unit_dir=tmp_path / "units")
+    assert code == 0
+    assert paths.key_file.exists()
+    assert "enable --now ocm-backup.timer" in names(runner)
+    assert "КЛЮЧ ШИФРОВАНИЯ" in out
+
+
+def test_update_without_backups_asks_before_going_ahead(paths: BackupPaths) -> None:
+    runner = FakeRunner()
+    git_clean(runner)
+    code, out, prompter = run(["update"], runner, paths, answers=[False])
+    assert code == 1
+    assert prompter.asked == ["update_without_backup"]
+    assert "pull" not in names(runner)
+
+
+def test_update_without_backups_can_proceed_when_confirmed(paths: BackupPaths) -> None:
+    runner = FakeRunner()
+    git_clean(runner)
+    runner.on("scripts/doctor.sh", Result(0, "OK\n"))
+    code, _, _ = run(["update"], runner, paths, answers=[True])
+    assert code == 0
+    record = json.loads((paths.deploy / ".previous-rev").read_text())
+    assert record["backup"] == ""
+
+
+def test_rollback_without_a_saved_backup_does_not_offer_a_restore(paths: BackupPaths) -> None:
+    (paths.deploy / ".previous-rev").write_text(
+        json.dumps({"rev": "a" * 40, "branch": "main", "backup": ""})
+    )
+    runner = FakeRunner()
+    runner.on("scripts/doctor.sh", Result(0, "OK\n"))
+    code, _, prompter = run(["rollback"], runner, paths, answers=["ДА"])
+    assert code == 0
+    assert prompter.asked == ["rollback_confirm"]

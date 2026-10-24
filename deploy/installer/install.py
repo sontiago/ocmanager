@@ -227,14 +227,25 @@ def _ask_admin(prompter: Prompter, state: State) -> tuple[str, str, bool]:
     return user, password, False
 
 
-def _ask_backup_remote(prompter: Prompter, state: State) -> str:
-    return prompter.ask(
+def _ask_backup(prompter: Prompter, state: State) -> tuple[bool, str]:
+    """Резервные копии по желанию: ключ и таймер ставятся только после «да». Включить позже —
+    `ocm backup-enable`."""
+    remembered = state.answers()
+    enabled = prompter.confirm(
+        "backup_enable",
+        "Включить ежедневные резервные копии (шифруются, хранятся 14 последних)?",
+        default=remembered.get("backup_enabled", "no") == "yes",
+    )
+    if not enabled:
+        return False, ""
+    remote = prompter.ask(
         "backup_remote",
-        "Куда дополнительно копировать резервные копии: пользователь@сервер:/путь "
-        "(по ключу SSH) или каталог. Enter — только на этом сервере",
-        default=state.answers().get("backup_remote", ""),
+        "Куда дополнительно копировать: пользователь@сервер:/путь (по ключу SSH) или каталог. "
+        "Enter — только на этом сервере",
+        default=remembered.get("backup_remote", ""),
         validate=backup.validate_remote,
     )
+    return True, remote
 
 
 def _final_screen(
@@ -313,7 +324,7 @@ def main(
         if not state.is_done("stack"):
             _check_domains(prompter, net, values)
         admin_user, admin_password, generated = _ask_admin(prompter, state)
-        backup_remote = _ask_backup_remote(prompter, state)
+        want_backup, backup_remote = _ask_backup(prompter, state)
     except _Stop:
         return 1
 
@@ -323,6 +334,7 @@ def main(
             domain_vpn=values["DOMAIN_VPN"],
             acme_email=values["ACME_EMAIL"],
             admin_user=admin_user,
+            backup_enabled="yes" if want_backup else "no",
             backup_remote=backup_remote,
         )
 
@@ -344,6 +356,7 @@ def main(
         reuse_env=reuse,
         swapfile=swapfile,
         fstab=fstab,
+        want_backup=want_backup,
         backup_dir=backup_dir,
         key_file=key_file,
         unit_dir=unit_dir,

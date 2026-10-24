@@ -96,7 +96,11 @@ check "ocserv требует PROXY-заголовок на TCP (адрес кл�
 
 # --- резервные копии ---------------------------------------------------------------------------------
 backup_fresh() { backup_is_fresh /var/backups/ocmanager/last-ok "$(date +%s)"; }
-check "последняя успешная резервная копия не старше 36 часов (если FAIL: ocm backup)" backup_fresh
+if [ -f /etc/systemd/system/ocm-backup.timer ]; then
+    check "последняя успешная резервная копия не старше 36 часов (если FAIL: ocm backup)" backup_fresh
+else
+    printf '  \033[33mSKIP\033[0m резервные копии не включены (ocm backup-enable)\n'
+fi
 
 echo
 if [ "$fails" -eq 0 ]; then

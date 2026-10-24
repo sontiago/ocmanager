@@ -381,3 +381,19 @@ def test_non_secret_answers_are_remembered_as_defaults(root: Path) -> None:
     assert remembered["admin_user"] == "owner"
     assert PASSWORD not in json.dumps(remembered)
     assert TOKEN not in json.dumps(remembered)
+
+
+def test_backups_are_off_unless_chosen(root: Path) -> None:
+    code, prompter, runner = run_main(root, ANSWERS)
+    assert code == 0
+    assert not (root / "backup-key").exists()
+    assert not any("enable --now ocm-backup.timer" in c for c in runner.joined())
+    assert "ocm backup-enable" in screen(prompter)
+
+
+def test_backups_are_set_up_when_chosen(root: Path) -> None:
+    code, prompter, runner = run_main(root, {**ANSWERS, "backup_enable": True})
+    assert code == 0
+    assert (root / "backup-key").exists()
+    assert any("enable --now ocm-backup.timer" in c for c in runner.joined())
+    assert "КЛЮЧ ШИФРОВАНИЯ" in screen(prompter)
