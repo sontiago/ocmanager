@@ -2,7 +2,8 @@
 # Диагностика боевого стенда. На сервере из любого каталога: scripts/doctor.sh
 # Каждая строка — одна проверка; код выхода = число проваленных.
 set -uo pipefail
-cd "$(dirname "$0")/../deploy"
+here="$(cd "$(dirname "$0")" && pwd)"
+cd "$here/../deploy"
 set -a
 # shellcheck disable=SC1091
 . ./.env
@@ -15,7 +16,7 @@ check() { local name=$1; shift; if "$@" >/dev/null 2>&1; then ok "$name"; else b
 
 compose() { docker compose "$@"; }
 # shellcheck disable=SC1091
-. "$(dirname "$0")/lib-backup-age.sh"
+. "$here/lib-backup-age.sh"
 
 # --- контейнеры ----------------------------------------------------------------------------------
 no_dead_services() {
