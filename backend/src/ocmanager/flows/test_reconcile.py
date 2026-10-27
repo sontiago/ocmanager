@@ -12,6 +12,7 @@ from ocmanager.core import settings_store
 from ocmanager.core.config import Settings
 from ocmanager.flows import reconcile
 from ocmanager.nodes import registry
+from ocmanager.nodes.driver.base import NodeUnreachable
 from ocmanager.nodes.driver.fake import FakeNodeDriver
 from ocmanager.nodes.models import Node
 from ocmanager.provisioning import revocations, service
@@ -89,6 +90,24 @@ async def test_a_missing_routes_file_is_created_silently_when_there_are_no_route
     report = await run(session, node, healthy, test_ca)
     assert (report.drifts, report.error) == ((), None)
     assert healthy.routes == []
+
+
+async def test_a_failing_routes_publish_does_not_block_the_crl_repair(
+    session: AsyncSession, node: Node, healthy: FakeNodeDriver, test_ca: CertificateAuthority
+) -> None:
+    await settings_store.update(session, {"bypass_routes": ["85.142.247.47"]})
+
+    async def broken(routes: object) -> None:
+        raise NodeUnreachable("render failed")
+
+    healthy.routes = []
+    healthy.crl = None
+    healthy.publish_routes = broken  # type: ignore[method-assign]
+    report = await run(session, node, healthy, test_ca)
+    assert "crl_missing" in kinds(report)
+    assert healthy.crl is not None
+    assert report.error is not None
+    assert "render failed" in report.error
 
 
 async def test_missing_allowlist_is_restored(

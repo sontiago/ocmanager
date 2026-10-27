@@ -143,15 +143,17 @@ async def reconcile_node(
                         {"added": sorted(change.added), "removed": sorted(change.removed)},
                     )
                 )
+            crl_drifts, republished = await _check_crl(session, driver, ca, now)
+            drifts += crl_drifts
+            if republished:
+                await driver.reload()
+            # После CRL: сборка конфига ocserv проверяет CRL, и битый CRL заблокировал бы маршруты,
+            # а заодно прервал бы его же починку.
             wanted = (await settings_store.load(session)).bypass_routes
             routes_change = await access.publish_routes_if_changed(driver, wanted)
             if routes_change is not None:
                 before, after = routes_change
                 drifts.append(Drift("routes_diff", {"before": before, "after": after}))
-            crl_drifts, republished = await _check_crl(session, driver, ca, now)
-            drifts += crl_drifts
-            if republished:
-                await driver.reload()
             rogue = await access.kick_rogue_sessions(driver, desired)
             if rogue:
                 drifts.append(Drift("rogue_session", {"usernames": sorted(rogue)}))
