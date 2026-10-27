@@ -13,7 +13,7 @@ OCM_LINK = Path("/usr/local/bin/ocm")
 def render_service(install_dir: Path, ocm: Path = OCM_LINK) -> str:
     return (
         "[Unit]\n"
-        "Description=Резервная копия ocmanager\n"
+        "Description=ocmanager backup\n"
         "\n"
         "[Service]\n"
         "Type=oneshot\n"
@@ -25,7 +25,7 @@ def render_service(install_dir: Path, ocm: Path = OCM_LINK) -> str:
 def render_timer() -> str:
     return (
         "[Unit]\n"
-        "Description=Ежедневная резервная копия ocmanager\n"
+        "Description=ocmanager daily backup\n"
         "\n"
         "[Timer]\n"
         "OnCalendar=*-*-* 03:30:00\n"

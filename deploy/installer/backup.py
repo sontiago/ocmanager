@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 
 from installer.config import write_private
+from installer.i18n import _
 from installer.runner import CommandError, Runner
 
 BACKUP_DIR = Path("/var/backups/ocmanager")
@@ -68,7 +69,7 @@ def validate_remote(raw: str) -> str:
     """Пусто — не копировать; `user@host:/путь` или абсолютный путь (смонтированный диск)."""
     value = raw.strip()
     if value and not REMOTE.match(value) and not value.startswith("/"):
-        raise ValueError("Ожидается пользователь@сервер:/путь или абсолютный путь к каталогу.")
+        raise ValueError(_("Ожидается пользователь@сервер:/путь или абсолютный путь к каталогу."))
     return value
 
 
@@ -89,9 +90,11 @@ def read_key(path: Path) -> str:
     try:
         mode = path.stat().st_mode
     except OSError as exc:
-        raise BackupError(f"нет файла ключа {path}: {exc}") from exc
+        raise BackupError(_("нет файла ключа {path}: {exc}", path=path, exc=exc)) from exc
     if mode & (stat.S_IRWXG | stat.S_IRWXO):
-        raise BackupError(f"права на файл ключа {path} слишком открытые: chmod 600 {path}")
+        raise BackupError(
+            _("права на файл ключа {path} слишком открытые: chmod 600 {path}", path=path)
+        )
     return path.read_text().strip()
 
 
@@ -155,7 +158,7 @@ def create(paths: BackupPaths, runner: Runner, now: datetime, *, prefix: str = P
             encrypted = work / "out.enc"
             _openssl(runner, paths.key_file, bundle, encrypted, decrypt=False)
         except (CommandError, OSError) as exc:
-            raise BackupError(f"резервная копия не создана: {exc}") from exc
+            raise BackupError(_("резервная копия не создана: {exc}", exc=exc)) from exc
         final = paths.backup_dir / name_for(now, prefix)
         encrypted.chmod(0o600)
         encrypted.replace(final)
@@ -176,14 +179,16 @@ def extract(path: Path, key_file: Path, runner: Runner, dest: Path) -> Manifest:
             _openssl(runner, key_file, path, bundle, decrypt=True)
         except CommandError as exc:
             raise BackupError(
-                "не удалось расшифровать копию: неверный ключ или файл повреждён"
+                _("не удалось расшифровать копию: неверный ключ или файл повреждён")
             ) from exc
         try:
             with tarfile.open(bundle, "r:gz") as tar:
                 members = tar.getmembers()
                 bad = [m.name for m in members if m.name not in MEMBERS or not m.isfile()]
                 if bad:
-                    raise BackupError(f"в архиве недопустимые файлы: {', '.join(bad)}")
+                    raise BackupError(
+                        _("в архиве недопустимые файлы: {names}", names=", ".join(bad))
+                    )
                 for member in members:
                     source = tar.extractfile(member)
                     assert source is not None
@@ -191,7 +196,7 @@ def extract(path: Path, key_file: Path, runner: Runner, dest: Path) -> Manifest:
                         shutil.copyfileobj(source, out)
                     (dest / member.name).chmod(0o600)
         except tarfile.TarError as exc:
-            raise BackupError("копия повреждена: архив не читается") from exc
+            raise BackupError(_("копия повреждена: архив не читается")) from exc
     finally:
         bundle.unlink(missing_ok=True)
     try:
@@ -202,12 +207,12 @@ def extract(path: Path, key_file: Path, runner: Runner, dest: Path) -> Manifest:
             format=int(manifest["format"]),
         )
     except (OSError, ValueError, KeyError) as exc:
-        raise BackupError("в копии нет читаемого manifest.json") from exc
+        raise BackupError(_("в копии нет читаемого manifest.json")) from exc
     missing = MEMBERS - {p.name for p in dest.iterdir()}
     if missing:
-        raise BackupError(f"в копии нет файлов: {', '.join(sorted(missing))}")
+        raise BackupError(_("в копии нет файлов: {names}", names=", ".join(sorted(missing))))
     if parsed.format != FORMAT:
-        raise BackupError(f"неизвестный формат копии: {parsed.format}")
+        raise BackupError(_("неизвестный формат копии: {fmt}", fmt=parsed.format))
     return parsed
 
 
@@ -239,8 +244,11 @@ def restore(
                 saved = create(paths, runner, now, prefix=EMERGENCY_PREFIX)
             except BackupError as exc:
                 raise BackupError(
-                    f"{exc}. Если база сейчас недоступна и терять нечего, "
-                    "повторите с --no-emergency."
+                    _(
+                        "{exc}. Если база сейчас недоступна и терять нечего, "
+                        "повторите с --no-emergency.",
+                        exc=exc,
+                    )
                 ) from exc
         try:
             _compose(paths, runner, "stop", *APP_SERVICES)
@@ -269,10 +277,14 @@ def restore(
                 write_private(env, (work / "env").read_text())
             _compose(paths, runner, "up", "-d")
         except (CommandError, OSError) as exc:
-            hint = f" Аварийная копия до восстановления: {saved}." if saved else ""
+            hint = _(" Аварийная копия до восстановления: {path}.", path=saved) if saved else ""
             raise BackupError(
-                f"восстановление прервано: {exc}.{hint} Сервисы могут быть остановлены: "
-                "повторите «ocm restore» или запустите «docker compose up -d»."
+                _(
+                    "восстановление прервано: {exc}.{hint} Сервисы могут быть остановлены: "
+                    "повторите «ocm restore» или запустите «docker compose up -d».",
+                    exc=exc,
+                    hint=hint,
+                )
             ) from exc
         return manifest
     finally:
@@ -319,4 +331,6 @@ def copy_offsite(file: Path, target: str, runner: Runner) -> None:
     try:
         runner.run(cmd)
     except CommandError as exc:
-        raise BackupError(f"копия не отправлена в {target}: {exc}") from exc
+        raise BackupError(
+            _("копия не отправлена в {target}: {exc}", target=target, exc=exc)
+        ) from exc

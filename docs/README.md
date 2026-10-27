@@ -20,4 +20,4 @@
 | [tma/architecture.md](tma/architecture.md) | стек, структура, мок и HTTP, экраны, интеграция с Telegram |
 
 README подпроектов: [backend](../backend/README.md), [admin](../frontend/admin/README.md), [tma](../frontend/tma/README.md).
-Инструкция владельца сервера: [deploy/INSTALL.md](../deploy/INSTALL.md).
+Инструкция владельца сервера: [deploy/INSTALL.ru.md](../deploy/INSTALL.ru.md) ([English](../deploy/INSTALL.md)).

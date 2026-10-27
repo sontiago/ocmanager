@@ -6,6 +6,8 @@ import re
 import secrets
 from pathlib import Path
 
+from installer.i18n import _
+
 DOMAIN_LABEL = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 BOT_TOKEN = re.compile(r"^\d{6,}:[\w-]{20,}$")
@@ -20,50 +22,52 @@ def normalize_domain(raw: str) -> str:
         text = text.removeprefix(scheme)
     text = text.split("/", 1)[0].rstrip(".")
     if not text:
-        raise ValueError("Введите доменное имя, например app.example.com.")
+        raise ValueError(_("Введите доменное имя, например app.example.com."))
     if ":" in text:
-        raise ValueError("Порт в адресе не нужен: Caddy работает на стандартных 80 и 443.")
+        raise ValueError(_("Порт в адресе не нужен: Caddy работает на стандартных 80 и 443."))
     if re.fullmatch(r"[\d.]+", text):
-        raise ValueError("Нужно имя домена, а не IP-адрес: Let's Encrypt выдаёт сертификат на имя.")
+        raise ValueError(
+            _("Нужно имя домена, а не IP-адрес: Let's Encrypt выдаёт сертификат на имя.")
+        )
     labels = text.split(".")
     if len(labels) < 2:
-        raise ValueError("Нужен полный домен вида app.example.com.")
+        raise ValueError(_("Нужен полный домен вида app.example.com."))
     if any(not DOMAIN_LABEL.match(label) for label in labels):
-        raise ValueError("В имени допустимы латинские буквы, цифры, дефис и точки.")
+        raise ValueError(_("В имени допустимы латинские буквы, цифры, дефис и точки."))
     return text
 
 
 def validate_distinct_domains(app: str, vpn: str) -> None:
     if app == vpn:
-        raise ValueError("Домены Mini App и VPN должны быть разными.")
+        raise ValueError(_("Домены Mini App и VPN должны быть разными."))
 
 
 def validate_email(raw: str) -> str:
     text = raw.strip()
     if not EMAIL.match(text):
-        raise ValueError("Введите адрес почты, например admin@example.com.")
+        raise ValueError(_("Введите адрес почты, например admin@example.com."))
     return text
 
 
 def validate_bot_token(raw: str) -> str:
     text = raw.strip()
     if not BOT_TOKEN.match(text):
-        raise ValueError("Токен выглядит так: 123456789:AA… (его выдаёт @BotFather).")
+        raise ValueError(_("Токен выглядит так: 123456789:AA… (его выдаёт @BotFather)."))
     return text
 
 
 def validate_admin_username(raw: str) -> str:
     text = raw.strip()
     if not ADMIN_USER.match(text):
-        raise ValueError("Логин: 3–32 символа, строчные латинские буквы, цифры, «_», «.», «-».")
+        raise ValueError(_("Логин: 3–32 символа, строчные латинские буквы, цифры, «_», «.», «-»."))
     return text
 
 
 def validate_admin_password(raw: str) -> str:
     if len(raw) < MIN_PASSWORD:
-        raise ValueError(f"Пароль должен быть не короче {MIN_PASSWORD} символов.")
+        raise ValueError(_("Пароль должен быть не короче {n} символов.", n=MIN_PASSWORD))
     if len(raw.encode()) > MAX_PASSWORD_BYTES:
-        raise ValueError(f"Пароль не должен быть длиннее {MAX_PASSWORD_BYTES} байт.")
+        raise ValueError(_("Пароль не должен быть длиннее {n} байт.", n=MAX_PASSWORD_BYTES))
     return raw
 
 
@@ -105,7 +109,7 @@ def render_env(values: dict[str, str], example: Path) -> str:
     known = set(parse_env(template))
     unknown = sorted(set(values) - known)
     if unknown:
-        raise KeyError(f"ключи нет в {example.name}: {', '.join(unknown)}")
+        raise KeyError(_("ключи нет в {name}: {keys}", name=example.name, keys=", ".join(unknown)))
     lines = []
     for line in template.splitlines():
         match = _ASSIGN.match(line)

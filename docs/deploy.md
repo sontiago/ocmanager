@@ -1,6 +1,6 @@
 # Развёртывание и эксплуатация
 
-Инструкция владельца: [deploy/INSTALL.md](../deploy/INSTALL.md). Здесь устройство.
+Инструкция владельца: [deploy/INSTALL.ru.md](../deploy/INSTALL.ru.md) ([English](../deploy/INSTALL.md)). Здесь устройство.
 
 ## Состав Docker Compose (`deploy/docker-compose.yml`)
 
@@ -80,6 +80,8 @@ nginx принимает 443/tcp, читает SNI (`ssl_preread`) и без р�
 | `deploy/ocm` | bash-обёртка → `installer.ocm`; ставится ссылкой в `/usr/local/bin/ocm` |
 | `deploy/.install-state` | выполненные шаги и несекретные ответы (повторный запуск продолжает) |
 | `deploy/.env` | настройки стека (0600; шаблон `.env.example`) |
+
+Язык интерфейса: английский по умолчанию, русский через `--lang ru` или `OCM_LANG=ru`; выбор сохраняется в `.install-state`, и `ocm` с `doctor.sh` говорят на нём же. Тексты в коде русские, английские лежат в `deploy/installer/messages_en.py` (тест следит, чтобы переведено было всё).
 
 Шаги установки: `.env` → swap → Docker → сборка образов → базы и миграции → CA → администратор → все сервисы →
 сертификаты → `ocm` → бэкапы (по желанию) → `doctor`. Логика за интерфейсами `Runner`, `Net`, `Prompter`, поэтому она

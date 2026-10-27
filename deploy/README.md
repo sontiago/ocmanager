@@ -7,7 +7,7 @@
 
 # Развёртывание ocmanager: техническая справка
 
-Обычная установка — одной командой `sudo ./install.sh`, см. [INSTALL.md](INSTALL.md). Ниже — устройство стека
+Обычная установка — одной командой `sudo ./install.sh`, см. [INSTALL.ru.md](INSTALL.ru.md). Ниже — устройство стека
 и ручной путь без мастера.
 
 Один сервер, два домена: `DOMAIN_APP` (Mini App, вебхуки) и `DOMAIN_VPN` (шлюз ocserv).
@@ -109,7 +109,7 @@ docker compose up -d      # миграции накатываются сами (
 
 ## Резервные копии
 
-Автоматические шифрованные копии и восстановление — `ocm backup` / `ocm restore`, см. [INSTALL.md](INSTALL.md).
+Автоматические шифрованные копии и восстановление — `ocm backup` / `ocm restore`, см. [INSTALL.ru.md](INSTALL.ru.md).
 Формат: один файл с `pg_dump`, томом `pki` и `.env`, `openssl enc -aes-256-cbc -pbkdf2`.
 
 ## Если что-то не так

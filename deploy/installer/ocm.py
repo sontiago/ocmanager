@@ -9,15 +9,20 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from installer import backup, systemd
+from installer import backup, i18n, systemd
 from installer.backup import BackupError, BackupPaths
 from installer.config import validate_admin_password, write_private
+from installer.i18n import _
 from installer.prompts import Prompter, TerminalPrompter
 from installer.runner import CommandError, Runner, SubprocessRunner
 from installer.steps import State
 
-CONFIRM_WORD = "ДА"
-USAGE = """Использование: ocm <команда>
+CONFIRM_WORDS = {"ru": "ДА", "en": "YES"}
+
+
+def usage() -> str:
+    return _(
+        """Использование: ocm <команда>
 
   status                         проверка состояния (doctor)
   logs [сервис] [-f]             журналы сервисов
@@ -30,6 +35,8 @@ USAGE = """Использование: ocm <команда>
   admin-chat <chat_id>           кому слать алерты в Telegram
   admin-password <логин>         сменить пароль администратора
 """
+    )
+
 
 ExecFn = Callable[[Sequence[str]], None]
 
@@ -68,14 +75,20 @@ class Ocm:
         return self.runner.run(["git", *args], cwd=self.root, check=check)
 
     def confirm_word(self, key: str, warning: str) -> bool:
-        answer = self.prompter.ask(key, f"{warning}\nДля продолжения введите «{CONFIRM_WORD}»")
-        return answer.strip() == CONFIRM_WORD
+        word = CONFIRM_WORDS[i18n.get_lang()]
+        answer = self.prompter.ask(
+            key, warning + "\n" + _("Для продолжения введите «{word}»", word=word)
+        )
+        return answer.strip() in CONFIRM_WORDS.values()
 
     # --- команды ---
 
     def status(self) -> int:
         result = self.runner.run(
-            [str(self.root / "scripts" / "doctor.sh")], cwd=self.root, check=False
+            [str(self.root / "scripts" / "doctor.sh")],
+            cwd=self.root,
+            check=False,
+            env={i18n.ENV_VAR: i18n.get_lang()},
         )
         self.out(result.stdout.rstrip())
         return result.code
@@ -93,7 +106,7 @@ class Ocm:
         try:
             self.cli("notify", "backup-failed", "--reason", reason[:300])
         except CommandError as exc:
-            self.out(f"Алерт админу не поставлен: {exc}")
+            self.out(_("Алерт админу не поставлен: {exc}", exc=exc))
 
     def backups_enabled(self) -> bool:
         return self.paths.key_file.exists()
@@ -104,30 +117,36 @@ class Ocm:
             key = backup.ensure_key(self.paths.key_file)
             systemd.install(self.runner, self.root, unit_dir=self.unit_dir, ocm=systemd.OCM_LINK)
         except (BackupError, CommandError, OSError) as exc:
-            self.out(f"Ошибка: {exc}")
+            self.out(_("Ошибка: {exc}", exc=exc))
             return 1
         state = State(self.deploy / ".install-state")
         remote = self.prompter.ask(
             "backup_remote",
-            "Куда дополнительно копировать: пользователь@сервер:/путь или каталог. Enter — никуда",
+            _(
+                "Куда дополнительно копировать: пользователь@сервер:/путь или каталог. Enter — никуда"  # noqa: E501
+            ),
             default=state.answers().get("backup_remote", ""),
             validate=backup.validate_remote,
         )
         state.remember(backup_enabled="yes", backup_remote=remote)
         if not existed:
             self.out(
-                f"КЛЮЧ ШИФРОВАНИЯ КОПИЙ (показан один раз): {key}\n"
-                f"Он лежит в {self.paths.key_file}. Сохраните его отдельно от сервера: "
-                "без него копии не расшифровать."
+                _("КЛЮЧ ШИФРОВАНИЯ КОПИЙ (показан один раз): {key}", key=key)
+                + "\n"
+                + _(
+                    "Он лежит в {path}. Сохраните его отдельно от сервера: "
+                    "без него копии не расшифровать.",
+                    path=self.paths.key_file,
+                )
             )
-        self.out("Ежедневные копии включены (03:30). Первая копия сейчас: ocm backup")
+        self.out(_("Ежедневные копии включены (03:30). Первая копия сейчас: ocm backup"))
         return 0
 
     def make_backup(self) -> Path | None:
         """Копия + уборка + метка + (необязательно) вторая копия на другой сервер. При любой
         ошибке — алерт админу и None; старые копии не удаляются."""
         if not self.backups_enabled():
-            self.out("Резервные копии не включены. Включить: sudo ocm backup-enable")
+            self.out(_("Резервные копии не включены. Включить: sudo ocm backup-enable"))
             return None
         try:
             path = backup.create(self.paths, self.runner, self.now())
@@ -137,10 +156,10 @@ class Ocm:
             if remote:
                 backup.copy_offsite(path, remote, self.runner)
         except BackupError as exc:
-            self.out(f"Ошибка: {exc}")
+            self.out(_("Ошибка: {exc}", exc=exc))
             self._alert(str(exc))
             return None
-        self.out(f"Резервная копия: {path}")
+        self.out(_("Резервная копия: {path}", path=path))
         return path
 
     def backup(self) -> int:
@@ -150,20 +169,22 @@ class Ocm:
         flags = {a for a in args if a.startswith("--")}
         files = [a for a in args if not a.startswith("--")]
         if len(files) != 1 or flags - {"--with-env", "--no-emergency"}:
-            self.out(USAGE)
+            self.out(usage())
             return 2
         path = Path(files[0])
         try:
             manifest = backup.verify(path, self.paths.key_file, self.runner)
         except BackupError as exc:
-            self.out(f"Ошибка: {exc}")
+            self.out(_("Ошибка: {exc}", exc=exc))
             return 1
-        warning = (
-            f"Копия от {manifest.created} (версия {manifest.version}).\n"
-            "Восстановление ЗАМЕНИТ текущие данные: базу и CA. Сервисы будут остановлены."
+        warning = _(
+            "Копия от {created} (версия {version}).\n"
+            "Восстановление ЗАМЕНИТ текущие данные: базу и CA. Сервисы будут остановлены.",
+            created=manifest.created,
+            version=manifest.version,
         )
         if not self.confirm_word("restore_confirm", warning):
-            self.out("Отменено.")
+            self.out(_("Отменено."))
             return 1
         try:
             backup.restore(
@@ -175,54 +196,62 @@ class Ocm:
                 emergency="--no-emergency" not in flags,
             )
         except BackupError as exc:
-            self.out(f"Ошибка: {exc}")
+            self.out(_("Ошибка: {exc}", exc=exc))
             return 1
-        self.out("Данные восстановлены.")
+        self.out(_("Данные восстановлены."))
         return self.status()
 
     def update(self) -> int:
         try:
             if self.git("status", "--porcelain").stdout.strip():
                 self.out(
-                    "В каталоге установки есть локальные изменения (git status). Обновление "
-                    "остановлено: сохраните или отмените их и повторите."
+                    _(
+                        "В каталоге установки есть локальные изменения (git status). Обновление "
+                        "остановлено: сохраните или отмените их и повторите."
+                    )
                 )
                 return 1
             branch = self.git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
             if branch == "HEAD":
                 self.out(
-                    "Сейчас выбрана не ветка, а конкретный коммит (после отката). "
-                    "Вернитесь на ветку: git switch <ветка> (имя — в deploy/.previous-rev)."
+                    _(
+                        "Сейчас выбрана не ветка, а конкретный коммит (после отката). "
+                        "Вернитесь на ветку: git switch <ветка> (имя — в deploy/.previous-rev)."
+                    )
                 )
                 return 1
             self.git("fetch")
             head = self.git("rev-parse", "HEAD").stdout.strip()
             upstream = self.git("rev-parse", "@{u}").stdout.strip()
             if head == upstream:
-                self.out("Уже установлена последняя версия.")
+                self.out(_("Уже установлена последняя версия."))
                 return 0
             if self.git("merge-base", "--is-ancestor", "HEAD", "@{u}", check=False).code != 0:
                 self.out(
-                    "Обновление невозможно без слияния: в вашей копии есть коммиты, которых нет "
-                    "в репозитории. Ничего не изменено."
+                    _(
+                        "Обновление невозможно без слияния: в вашей копии есть коммиты, которых нет "  # noqa: E501
+                        "в репозитории. Ничего не изменено."
+                    )
                 )
                 return 1
         except CommandError as exc:
-            self.out(f"Не удалось проверить репозиторий: {exc}")
+            self.out(_("Не удалось проверить репозиторий: {exc}", exc=exc))
             return 1
         saved: Path | None = None
         if self.backups_enabled():
             saved = self.make_backup()
             if saved is None:
-                self.out("Копия не создана — обновление остановлено, ничего не изменено.")
+                self.out(_("Копия не создана — обновление остановлено, ничего не изменено."))
                 return 1
         elif not self.prompter.confirm(
             "update_without_backup",
-            "Резервные копии не включены: откатить базу после обновления будет нечем. "
-            "Обновить без копии?",
+            _(
+                "Резервные копии не включены: откатить базу после обновления будет нечем. "
+                "Обновить без копии?"
+            ),
             default=False,
         ):
-            self.out("Отменено. Включить копии: sudo ocm backup-enable")
+            self.out(_("Отменено. Включить копии: sudo ocm backup-enable"))
             return 1
         write_private(
             self.previous,
@@ -233,14 +262,16 @@ class Ocm:
             self.compose("build")
             self.compose("up", "-d")
         except CommandError as exc:
-            self.out(f"Ошибка при обновлении: {exc}\nВернуть прежнюю версию: ocm rollback")
+            self.out(
+                _("Ошибка при обновлении: {exc}\nВернуть прежнюю версию: ocm rollback", exc=exc)
+            )
             return 1
         if self.status() != 0:
             self.out(
-                "Проверка после обновления нашла проблемы. Вернуть прежнюю версию: ocm rollback"
+                _("Проверка после обновления нашла проблемы. Вернуть прежнюю версию: ocm rollback")
             )
             return 1
-        self.out("Обновление завершено.")
+        self.out(_("Обновление завершено."))
         return 0
 
     def rollback(self) -> int:
@@ -250,64 +281,78 @@ class Ocm:
             saved = Path(record["backup"]) if record["backup"] else None
         except (OSError, ValueError, KeyError):
             self.out(
-                "Нет записи о предыдущей версии: откатывать нечего "
-                "(откат возможен после ocm update)."
+                _(
+                    "Нет записи о предыдущей версии: откатывать нечего "
+                    "(откат возможен после ocm update)."
+                )
             )
             return 1
         if not self.confirm_word(
-            "rollback_confirm", f"Вернуть код на версию {rev[:12]} и пересобрать сервисы."
+            "rollback_confirm",
+            _("Вернуть код на версию {rev} и пересобрать сервисы.", rev=rev[:12]),
         ):
-            self.out("Отменено.")
+            self.out(_("Отменено."))
             return 1
         try:
             self.git("checkout", rev)
             self.compose("build")
             self.compose("up", "-d")
         except CommandError as exc:
-            self.out(f"Ошибка отката: {exc}")
+            self.out(_("Ошибка отката: {exc}", exc=exc))
             return 1
-        self.out(f"Код возвращён на {rev[:12]}. Чтобы потом снова обновляться: git switch {branch}")
+        self.out(
+            _(
+                "Код возвращён на {rev}. Чтобы потом снова обновляться: git switch {branch}",
+                rev=rev[:12],
+                branch=branch,
+            )
+        )
         if saved is not None and self.prompter.confirm(
             "rollback_restore_db",
-            f"Восстановить и данные из копии до обновления ({saved.name})? Изменения после "
-            "обновления будут потеряны.",
+            _(
+                "Восстановить и данные из копии до обновления ({name})? Изменения после "
+                "обновления будут потеряны.",
+                name=saved.name,
+            ),
             default=False,
         ):
             try:
                 backup.restore(saved, self.paths, self.runner, self.now())
             except BackupError as exc:
-                self.out(f"Ошибка: {exc}")
+                self.out(_("Ошибка: {exc}", exc=exc))
                 return 1
-            self.out("Данные восстановлены.")
+            self.out(_("Данные восстановлены."))
         return self.status()
 
     def admin_chat(self, args: list[str]) -> int:
         if len(args) != 1 or not args[0].lstrip("-").isdigit():
-            self.out("Использование: ocm admin-chat <chat_id>  (число из ответа бота на /whoami)")
+            self.out(
+                _("Использование: ocm admin-chat <chat_id>  (число из ответа бота на /whoami)")
+            )
             return 2
         try:
             result = self.cli("settings", "admin-chat", args[0])
         except CommandError as exc:
-            self.out(f"Ошибка: {exc}")
+            self.out(_("Ошибка: {exc}", exc=exc))
             return 1
         self.out(result.stdout.strip())
         return 0
 
     def admin_password(self, args: list[str]) -> int:
         if len(args) != 1:
-            self.out("Использование: ocm admin-password <логин>")
+            self.out(_("Использование: ocm admin-password <логин>"))
             return 2
         password = self.prompter.ask_secret(
             "admin_password",
-            "Новый пароль (не короче 12 символов)",
+            _("Новый пароль (не короче 12 символов)"),
             validate=validate_admin_password,
         )
         try:
             self.cli("admin", "passwd", args[0], "--password-stdin", input=password + "\n")
         except CommandError as exc:
-            self.out(f"Ошибка: {exc}")
+            self.out(_("Ошибка: {exc}", exc=exc))
             return 1
-        self.out("Пароль изменён.")
+        self.out(_("Пароль изменён."))
         return 0
 
 
@@ -332,6 +377,9 @@ def main(
         unit_dir=unit_dir,
         exec_fn=exec_fn or (lambda cmd: os.execvp(cmd[0], list(cmd))),  # noqa: S606
     )
+    chosen = i18n.from_env() or State(ocm.deploy / ".install-state").answers().get("lang")
+    if chosen in i18n.LANGUAGES:
+        i18n.set_lang(chosen)
     command, args = (argv[0], list(argv[1:])) if argv else ("", [])
     if command == "status":
         return ocm.status()
@@ -351,7 +399,7 @@ def main(
         return ocm.admin_chat(args)
     if command == "admin-password":
         return ocm.admin_password(args)
-    out(USAGE)
+    out(usage())
     return 0 if command in ("", "-h", "--help", "help") else 2
 
 

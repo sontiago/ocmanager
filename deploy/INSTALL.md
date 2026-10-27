@@ -5,118 +5,124 @@
   </picture>
 </p>
 
-# ocmanager: установка и обслуживание
+<p align="center"><b>English</b> · <a href="INSTALL.ru.md">Русский</a></p>
 
-Инструкция для владельца сервера. Нужны базовые навыки Linux: SSH, `sudo`, DNS.
+# ocmanager: installation and operation
 
-## Что нужно заранее
+A guide for the server owner. Basic Linux skills are required: SSH, `sudo`, DNS.
 
-1. **Сервер** Debian 12+ или Ubuntu 22.04+, публичный IPv4, root или `sudo`. От 1 ГБ памяти (на 1 ГБ мастер предложит
-   создать swap), 10 ГБ диска.
-2. **Два домена** (или поддомена): один для Mini App, другой для VPN-шлюза. У обоих A-запись на IP сервера.
-3. **Порты 80/tcp, 443/tcp и 443/udp** свободны и открыты у провайдера. Docker сам публикует порты мимо `ufw`,
-   поэтому лишнее закрывайте в firewall провайдера: наружу должны смотреть только 80, 443 и SSH.
-4. **Бот** из @BotFather: понадобится его токен.
-5. **Доступ к репозиторию** продукта (deploy key или токен) и почта для Let's Encrypt.
+## What you need beforehand
 
-## Установка
+1. **A server** running Debian 12+ or Ubuntu 22.04+, a public IPv4 address, root or `sudo`. At least 1 GB of memory (on 1 GB the
+   wizard offers to create swap) and 10 GB of disk.
+2. **Two domains** (or subdomains): one for the Mini App, one for the VPN gateway. Both need an A record pointing to the server IP.
+3. **Ports 80/tcp, 443/tcp and 443/udp** free and open at your provider. Docker publishes ports bypassing `ufw`,
+   so close everything else in your provider's firewall: only 80, 443 and SSH should be reachable from outside.
+4. **A bot** from @BotFather: you need its token.
+5. **Access to the product repository** (a deploy key or a token) and an email for Let's Encrypt.
+
+## Installation
 
 ```bash
-git clone <репозиторий> ocmanager && cd ocmanager
+git clone <repository> ocmanager && cd ocmanager
 sudo ./install.sh
 ```
 
-Мастер сам проверит сервер и задаст вопросы по порядку:
+The wizard speaks English by default. Use `--lang ru` (or `OCM_LANG=ru`) for Russian; `ocm` keeps using the language you chose.
 
-| Вопрос | Что отвечать |
+The wizard checks the server and then asks, in order:
+
+| Question | What to answer |
 |---|---|
-| Домен Mini App / домен VPN | Имена без `https://`, разные. Мастер сверит A-записи с IP сервера. |
-| Почта для Let's Encrypt | Ваша рабочая почта. |
-| Токен бота | Из @BotFather. Мастер проверит его и сам возьмёт имя бота. |
-| Ключ Tribute | Можно пропустить (Enter) и вписать позже в `deploy/.env`. |
-| Логин и пароль администратора | Пароль не короче 12 символов; можно дать сгенерировать (показывается один раз). |
-| Включить резервные копии | По желанию (по умолчанию «нет»). Если «да», мастер спросит, куда ещё копировать: `пользователь@сервер:/путь` (по ключу SSH) или каталог. Включить позже: `sudo ocm backup-enable`. |
+| Mini App domain / VPN domain | Names without `https://`, different from each other. The wizard checks the A records against the server IP. |
+| Let's Encrypt email | Your working email. |
+| Bot token | From @BotFather. The wizard verifies it and picks up the bot name itself. |
+| Tribute key | You can skip it (Enter) and add it later to `deploy/.env`. |
+| Administrator login and password | The password must be at least 12 characters; you can let the wizard generate one (shown once). |
+| Enable backups | Optional (default: no). If yes, the wizard asks where else to copy them: `user@server:/path` (over SSH key) or a directory. Enable later: `sudo ocm backup-enable`. |
 
-Установка занимает около 10 минут. Если она оборвалась, исправьте причину и запустите `sudo ./install.sh` снова: она
-продолжится с того же шага, секреты и `.env` не пересоздаются. Посмотреть план без изменений: `sudo ./install.sh --dry-run`.
+The installation takes about 10 minutes. If it was interrupted, fix the cause and run `sudo ./install.sh` again: it continues from
+the same step, secrets and `.env` are not recreated. To see the plan without changes: `sudo ./install.sh --dry-run`.
 
-Если вы включили резервные копии, в конце мастер покажет **ключ шифрования**. Сохраните его отдельно от сервера (менеджер паролей):
-без него копии не расшифровать.
+If you enabled backups, the wizard shows the **encryption key** at the end. Save it separately from the server (a password manager):
+backups cannot be decrypted without it.
 
-## После установки
+## After the installation
 
-1. @BotFather → `/myapps` → ваше приложение → Edit Web App URL → `https://<домен Mini App>`.
-2. Напишите боту `/whoami`, получите число и выполните `sudo ocm admin-chat <число>`: так вы начнёте получать алерты.
-3. Админка открывается только через SSH-туннель:
+1. @BotFather → `/myapps` → your app → Edit Web App URL → `https://<Mini App domain>`.
+2. Send `/whoami` to the bot, take the number it replies with and run `sudo ocm admin-chat <number>`: this is how you start receiving alerts.
+3. The admin panel is reachable only through an SSH tunnel:
    ```bash
-   ssh -L 8080:127.0.0.1:8080 пользователь@сервер
+   ssh -L 8080:127.0.0.1:8080 user@server
    ```
-   и затем `http://localhost:8080/` в браузере.
-4. В админке создайте тарифы. Tribute: в кабинете автора укажите вебхук `https://<домен Mini App>/webhooks/tribute`,
-   ключ API впишите в `deploy/.env` (`OCM_TRIBUTE_API_KEY`) и выполните `cd deploy && docker compose up -d`.
+   then open `http://localhost:8080/` in a browser.
+4. Create plans in the admin panel. Tribute: in the author's account set the webhook `https://<Mini App domain>/webhooks/tribute`,
+   put the API key into `deploy/.env` (`OCM_TRIBUTE_API_KEY`) and run `cd deploy && docker compose up -d`.
 
-## Повседневное: команда `ocm` (от root)
+## Everyday use: the `ocm` command (as root)
 
-| Команда | Что делает |
+| Command | What it does |
 |---|---|
-| `ocm status` | Проверка состояния: все строки должны быть зелёными |
-| `ocm logs [сервис] [-f]` | Журналы |
-| `ocm backup` | Резервная копия сейчас |
-| `ocm restore <файл> [--with-env]` | Восстановление |
-| `ocm update` | Обновление с копией перед ним |
-| `ocm rollback` | Возврат на версию до обновления |
-| `ocm admin-chat <число>` | Кому слать алерты |
-| `ocm admin-password <логин>` | Сменить пароль администратора |
+| `ocm status` | Health check: every line should be green |
+| `ocm logs [service] [-f]` | Logs |
+| `ocm backup-enable` | Enable daily backups |
+| `ocm backup` | Take a backup now |
+| `ocm restore <file> [--with-env]` | Restore |
+| `ocm update` | Update, with a backup first |
+| `ocm rollback` | Return to the version before the update |
+| `ocm admin-chat <number>` | Who receives alerts |
+| `ocm admin-password <login>` | Change the administrator password |
 
-### Безопасность `ocm`
+### `ocm` security
 
-`ocm` работает от root и исполняет код из каталога, куда вы клонировали репозиторий. Поэтому этот каталог (и всё над ним)
-не должен быть доступен на запись другим пользователям: `ocm` сам откажется запускаться, если это так, и покажет
-проблемные пути (лечится `chmod go-w`). Держите клон в домашнем каталоге root или администратора, которому вы и так доверяете `sudo`.
+`ocm` runs as root and executes code from the directory where you cloned the repository. That directory (and everything above it)
+must therefore not be writable by other users: `ocm` refuses to start otherwise and lists the offending paths (fix with
+`chmod go-w`). Keep the clone in the home directory of root or of an administrator you already trust with `sudo`.
 
-## Резервные копии
+## Backups
 
-По умолчанию выключены. Включить: `sudo ocm backup-enable` (создаёт ключ и таймер). Без копий потеря сервера означает потерю базы и CA, а `ocm update` перед обновлением спросит подтверждение, что можно без копии.
+Off by default. Enable them with `sudo ocm backup-enable` (creates the key and the timer). Without backups, losing the server means losing the
+database and the CA, and `ocm update` asks for confirmation that updating without a backup is fine.
 
-После включения каждую ночь в 03:30 создаётся файл `/var/backups/ocmanager/ocmanager-<дата>.tar.gz.enc`: база, удостоверяющий центр (CA)
-и `.env`, зашифрованные ключом из `/root/.ocmanager-backup-key`. Хранятся 14 последних. Если копия не удалась, админу
-приходит алерт в Telegram, а `ocm status` краснеет, когда последней успешной копии больше 36 часов.
+Once enabled, a file `/var/backups/ocmanager/ocmanager-<date>.tar.gz.enc` is created every night at 03:30: the database, the certificate
+authority (CA) and `.env`, encrypted with the key from `/root/.ocmanager-backup-key`. The last 14 are kept. If a backup fails, the
+admin receives a Telegram alert, and `ocm status` turns red when there has been no successful backup for more than 36 hours.
 
-**Потеря CA означает перевыпуск ключей у всех клиентов.** Поэтому: сохраните ключ шифрования вне сервера и указывайте
-второй адрес для копий.
+**Losing the CA means reissuing the keys of every client.** So: keep the encryption key outside the server and set a second
+destination for the copies.
 
-### Восстановление на новом сервере
+### Restoring on a new server
 
-1. Установите продукт как обычно (`sudo ./install.sh`) с теми же доменами и перенесите DNS на новый IP.
-2. Положите файл копии на сервер и ключ в `/root/.ocmanager-backup-key` (`chmod 600`).
-3. `sudo ocm restore /путь/к/ocmanager-….tar.gz.enc` и введите `ДА`. Добавьте `--with-env`, если нужно вернуть прежний `.env`
-   (секреты старого сервера). Перед восстановлением снимается аварийная копия текущего состояния.
-4. `ocm status`: после восстановления выданные ключи клиентов продолжают работать.
+1. Install the product as usual (`sudo ./install.sh`) with the same domains and point DNS to the new IP.
+2. Put the backup file on the server and the key into `/root/.ocmanager-backup-key` (`chmod 600`).
+3. `sudo ocm restore /path/to/ocmanager-….tar.gz.enc` and type `YES`. Add `--with-env` if you need the previous `.env`
+   (the old server's secrets). An emergency backup of the current state is taken before the restore.
+4. `ocm status`: after the restore, the keys already issued to clients keep working.
 
-Неверный ключ или повреждённый файл обнаруживаются до остановки сервисов: ничего не затирается.
+A wrong key or a damaged file is detected before the services are stopped: nothing is overwritten.
 
-## Обновление и откат
+## Update and rollback
 
 ```bash
 sudo ocm update
 ```
 
-Команда откажется работать, если в каталоге установки есть локальные правки или обновление требует слияния, и ничего
-при этом не изменит. Иначе: копия → `git pull --ff-only` → сборка → запуск → проверка. Если проверка красная, команда
-предложит `sudo ocm rollback`: код возвращается на прежний коммит, а базу можно (отдельным вопросом) восстановить из
-копии «до обновления», потеряв изменения после него. После отката вернитесь на ветку: `git switch <ветка>` (имя печатает
-`ocm rollback`).
+The command refuses to work if the installation directory has local changes or the update would need a merge, and changes nothing
+in that case. Otherwise: backup → `git pull --ff-only` → build → start → check. If the check is red, the command suggests
+`sudo ocm rollback`: the code returns to the previous commit, and the database can (as a separate question) be restored from the
+pre-update backup, losing the changes made after it. After a rollback, return to your branch: `git switch <branch>` (the name is
+printed by `ocm rollback`).
 
-## Если что-то не так
+## If something is wrong
 
-| Симптом | Куда смотреть |
+| Symptom | Where to look |
 |---|---|
-| ocserv перезапускается | `ocm logs ocserv` — нет CA/CRL или сертификата (Caddy ещё выпускает) |
-| Сертификат не выпускается | A-записи, порт 80 снаружи, `ocm logs caddy` (лимит Let's Encrypt — 5 неудач в час) |
-| Клиенты не подключаются через месяцы | `ocm logs worker`: продление сертификата подхватывается раз в 6 часов |
-| Mini App — белый экран | Edit Web App URL в @BotFather; ответ сайта не должен содержать `X-Frame-Options` |
-| Нет уведомлений | `ocm logs worker`; не задан `admin_chat_ids` (`ocm admin-chat`) |
-| `ocm status`: сверка ноды красная | Первые 5–6 минут после запуска это нормально |
-| `ocm status`: нет свежей копии | `ocm backup` и смотрите сообщение об ошибке; `systemctl status ocm-backup.timer` |
+| ocserv keeps restarting | `ocm logs ocserv`: no CA/CRL or certificate (Caddy is still issuing it) |
+| The certificate is not issued | A records, port 80 reachable from outside, `ocm logs caddy` (Let's Encrypt allows 5 failures per hour) |
+| Clients cannot connect after months | `ocm logs worker`: certificate renewal is picked up every 6 hours |
+| The Mini App shows a white screen | Edit Web App URL in @BotFather; the site response must not contain `X-Frame-Options` |
+| No notifications | `ocm logs worker`; `admin_chat_ids` is not set (`ocm admin-chat`) |
+| `ocm status`: node reconcile is red | Normal during the first 5–6 minutes after start |
+| `ocm status`: no fresh backup | `ocm backup` and read the error message; `systemctl status ocm-backup.timer` |
 
-Техническая справка (ручной путь, устройство стека): [README.md](README.md).
+Technical reference (manual path, how the stack is built): [README.md](README.md).

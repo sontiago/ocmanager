@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from installer.i18n import _
+
 
 @dataclass(frozen=True)
 class Result:
@@ -28,7 +30,14 @@ class CommandError(Exception):
         self.code = code
         self.stderr = stderr
         tail = stderr.strip()[-500:]
-        super().__init__(f"команда {' '.join(self.cmd)} завершилась с кодом {code}: {tail}")
+        super().__init__(
+            _(
+                "команда {cmd} завершилась с кодом {code}: {tail}",
+                cmd=" ".join(self.cmd),
+                code=code,
+                tail=tail,
+            )
+        )
 
 
 class Runner(Protocol):
@@ -172,12 +181,12 @@ class SystemNet:
                 payload = json.load(response)
         except urllib.error.HTTPError as exc:
             # 401/404 от Telegram — токен не принят; сеть при этом работает.
-            raise NetError("Telegram не принял токен") from exc
+            raise NetError(_("Telegram не принял токен")) from exc
         except (urllib.error.URLError, OSError, ValueError) as exc:
-            raise NetError("нет связи с Telegram", unreachable=True) from exc
+            raise NetError(_("нет связи с Telegram"), unreachable=True) from exc
         username = (payload.get("result") or {}).get("username")
         if not payload.get("ok") or not username:
-            raise NetError("Telegram не принял токен")
+            raise NetError(_("Telegram не принял токен"))
         return str(username)
 
 
@@ -208,8 +217,8 @@ class FakeNet:
 
     def telegram_get_me(self, token: str) -> str:
         if self.telegram_down:
-            raise NetError("нет связи с Telegram", unreachable=True)
+            raise NetError(_("нет связи с Telegram"), unreachable=True)
         try:
             return self.bots[token]
         except KeyError:
-            raise NetError("Telegram не принял токен") from None
+            raise NetError(_("Telegram не принял токен")) from None
