@@ -3,7 +3,7 @@
 # Каждая строка — одна проверка; код выхода = число проваленных.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-cd "$here/../deploy"
+cd "$here/../deploy" || exit 1
 set -a
 # shellcheck disable=SC1091
 . ./.env
