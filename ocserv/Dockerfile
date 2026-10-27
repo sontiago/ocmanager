@@ -1,5 +1,5 @@
 # Образ ноды ocserv. Основа — r4ven-me/openconnect (src/server/v1.3-sid):
-# тот же набор пакетов, tini как PID 1, --foreground. Отличия — в плане Фазы 1.
+# тот же набор пакетов, tini как PID 1, --foreground.
 FROM debian:trixie-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
