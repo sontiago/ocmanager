@@ -71,14 +71,10 @@ dns = 1.1.1.1
 dns = 8.8.8.8
 ping-leases = false
 
-# --- Адреса мимо VPN ----------------------------------------------------------------
-# ocm: строки `no-route` пишет панель (Настройки → Маршруты мимо VPN); читается при каждом
-# подключении, reload не нужен.
-default-user-config = /var/lib/ocmanager/default-user.conf
-
 # --- Камуфляж: без ?секрета в URL сервер выглядит как обычный сайт --------------
 camouflage = true
 camouflage_secret = "${OCSERV_CAMOUFLAGE_SECRET}"
 camouflage_realm = "Restricted Content"
 
 log-level = 1
+# ocm: в конец файла render-conf.sh дописывает строки `no-route` (Настройки → Маршруты мимо VPN).

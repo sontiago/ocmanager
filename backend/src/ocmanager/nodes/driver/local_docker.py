@@ -91,6 +91,17 @@ class LocalDockerDriver:
     async def publish_routes(self, routes: Iterable[str]) -> None:
         data = files.render_routes(routes)  # ValueError — до записи
         await asyncio.to_thread(files.atomic_write, self.state_dir / ROUTES_FILE, data)
+        # no-route живёт в основном конфиге ocserv: пересобрать его и перечитать. Нода лежит —
+        # файл уже записан, и конфиг соберётся при её запуске.
+        if await self._container_state() == "running":
+            await self._exec("ocm-render-conf")
+            await self.occtl.reload()
+
+    async def _exec(self, *command: str) -> None:
+        try:
+            await shell.run(["docker", "exec", self.container, *command])
+        except (shell.CommandTimeout, shell.CommandNotFound, shell.CommandFailed) as exc:
+            raise NodeUnreachable(f"{command[0]}: {exc}") from exc
 
     async def read_routes(self) -> list[str] | None:
         data = await _read(self.state_dir / ROUTES_FILE)

@@ -39,11 +39,7 @@ services:
   # а ocserv и бэкенд делят ocserv-state — без этого результат зависел бы от порядка запуска.
   volume-init:
     image: alpine:3.20
-    # default-user.conf: ocserv не стартует без файла маршрутов мимо VPN (его потом ведёт панель).
-    command:
-      - sh
-      - -c
-      - "touch /state/default-user.conf && chmod 644 /state/default-user.conf && chown -R 10001:10001 /state /pki"
+    command: ["chown", "-R", "10001:10001", "/state", "/pki"]
     volumes:
       - ocserv-state:/state
       - pki:/pki
