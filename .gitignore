@@ -1,4 +1,3 @@
-docs/*
 
 # Environment
 .env
@@ -19,3 +18,5 @@ deploy/.env
 
 # visual companion
 .superpowers/
+
+.DS_Store

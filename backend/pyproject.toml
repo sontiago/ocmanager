@@ -1,6 +1,6 @@
 [project]
 name = "ocmanager"
-version = "0.1.0"
+version = "1.0.0"
 description = "SaaS-панель для ocserv: API, воркер и бот"
 requires-python = ">=3.12,<3.13"
 dependencies = [

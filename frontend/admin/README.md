@@ -1,25 +1,30 @@
-# Веб-админка ocmanager
+# ocmanager · веб-админка
 
-React + Vite + Tailwind поверх админ-API (`/admin/*`). Спека: `docs/superpowers/specs/2026-10-23-admin-web-design.md`.
+SPA для владельца сервиса: клиенты, подписки, платежи, статистика, нода, настройки. Работает поверх админ-API
+(`/admin/*`).
 
-В проде собранную статику отдаёт сам `api-admin` на `/` (образ бэкенда собирает её отдельной стадией),
-поэтому cookie-сессия и CSRF работают на одном origin, без CORS. Доступ — только через SSH-туннель.
+> Общая картина: [docs/architecture.md](../../docs/architecture.md). Детали: [docs/admin/architecture.md](../../docs/admin/architecture.md).
+
+## Стек
+
+| Область | Что используется |
+|---|---|
+| UI | React 19, TypeScript 6, Tailwind CSS 4 (стиль AdminLTE) |
+| Сборка | Vite 8 |
+| Данные | TanStack Query 5, собственный fetch-клиент (CSRF, разбор ошибок) |
+| Роутинг | React Router 7 |
+| Графики | Recharts |
+| Типы API | `openapi-typescript`: `src/api/generated.d.ts` генерируется из кода бэкенда |
+| Тесты | Vitest, Testing Library, jsdom; линтер oxlint |
+
+В проде статику отдаёт сам `api-admin` на `/`: cookie-сессия и CSRF работают на одном origin, CORS не нужен.
+Доступ только через SSH-туннель.
 
 ## Запуск для разработки
 
-Из `backend/`:
-
 ```bash
-make dev-up && make migrate
-uv run ocmanager admin create      # первый админ
-make api-admin                     # 127.0.0.1:8080
-```
-
-Из `frontend/admin/`:
-
-```bash
-npm install
-npm run dev                        # Vite проксирует /admin на 127.0.0.1:8080
+cd backend && make dev-up && make migrate && uv run ocmanager admin create owner && make api-admin
+cd frontend/admin && npm ci && npm run dev     # http://localhost:5173, /admin проксируется на 127.0.0.1:8080
 ```
 
 ## Проверки
@@ -30,18 +35,21 @@ npm run typecheck && npm run lint && npm test && npm run build
 
 ## Типы API
 
-`src/api/generated.d.ts` сгенерирован из OpenAPI и закоммичен. Сервер для этого не нужен: схема берётся прямо
-из кода бэкенда.
+`src/api/generated.d.ts` закоммичен и перегенерируется из кода бэкенда без запущенного сервера:
 
 ```bash
-npm run api:types:offline   # перегенерировать (make admin-types в backend/)
-npm run api:check           # проверить, что типы не отстали (то же делает CI)
+npm run api:types:offline   # то же, что make admin-types в backend/
+npm run api:check           # типы не отстали от бэкенда (то же делает CI)
 ```
 
-`npm run api:types` берёт схему с запущенного `make api-admin` — тот же результат, если нужно проверить живой сервер.
+## Структура
 
-## Устройство
-
-- `src/api/` — `client.ts` (fetch, CSRF, разбор ошибок), `session.tsx` (вход, `/auth/me`), `hooks/` (запросы TanStack Query).
-- `src/pages/` — по странице на раздел; `src/ui/` — общие компоненты; `src/lib/` — форматирование, фильтры в URL, SSE.
-- `src/i18n/{ru,en}.json` — словари; тест следит, чтобы наборы ключей совпадали.
+```
+src/
+  api/        client.ts (fetch, CSRF), session.tsx (вход, /auth/me), hooks/ (запросы по разделам)
+  app/        App.tsx, routes.tsx (таблица маршрутов), RequireAuth.tsx
+  pages/      по странице на раздел (Overview, Clients, Stats, Plans, Settings, Node …)
+  ui/         общие компоненты: AppShell, DataTable, Card, Modal, графики
+  lib/        форматирование, фильтры в URL, SSE-хук, формы
+  i18n/       ru.json, en.json (тест следит, чтобы наборы ключей совпадали)
+```
