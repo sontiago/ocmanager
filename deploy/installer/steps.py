@@ -8,8 +8,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from installer import backup, systemd
+from installer import backup, i18n, systemd
 from installer.config import render_env, write_env
+from installer.i18n import _
 from installer.runner import CommandError, Net, Result, Runner
 
 CERT_TIMEOUT_S = 300
@@ -192,14 +193,21 @@ def _certs(ctx: Context) -> bool:
         while not _tls_ready(ctx, domain):
             if ctx.clock() + CERT_POLL_S > deadline:
                 raise StepError(
-                    f"Сертификат для {domain} не выпущен за {CERT_TIMEOUT_S // 60} минут.",
-                    f"Проверьте, что A-запись {domain} указывает на этот сервер и порт 80 "
-                    "открыт снаружи (в том числе в облачном firewall провайдера). "
-                    "Что говорит Caddy: docker compose logs caddy. "
-                    "Лимит Let's Encrypt — 5 неудач в час. После исправления запустите "
-                    "./install.sh снова: установка продолжится.",
+                    _(
+                        "Сертификат для {domain} не выпущен за {minutes} минут.",
+                        domain=domain,
+                        minutes=CERT_TIMEOUT_S // 60,
+                    ),
+                    _(
+                        "Проверьте, что A-запись {domain} указывает на этот сервер и порт 80 "
+                        "открыт снаружи (в том числе в облачном firewall провайдера). "
+                        "Что говорит Caddy: docker compose logs caddy. "
+                        "Лимит Let's Encrypt — 5 неудач в час. После исправления запустите "
+                        "./install.sh снова: установка продолжится.",
+                        domain=domain,
+                    ),
                 )
-            ctx.out(f"Жду сертификат для {domain}…")
+            ctx.out(_("Жду сертификат для {domain}…", domain=domain))
             ctx.sleep(CERT_POLL_S)
     return True
 
@@ -223,14 +231,22 @@ def _tls_ready(ctx: Context, domain: str) -> bool:
 
 
 def _doctor(ctx: Context) -> bool:
-    result = ctx.runner.run([str(ctx.root / "scripts" / "doctor.sh")], cwd=ctx.root, check=False)
+    result = ctx.runner.run(
+        [str(ctx.root / "scripts" / "doctor.sh")],
+        cwd=ctx.root,
+        check=False,
+        env={i18n.ENV_VAR: i18n.get_lang()},
+    )
     if result.stdout:
         ctx.out(result.stdout.rstrip())
     if result.code != 0:
         ctx.warn(
-            f"Проверка doctor нашла проблем: {result.code}. Подробности выше. Строка про сверку "
-            "ноды (reconcile) на свежем стеке краснеет до первой сверки — подождите 5–6 минут "
-            "и запустите «ocm status»."
+            _(
+                "Проверка doctor нашла проблем: {code}. Подробности выше. Строка про сверку "
+                "ноды (reconcile) на свежем стеке краснеет до первой сверки — подождите 5–6 минут "
+                "и запустите «ocm status».",
+                code=result.code,
+            )
         )
     return True
 
@@ -240,8 +256,10 @@ def _backup(ctx: Context) -> bool:
     всё работает, и точка возврата до первой настройки покупателем."""
     if not ctx.want_backup:
         ctx.notes.append(
-            "Резервные копии выключены. Включить: sudo ocm backup-enable. "
-            "Без копий потеря сервера означает потерю базы и CA (ключей всех клиентов)."
+            _(
+                "Резервные копии выключены. Включить: sudo ocm backup-enable. "
+                "Без копий потеря сервера означает потерю базы и CA (ключей всех клиентов)."
+            )
         )
         return False
     existed = ctx.key_file.exists()
@@ -249,10 +267,13 @@ def _backup(ctx: Context) -> bool:
     systemd.install(ctx.runner, ctx.root, unit_dir=ctx.unit_dir, ocm=ctx.ocm_link)
     if not existed:
         ctx.notes.append(
-            "КЛЮЧ ШИФРОВАНИЯ РЕЗЕРВНЫХ КОПИЙ (показан один раз):\n"
-            f"  {key}\n"
-            f"Он же лежит в {ctx.key_file}. Сохраните его отдельно от сервера (менеджер паролей): "
-            "без ключа копии не расшифровать, а при потере сервера этот файл пропадёт вместе с ним."
+            _("КЛЮЧ ШИФРОВАНИЯ РЕЗЕРВНЫХ КОПИЙ (показан один раз):")
+            + f"\n  {key}\n"
+            + _(
+                "Он же лежит в {path}. Сохраните его отдельно от сервера (менеджер паролей): "
+                "без ключа копии не расшифровать, а при потере сервера этот файл пропадёт вместе с ним.",  # noqa: E501
+                path=ctx.key_file,
+            )
         )
     return True
 
@@ -264,18 +285,18 @@ def _ocm(ctx: Context) -> bool:
 
 def build_steps() -> list[Step]:
     return [
-        Step("env", "Записываю настройки (.env)", _env),
-        Step("swap", "Создаю swap", _swap),
-        Step("docker", "Устанавливаю Docker", _docker),
-        Step("build", "Собираю образы (около 5 минут)", _build),
-        Step("infra", "Запускаю базы и применяю миграции", _infra),
-        Step("pki", "Создаю удостоверяющий центр (CA)", _pki),
-        Step("admin", "Создаю первого администратора", _admin),
-        Step("stack", "Запускаю все сервисы", _stack),
-        Step("certs", "Жду сертификаты Let's Encrypt (1–3 минуты)", _certs),
-        Step("ocm", "Ставлю команду ocm", _ocm),
-        Step("backup", "Настраиваю ежедневные резервные копии", _backup),
-        Step("doctor", "Проверяю установку", _doctor),
+        Step("env", _("Записываю настройки (.env)"), _env),
+        Step("swap", _("Создаю swap"), _swap),
+        Step("docker", _("Устанавливаю Docker"), _docker),
+        Step("build", _("Собираю образы (около 5 минут)"), _build),
+        Step("infra", _("Запускаю базы и применяю миграции"), _infra),
+        Step("pki", _("Создаю удостоверяющий центр (CA)"), _pki),
+        Step("admin", _("Создаю первого администратора"), _admin),
+        Step("stack", _("Запускаю все сервисы"), _stack),
+        Step("certs", _("Жду сертификаты Let's Encrypt (1–3 минуты)"), _certs),
+        Step("ocm", _("Ставлю команду ocm"), _ocm),
+        Step("backup", _("Настраиваю ежедневные резервные копии"), _backup),
+        Step("doctor", _("Проверяю установку"), _doctor),
     ]
 
 
@@ -284,17 +305,32 @@ def run_steps(ctx: Context, steps: list[Step]) -> None:
     for index, step in enumerate(steps, start=1):
         label = f"[{index}/{total}] {step.title}"
         if ctx.state.is_done(step.name):
-            ctx.out(f"{label} — уже сделано")
+            ctx.out(_("{label} — уже сделано", label=label))
             continue
         if ctx.dry_run:
-            ctx.out(f"[пробный запуск] {label}")
+            ctx.out(_("[пробный запуск] {label}", label=label))
             continue
         ctx.out(label)
         try:
             performed = step.run(ctx)
         except CommandError as exc:
-            raise StepError(f"Шаг {step.name} («{step.title}») не удался: {exc}") from exc
+            raise StepError(
+                _(
+                    "Шаг {name} («{title}») не удался: {exc}",
+                    name=step.name,
+                    title=step.title,
+                    exc=exc,
+                )
+            ) from exc
         except StepError as exc:
-            raise StepError(f"Шаг {step.name} («{step.title}»): {exc.message}", exc.hint) from exc
+            raise StepError(
+                _(
+                    "Шаг {name} («{title}»): {message}",
+                    name=step.name,
+                    title=step.title,
+                    message=exc.message,
+                ),
+                exc.hint,
+            ) from exc
         if performed:
             ctx.state.mark(step.name)

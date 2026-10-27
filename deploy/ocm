@@ -6,8 +6,12 @@ set -euo pipefail
 self="$(readlink -f "${BASH_SOURCE[0]}")"
 root="$(dirname "$(dirname "$self")")"
 
+# Язык сообщений: OCM_LANG, иначе выбранный при установке, иначе английский.
+lang="${OCM_LANG:-$(sed -n 's/.*"lang": "\([a-z]*\)".*/\1/p' "$root/deploy/.install-state" 2>/dev/null | head -n 1)}"
+say() { if [ "${lang:-en}" = ru ]; then echo "$1" >&2; else echo "$2" >&2; fi; }
+
 if [ "$(id -u)" -ne 0 ]; then
-  echo "ocm нужно запускать от root: sudo ocm $*" >&2
+  say "ocm нужно запускать от root: sudo ocm $*" "ocm must be run as root: sudo ocm $*"
   exit 1
 fi
 
@@ -19,7 +23,8 @@ bad="$(find "$root" "$root/deploy" "$root/scripts" -maxdepth 0 -perm /022
   dir="$(dirname "$root")"
   while [ "$dir" != "/" ]; do find "$dir" -maxdepth 0 -perm /022; dir="$(dirname "$dir")"; done)"
 if [ -n "$bad" ]; then
-  echo "Небезопасные права (запись для группы или всех) — исправьте (chmod go-w):" >&2
+  say "Небезопасные права (запись для группы или всех) — исправьте (chmod go-w):" \
+      "Unsafe permissions (writable by group or others), fix with chmod go-w:"
   echo "$bad" >&2
   exit 1
 fi

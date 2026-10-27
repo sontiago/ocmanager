@@ -8,3 +8,4 @@ ignore = ["S101"]  # assert в тестах
 
 [lint.per-file-ignores]
 "tests/*" = ["S"]
+"messages_en.py" = ["E501"]  # длинные тексты сообщений

@@ -9,8 +9,9 @@ import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from installer import backup, checks, config, systemd
+from installer import backup, checks, config, i18n, systemd
 from installer.checks import Finding, SystemInfo
+from installer.i18n import _
 from installer.prompts import AnswersPrompter, Prompter, TerminalPrompter
 from installer.runner import Net, NetError, Runner, SubprocessRunner, SystemNet
 from installer.steps import Context, State, StepError, build_steps, run_steps
@@ -19,13 +20,33 @@ TUNNEL_PORT = 8080
 
 
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="install.sh", description="Установка ocmanager")
-    parser.add_argument("--answers", metavar="FILE", help="ответы на вопросы из JSON-файла")
-    parser.add_argument("--dry-run", action="store_true", help="показать план, ничего не меняя")
+    chosen = _language_in(argv)
+    if chosen:
+        i18n.set_lang(chosen)  # справка тоже на выбранном языке
+    parser = argparse.ArgumentParser(prog="install.sh", description=_("Установка ocmanager"))
     parser.add_argument(
-        "--yes", action="store_true", help="на вопросы «да/нет» отвечать по умолчанию"
+        "--lang",
+        choices=i18n.LANGUAGES,
+        help=_("язык интерфейса (по умолчанию en; сохраняется для ocm)"),
+    )
+    parser.add_argument("--answers", metavar="FILE", help=_("ответы на вопросы из JSON-файла"))
+    parser.add_argument("--dry-run", action="store_true", help=_("показать план, ничего не меняя"))
+    parser.add_argument(
+        "--yes", action="store_true", help=_("на вопросы «да/нет» отвечать по умолчанию")
     )
     return parser.parse_args(argv)
+
+
+def _language_in(argv: Sequence[str] | None) -> str | None:
+    """`--lang ru` / `--lang=ru` до разбора остальных аргументов (нужен для текста справки)."""
+    items = list(argv or [])
+    for i, item in enumerate(items):
+        value = item.removeprefix("--lang=") if item.startswith("--lang=") else None
+        if item == "--lang" and i + 1 < len(items):
+            value = items[i + 1]
+        if value in i18n.LANGUAGES:
+            return value
+    return None
 
 
 class _AssumeDefaults:
@@ -67,13 +88,13 @@ def _look_at_the_server(
     prompter: Prompter, runner: Runner, net: Net, system: SystemInfo, state: State
 ) -> tuple[bool, bool]:
     """Проверки системы. Возвращает (ставить Docker, создать swap)."""
-    prompter.say("Проверяю сервер…")
+    prompter.say(_("Проверяю сервер…"))
     findings = checks.run_all(runner, net, system, our_containers_running=state.is_done("stack"))
     _show_findings(prompter.say, findings)
     blockers = checks.blockers(findings)
     if blockers:
         prompter.say("")
-        prompter.say("Установка невозможна, пока не исправлено:")
+        prompter.say(_("Установка невозможна, пока не исправлено:"))
         for f in blockers:
             prompter.say(f"  • {f.title}: {f.hint}")
         raise _Stop
@@ -82,19 +103,19 @@ def _look_at_the_server(
     if "docker_missing" in codes:
         want_docker = prompter.confirm(
             "install_docker",
-            "Docker не найден. Установить docker.io и docker-compose-v2 из репозитория системы?",
+            _("Docker не найден. Установить docker.io и docker-compose-v2 из репозитория системы?"),
             default=True,
         )
         if not want_docker:
             prompter.say(
-                "Без Docker продолжить нельзя. Установите его и запустите ./install.sh снова."
+                _("Без Docker продолжить нельзя. Установите его и запустите ./install.sh снова.")
             )
             raise _Stop
     want_swap = False
     if "swap_needed" in codes:
         want_swap = prompter.confirm(
             "create_swap",
-            "Памяти меньше 2 ГБ и нет swap: сборка может упасть. Создать swap 2 ГБ?",
+            _("Памяти меньше 2 ГБ и нет swap: сборка может упасть. Создать swap 2 ГБ?"),
             default=True,
         )
     return want_docker, want_swap
@@ -105,20 +126,22 @@ def _ask_bot(prompter: Prompter, net: Net) -> tuple[str, str]:
     while True:
         token = prompter.ask(
             "bot_token",
-            "Токен бота (его выдаёт @BotFather)",
+            _("Токен бота (его выдаёт @BotFather)"),
             validate=config.validate_bot_token,
         )
         try:
             return token, net.telegram_get_me(token)
         except NetError as exc:
             if not exc.unreachable:
-                prompter.say(f"{exc}. Проверьте токен и введите снова.")
+                prompter.say(_("{exc}. Проверьте токен и введите снова.", exc=exc))
                 continue
-            prompter.say("Не удалось связаться с Telegram, чтобы проверить токен.")
+            prompter.say(_("Не удалось связаться с Telegram, чтобы проверить токен."))
             if prompter.confirm(
                 "continue_without_bot_name",
-                "Продолжить без проверки (реферальная ссылка не будет собираться, "
-                "имя бота можно вписать в .env позже)?",
+                _(
+                    "Продолжить без проверки (реферальная ссылка не будет собираться, "
+                    "имя бота можно вписать в .env позже)?"
+                ),
                 default=True,
             ):
                 return token, ""
@@ -128,10 +151,10 @@ def _ask_values(prompter: Prompter, net: Net, state: State) -> dict[str, str]:
     remembered = state.answers()
     say = prompter.say
     say("")
-    say("Теперь несколько вопросов о вашем сервере.")
+    say(_("Теперь несколько вопросов о вашем сервере."))
     app = prompter.ask(
         "domain_app",
-        "Домен для Mini App и вебхуков (например app.example.com)",
+        _("Домен для Mini App и вебхуков (например app.example.com)"),
         default=remembered.get("domain_app"),
         validate=config.normalize_domain,
     )
@@ -143,19 +166,19 @@ def _ask_values(prompter: Prompter, net: Net, state: State) -> dict[str, str]:
 
     vpn = prompter.ask(
         "domain_vpn",
-        "Домен для VPN (другой, например vpn.example.com)",
+        _("Домен для VPN (другой, например vpn.example.com)"),
         default=remembered.get("domain_vpn"),
         validate=vpn_domain,
     )
     email = prompter.ask(
         "acme_email",
-        "Почта для уведомлений Let's Encrypt",
+        _("Почта для уведомлений Let's Encrypt"),
         default=remembered.get("acme_email"),
         validate=config.validate_email,
     )
     token, bot_name = _ask_bot(prompter, net)
     tribute = prompter.ask(
-        "tribute_key", "Ключ API Tribute (Enter — пропустить, вписать позже)", default=""
+        "tribute_key", _("Ключ API Tribute (Enter — пропустить, вписать позже)"), default=""
     )
     return {
         "DOMAIN_APP": app,
@@ -177,10 +200,12 @@ def _choose_env(
         usable = bool(existing.get("DOMAIN_APP") and existing.get("DOMAIN_VPN"))
         if usable and state.is_done("infra"):
             # Пароль Postgres уже зашит в созданный том: новый .env сделал бы базу недоступной.
-            prompter.say("Базы уже созданы, поэтому настройки (.env) остаются прежними.")
+            prompter.say(_("Базы уже созданы, поэтому настройки (.env) остаются прежними."))
             return existing, True
         if usable and prompter.confirm(
-            "use_existing_env", "Найден готовый .env. Использовать его без вопросов?", default=True
+            "use_existing_env",
+            _("Найден готовый .env. Использовать его без вопросов?"),
+            default=True,
         ):
             return existing, True
     return _ask_values(prompter, net, state), False
@@ -197,10 +222,12 @@ def _check_domains(prompter: Prompter, net: Net, values: dict[str, str]) -> None
         return
     if any(f.code == "dns_missing" for f in problems):
         prompter.say(
-            "Без A-записей сертификаты не выпустятся. Создайте их и запустите ./install.sh снова."
+            _(
+                "Без A-записей сертификаты не выпустятся. Создайте их и запустите ./install.sh снова."  # noqa: E501
+            )
         )
         raise _Stop
-    if not prompter.confirm("dns_continue", "Продолжить всё равно?", default=False):
+    if not prompter.confirm("dns_continue", _("Продолжить всё равно?"), default=False):
         raise _Stop
 
 
@@ -211,17 +238,17 @@ def _ask_admin(prompter: Prompter, state: State) -> tuple[str, str, bool]:
         return remembered.get("admin_user", "owner"), "", False
     user = prompter.ask(
         "admin_user",
-        "Логин администратора панели",
+        _("Логин администратора панели"),
         default=remembered.get("admin_user", "owner"),
         validate=config.validate_admin_username,
     )
     if prompter.confirm(
-        "generate_password", "Сгенерировать надёжный пароль администратора?", default=True
+        "generate_password", _("Сгенерировать надёжный пароль администратора?"), default=True
     ):
         return user, config.generate_password(), True
     password = prompter.ask_secret(
         "admin_password",
-        "Пароль администратора (не короче 12 символов)",
+        _("Пароль администратора (не короче 12 символов)"),
         validate=config.validate_admin_password,
     )
     return user, password, False
@@ -233,15 +260,17 @@ def _ask_backup(prompter: Prompter, state: State) -> tuple[bool, str]:
     remembered = state.answers()
     enabled = prompter.confirm(
         "backup_enable",
-        "Включить ежедневные резервные копии (шифруются, хранятся 14 последних)?",
+        _("Включить ежедневные резервные копии (шифруются, хранятся 14 последних)?"),
         default=remembered.get("backup_enabled", "no") == "yes",
     )
     if not enabled:
         return False, ""
     remote = prompter.ask(
         "backup_remote",
-        "Куда дополнительно копировать: пользователь@сервер:/путь (по ключу SSH) или каталог. "
-        "Enter — только на этом сервере",
+        _(
+            "Куда дополнительно копировать: пользователь@сервер:/путь (по ключу SSH) или каталог. "
+            "Enter — только на этом сервере"
+        ),
         default=remembered.get("backup_remote", ""),
         validate=backup.validate_remote,
     )
@@ -263,31 +292,37 @@ def _final_screen(
     say("")
     say("=" * 64)
     if dry_run:
-        say("Это был пробный запуск: ничего не установлено и не изменено.")
+        say(_("Это был пробный запуск: ничего не установлено и не изменено."))
         return
-    say("Готово. ocmanager установлен.")
+    say(_("Готово. ocmanager установлен."))
     say("=" * 64)
     say(f"  Mini App:    https://{app}")
-    say(f"  VPN-шлюз:    https://{vpn}")
+    say(_("  VPN-шлюз:    https://{vpn}", vpn=vpn))
     say("")
-    say("Админка открывается только через SSH-туннель. На своём компьютере выполните:")
-    say(f"  ssh -L {TUNNEL_PORT}:127.0.0.1:{TUNNEL_PORT} пользователь@{host}")
-    say(f"и откройте в браузере http://localhost:{TUNNEL_PORT}/")
-    say(f"Логин: {admin_user}")
+    say(_("Админка открывается только через SSH-туннель. На своём компьютере выполните:"))
+    say(f"  ssh -L {TUNNEL_PORT}:127.0.0.1:{TUNNEL_PORT} " + _("пользователь") + f"@{host}")
+    say(_("и откройте в браузере http://localhost:{port}/", port=TUNNEL_PORT))
+    say(_("Логин: {user}", user=admin_user))
     if generated_password:
-        say(f"Пароль: {generated_password}")
-        say("(пароль показан один раз — запишите его сейчас)")
+        say(_("Пароль: {password}", password=generated_password))
+        say(_("(пароль показан один раз — запишите его сейчас)"))
     say("")
-    say("Что сделать дальше:")
-    say(f"  1. @BotFather → /myapps → ваше приложение → Edit Web App URL → https://{app}")
-    say("  2. Напишите своему боту /whoami, он ответит числом. Затем на сервере:")
-    say("       ocm admin-chat <это число>      (так вы начнёте получать алерты)")
-    say("  3. В админке создайте тарифы; ключ Tribute впишите в deploy/.env (OCM_TRIBUTE_API_KEY).")
+    say(_("Что сделать дальше:"))
+    say(
+        _("  1. @BotFather → /myapps → ваше приложение → Edit Web App URL → https://{app}", app=app)
+    )
+    say(_("  2. Напишите своему боту /whoami, он ответит числом. Затем на сервере:"))
+    say(_("       ocm admin-chat <это число>      (так вы начнёте получать алерты)"))
+    say(
+        _(
+            "  3. В админке создайте тарифы; ключ Tribute впишите в deploy/.env (OCM_TRIBUTE_API_KEY)."  # noqa: E501
+        )
+    )
     for note in notes:
         say("")
         say(note)
     say("")
-    say("Состояние сервера: ocm status. Справка: deploy/INSTALL.md")
+    say(_("Состояние сервера: ocm status. Справка: deploy/INSTALL.ru.md"))
 
 
 def main(
@@ -314,9 +349,13 @@ def main(
     root = root or Path(__file__).resolve().parents[2]
     system = system or SystemInfo.read(root)
     state = State(root / "deploy" / ".install-state")
+    if not _language_in(argv):
+        chosen = i18n.from_env() or state.answers().get("lang")
+        if chosen in i18n.LANGUAGES:
+            i18n.set_lang(chosen)
     say = prompter.say
 
-    say("ocmanager: установка")
+    say(_("ocmanager: установка"))
     say("")
     try:
         want_docker, want_swap = _look_at_the_server(prompter, runner, net, system, state)
@@ -334,6 +373,7 @@ def main(
             domain_vpn=values["DOMAIN_VPN"],
             acme_email=values["ACME_EMAIL"],
             admin_user=admin_user,
+            lang=i18n.get_lang(),
             backup_enabled="yes" if want_backup else "no",
             backup_remote=backup_remote,
         )
@@ -367,9 +407,13 @@ def main(
         run_steps(ctx, build_steps())
     except StepError as exc:
         say("")
-        say(f"Установка остановилась. {exc}")
+        say(_("Установка остановилась. {exc}", exc=exc))
         say("")
-        say("Исправьте причину и запустите ./install.sh снова: установка продолжится с этого шага.")
+        say(
+            _(
+                "Исправьте причину и запустите ./install.sh снова: установка продолжится с этого шага."  # noqa: E501
+            )
+        )
         return 1
     _final_screen(
         say,

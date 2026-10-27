@@ -5,6 +5,8 @@ import getpass
 from collections.abc import Callable
 from typing import Any, Protocol
 
+from installer.i18n import _
+
 Validator = Callable[[str], str]
 
 YES = {"y", "yes", "д", "да"}
@@ -53,7 +55,7 @@ class TerminalPrompter:
             raw = self._input(f"{text}{suffix}: ").strip()
             if raw == "":
                 if default is None:
-                    self._out("Нужен ответ.")
+                    self._out(_("Нужен ответ."))
                     continue
                 raw = default
             try:
@@ -70,7 +72,7 @@ class TerminalPrompter:
                 self._out(str(exc))
 
     def confirm(self, key: str, text: str, *, default: bool = True) -> bool:
-        hint = "Д/н" if default else "д/Н"
+        hint = _("Д/н") if default else _("д/Н")
         while True:
             raw = self._input(f"{text} [{hint}]: ").strip()
             if raw == "":
@@ -78,7 +80,7 @@ class TerminalPrompter:
             parsed = parse_bool(raw)
             if parsed is not None:
                 return parsed
-            self._out("Ответьте «да» или «нет».")
+            self._out(_("Ответьте «да» или «нет»."))
 
 
 class AnswersPrompter:
@@ -95,7 +97,7 @@ class AnswersPrompter:
         if key in self._answers:
             return self._answers[key]
         if default is None:
-            raise KeyError(f"в файле ответов нет ключа {key}")
+            raise KeyError(_("в файле ответов нет ключа {key}", key=key))
         return default
 
     def ask(

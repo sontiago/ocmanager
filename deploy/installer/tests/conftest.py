@@ -12,6 +12,16 @@ from installer.runner import Result as _Result
 from installer.runner import SubprocessRunner as _SubprocessRunner
 
 
+@pytest.fixture(autouse=True)
+def russian_interface():  # type: ignore[no-untyped-def]
+    """Тесты проверяют русские тексты; английский по умолчанию проверяет test_i18n.py."""
+    from installer import i18n
+
+    i18n.set_lang("ru")
+    yield
+    i18n.set_lang(i18n.DEFAULT)
+
+
 @pytest.fixture
 def runner() -> FakeRunner:
     return FakeRunner()

@@ -5,9 +5,11 @@
   </picture>
 </p>
 
+<p align="center"><b>English</b> · <a href="README.ru.md">Русский</a></p>
+
 <p align="center">
-  <b>Свой VPN-сервис за одну команду</b><br>
-  Telegram Mini App, подписки, ключи и админка поверх ocserv (OpenConnect / AnyConnect)
+  <b>Your own VPN service in one command</b><br>
+  Telegram Mini App, subscriptions, keys and an admin panel on top of ocserv (OpenConnect / AnyConnect)
 </p>
 
 <p align="center">
@@ -16,7 +18,7 @@
   <a href="https://github.com/sontiago/ocmanager/actions/workflows/tma.yml"><img src="https://github.com/sontiago/ocmanager/actions/workflows/tma.yml/badge.svg" alt="tma"></a>
   <a href="https://github.com/sontiago/ocmanager/actions/workflows/installer.yml"><img src="https://github.com/sontiago/ocmanager/actions/workflows/installer.yml/badge.svg" alt="installer"></a>
   <br>
-  <img src="https://img.shields.io/badge/версия-1.0.0-blue" alt="версия 1.0.0">
+  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="version 1.0.0">
   <img src="https://img.shields.io/badge/Python-3.12-3776ab?logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black" alt="React 19">
@@ -25,66 +27,68 @@
   <img src="https://img.shields.io/badge/Debian%2012%2B%20%7C%20Ubuntu%2022.04%2B-supported-a81d33?logo=debian&logoColor=white" alt="OS">
 </p>
 
-## Возможности
+## Features
 
-- **Mini App в Telegram:** тарифы, оплата (Tribute), выдача ключей устройствам, промокоды и рефералы.
-- **Админка:** клиенты, подписки, платежи, статистика, квоты трафика, алерты о злоупотреблении, управление нодой.
-- **Сертификатная авторизация:** собственный CA, CRL, один ключ — одно устройство.
-- **Маршруты мимо VPN:** адреса, которые клиенты открывают напрямую, настраиваются в админке.
-- **Установка мастером:** `./install.sh` задаёт вопросы и поднимает всё, включая сертификаты Let's Encrypt.
-- **Обслуживание одной командой:** `ocm` — статус, бэкап и восстановление (по желанию), обновление и откат.
+- **Telegram Mini App:** plans, payments (Tribute), device keys, promo codes and referrals.
+- **Admin panel:** clients, subscriptions, payments, statistics, traffic quotas, abuse alerts, node management.
+- **Certificate authentication:** its own CA and CRL, one key per device.
+- **Routes that bypass the VPN:** addresses clients open directly are configured in the admin panel.
+- **Wizard installation:** `./install.sh` asks the questions and sets everything up, including Let's Encrypt certificates.
+- **One-command maintenance:** `ocm` for status, backup and restore (optional), update and rollback.
 
-## Быстрый старт
+## Quick start
 
-Нужны: сервер Debian 12+ или Ubuntu 22.04+, два домена с A-записью на его IP, открытые порты 80/tcp, 443/tcp и 443/udp, токен бота из [@BotFather](https://t.me/BotFather).
+You need: a Debian 12+ or Ubuntu 22.04+ server, two domains with A records pointing to its IP, open ports 80/tcp, 443/tcp and 443/udp, and a bot token from [@BotFather](https://t.me/BotFather).
 
 ```bash
 git clone https://github.com/sontiago/ocmanager.git && cd ocmanager
 sudo ./install.sh
 ```
 
-Дальше мастер всё спросит сам. Подробности и что делать после установки: **[deploy/INSTALL.md](deploy/INSTALL.md)**.
+The wizard asks everything it needs (English by default; add `--lang ru` for Russian, the choice is remembered for `ocm`). Details and what to do after the installation: **[deploy/INSTALL.md](deploy/INSTALL.md)**.
 
-## Команда `ocm`
+## The `ocm` command
 
-| Команда | Что делает |
+| Command | What it does |
 |---|---|
-| `ocm status` | проверка состояния всех компонентов |
-| `ocm logs [сервис] [-f]` | журналы |
-| `ocm update` / `ocm rollback` | обновление и возврат на прежнюю версию |
-| `ocm backup-enable` / `ocm backup` / `ocm restore` | зашифрованные резервные копии |
-| `ocm admin-chat <id>` / `ocm admin-password <логин>` | алерты в Telegram и пароль админа |
+| `ocm status` | health check of all components |
+| `ocm logs [service] [-f]` | logs |
+| `ocm update` / `ocm rollback` | update and return to the previous version |
+| `ocm backup-enable` / `ocm backup` / `ocm restore` | encrypted backups |
+| `ocm admin-chat <id>` / `ocm admin-password <login>` | Telegram alerts and the admin password |
 
-## Как это устроено
+## How it works
 
 ```mermaid
 flowchart LR
-    C([Клиент VPN]) -- 443 TCP/UDP --> N[nginx] --> O[ocserv]
+    C([VPN client]) -- 443 TCP/UDP --> N[nginx] --> O[ocserv]
     T([Telegram]) --> W[Caddy] --> P[api-public]
     P --> DB[(PostgreSQL)]
     A[api-admin<br/>127.0.0.1:8080] --> DB
     WK[worker] --> DB
-    WK -- allowed.list, CRL, маршруты --> O
+    WK -- allowed.list, CRL, routes --> O
     B[bot] --> DB
 ```
 
-Один сервер, один набор сервисов в Docker Compose. Мультитенантности нет: каждая установка независима.
-Админка доступна только через SSH-туннель.
+One server, one set of services in Docker Compose. There is no multi-tenancy: every installation is independent.
+The admin panel is reachable only through an SSH tunnel.
 
-## Разработка
+## Development
 
 ```bash
-cd backend && make dev-up && make check     # Postgres + Redis, линтер, mypy, тесты
-cd frontend/admin && npm ci && npm test     # админка (то же для frontend/tma)
+cd backend && make dev-up && make check     # Postgres + Redis, linter, mypy, tests
+cd frontend/admin && npm ci && npm test     # admin panel (same for frontend/tma)
 ```
 
-## Структура
+## Layout
 
-| Каталог | Что внутри |
+| Directory | Contents |
 |---|---|
-| `backend/` | FastAPI, бот, воркер, CLI, миграции |
+| `backend/` | FastAPI, bot, worker, CLI, migrations |
 | `frontend/tma/` | Telegram Mini App (React) |
-| `frontend/admin/` | веб-админка (React) |
-| `ocserv/` | образ ноды ocserv |
-| `deploy/` | Docker Compose, установщик, `ocm`, [инструкция](deploy/INSTALL.md), [техсправка](deploy/README.md) |
-| `scripts/` | `doctor.sh` и проверки конфигов |
+| `frontend/admin/` | web admin panel (React) |
+| `ocserv/` | ocserv node image |
+| `deploy/` | Docker Compose, installer, `ocm`, [guide](deploy/INSTALL.md), [technical reference](deploy/README.md) |
+| `scripts/` | `doctor.sh` and config checks |
+
+Documentation (architecture, data flows, per-project details) is in [docs/](docs/README.md) and is written in Russian.

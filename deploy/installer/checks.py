@@ -10,13 +10,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
+from installer.i18n import _
 from installer.runner import CommandError, Net, Runner
 
 GIB = 1024**3
 MIN_FREE_BYTES = 8 * GIB
 SWAP_BELOW_BYTES = 2 * GIB
 PORTS = (("80", "tcp"), ("443", "tcp"), ("443", "udp"))
-SUPPORTED = "Debian 12+ или Ubuntu 22.04+"
+
+
+def _supported() -> str:
+    return _("Debian 12+ или Ubuntu 22.04+")
 
 
 class Finding(NamedTuple):
@@ -54,31 +58,31 @@ def check_os(os_release_text: str) -> Finding:
     supported = (distro == "debian" and version >= (12,)) or (
         distro == "ubuntu" and version >= (22, 4)
     )
-    title = "Операционная система поддерживается"
+    title = _("Операционная система поддерживается")
     if supported:
         return ok(title, "os_ok")
-    name = info.get("PRETTY_NAME") or distro or "неизвестная система"
+    name = info.get("PRETTY_NAME") or distro or _("неизвестная система")
     return Finding(
         False,
         title,
-        f"Здесь {name}. Установщик рассчитан на {SUPPORTED}.",
+        _("Здесь {name}. Установщик рассчитан на {supported}.", name=name, supported=_supported()),
         True,
         "os_unsupported",
     )
 
 
 def check_root(euid: int) -> Finding:
-    title = "Запущено от root"
+    title = _("Запущено от root")
     if euid == 0:
         return ok(title, "root_ok")
-    return Finding(False, title, "Запустите через sudo: sudo ./install.sh", True, "not_root")
+    return Finding(False, title, _("Запустите через sudo: sudo ./install.sh"), True, "not_root")
 
 
 def check_python(version: tuple[int, ...]) -> Finding:
-    title = "Python 3.10 или новее"
+    title = _("Python 3.10 или новее")
     if version[:2] >= (3, 10):
         return ok(title, "python_ok")
-    return Finding(False, title, "Установите python3 версии 3.10 или новее.", True, "python_old")
+    return Finding(False, title, _("Установите python3 версии 3.10 или новее."), True, "python_old")
 
 
 def _meminfo_bytes(text: str, key: str) -> int:
@@ -94,28 +98,33 @@ def needs_swap(meminfo: str) -> bool:
 
 
 def check_memory(meminfo: str) -> Finding:
-    title = "Достаточно памяти для сборки"
+    title = _("Достаточно памяти для сборки")
     if not needs_swap(meminfo):
         return ok(title, "memory_ok")
     return Finding(
         False,
         title,
-        "Памяти меньше 2 ГБ и нет swap: сборка образов может упасть. "
-        "Мастер предложит создать swap 2 ГБ.",
+        _(
+            "Памяти меньше 2 ГБ и нет swap: сборка образов может упасть. "
+            "Мастер предложит создать swap 2 ГБ."
+        ),
         False,
         "swap_needed",
     )
 
 
 def check_disk(free_bytes: int) -> Finding:
-    title = "Достаточно места на диске"
+    title = _("Достаточно места на диске")
     if free_bytes >= MIN_FREE_BYTES:
         return ok(title, "disk_ok")
     free_gb = free_bytes / GIB
     return Finding(
         False,
         title,
-        f"Свободно {free_gb:.1f} ГБ, нужно не меньше 8 ГБ (образы, базы, резервные копии).",
+        _(
+            "Свободно {free_gb} ГБ, нужно не меньше 8 ГБ (образы, базы, резервные копии).",
+            free_gb=f"{free_gb:.1f}",
+        ),
         True,
         "disk_low",
     )
@@ -148,9 +157,11 @@ def check_ports(runner: Runner, *, our_containers_running: bool = False) -> list
             return [
                 Finding(
                     False,
-                    "Проверка занятых портов",
-                    "Не удалось выполнить ss (пакет iproute2). Убедитесь сами, что порты "
-                    "80/tcp, 443/tcp и 443/udp свободны.",
+                    _("Проверка занятых портов"),
+                    _(
+                        "Не удалось выполнить ss (пакет iproute2). Убедитесь сами, что порты "
+                        "80/tcp, 443/tcp и 443/udp свободны."
+                    ),
                     False,
                     "ports_unchecked",
                 )
@@ -158,17 +169,17 @@ def check_ports(runner: Runner, *, our_containers_running: bool = False) -> list
         outputs[proto] = result.stdout
     findings: list[Finding] = []
     for port, proto in PORTS:
-        title = f"Порт {port}/{proto} свободен"
+        title = _("Порт {port}/{proto} свободен", port=port, proto=proto)
         owners = _listeners(outputs[proto], port)
         if not owners or our_containers_running:
             findings.append(ok(title, f"port_{port}_{proto}_ok"))
             continue
-        who = next((name for name in owners if name), "неизвестный процесс")
+        who = next((name for name in owners if name), _("неизвестный процесс"))
         findings.append(
             Finding(
                 False,
-                f"Порт {port}/{proto} занят",
-                f"Его держит {who}. Остановите его: Caddy должен занять 80 и 443.",
+                _("Порт {port}/{proto} занят", port=port, proto=proto),
+                _("Его держит {who}. Остановите его: Caddy должен занять 80 и 443.", who=who),
                 True,
                 f"port_{port}_{proto}_busy",
             )
@@ -183,16 +194,18 @@ def check_docker(runner: Runner) -> Finding:
         if missing:
             return Finding(
                 False,
-                "Docker установлен",
-                "Docker не найден. Мастер может установить его (docker.io и docker-compose-v2 "
-                "из репозитория дистрибутива) — он спросит разрешения.",
+                _("Docker установлен"),
+                _(
+                    "Docker не найден. Мастер может установить его (docker.io и docker-compose-v2 "
+                    "из репозитория дистрибутива) — он спросит разрешения."
+                ),
                 False,
                 "docker_missing",
             )
         return Finding(
             False,
-            "Docker запущен",
-            "Docker установлен, но не отвечает. Запустите его: sudo systemctl start docker",
+            _("Docker запущен"),
+            _("Docker установлен, но не отвечает. Запустите его: sudo systemctl start docker"),
             True,
             "docker_down",
         )
@@ -200,8 +213,11 @@ def check_docker(runner: Runner) -> Finding:
     if major < (24,):
         return Finding(
             False,
-            "Docker 24 или новее",
-            f"Установлен Docker {server.stdout.strip()}, нужен 24+. Обновите пакеты docker.",
+            _("Docker 24 или новее"),
+            _(
+                "Установлен Docker {version}, нужен 24+. Обновите пакеты docker.",
+                version=server.stdout.strip(),
+            ),
             True,
             "docker_old",
         )
@@ -209,24 +225,29 @@ def check_docker(runner: Runner) -> Finding:
     if compose.code != 0:
         return Finding(
             False,
-            "Docker Compose v2",
-            "Нужен Compose v2 (команда «docker compose»). "
-            "На Ubuntu: apt-get install docker-compose-v2",
+            _("Docker Compose v2"),
+            _(
+                "Нужен Compose v2 (команда «docker compose»). "
+                "На Ubuntu: apt-get install docker-compose-v2"
+            ),
             True,
             "compose_missing",
         )
-    return ok("Docker и Compose v2 установлены", "docker_ok")
+    return ok(_("Docker и Compose v2 установлены"), "docker_ok")
 
 
 def check_dns(net: Net, domain: str, public_ip: str | None) -> Finding:
-    title = f"Домен {domain} указывает на этот сервер"
+    title = _("Домен {domain} указывает на этот сервер", domain=domain)
     records = net.resolve_a(domain)
     if not records:
         return Finding(
             False,
             title,
-            f"У {domain} нет A-записи. Создайте её у регистратора домена с адресом этого "
-            "сервера и подождите несколько минут.",
+            _(
+                "У {domain} нет A-записи. Создайте её у регистратора домена с адресом этого "
+                "сервера и подождите несколько минут.",
+                domain=domain,
+            ),
             True,
             "dns_missing",
         )
@@ -234,8 +255,12 @@ def check_dns(net: Net, domain: str, public_ip: str | None) -> Finding:
         return Finding(
             False,
             title,
-            f"Не удалось определить внешний IP сервера. Убедитесь сами, что {domain} "
-            f"указывает на него (сейчас: {', '.join(records)}).",
+            _(
+                "Не удалось определить внешний IP сервера. Убедитесь сами, что {domain} "
+                "указывает на него (сейчас: {records}).",
+                domain=domain,
+                records=", ".join(records),
+            ),
             False,
             "dns_unverified",
         )
@@ -244,8 +269,13 @@ def check_dns(net: Net, domain: str, public_ip: str | None) -> Finding:
     return Finding(
         False,
         title,
-        f"{domain} указывает на {', '.join(records)}, а этот сервер — {public_ip}. "
-        "Поправьте A-запись и подождите несколько минут.",
+        _(
+            "{domain} указывает на {records}, а этот сервер — {ip}. "
+            "Поправьте A-запись и подождите несколько минут.",
+            domain=domain,
+            records=", ".join(records),
+            ip=public_ip,
+        ),
         True,
         "dns_mismatch",
     )
