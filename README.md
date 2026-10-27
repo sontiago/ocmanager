@@ -16,6 +16,7 @@
   <a href="https://github.com/sontiago/ocmanager/actions/workflows/tma.yml"><img src="https://github.com/sontiago/ocmanager/actions/workflows/tma.yml/badge.svg" alt="tma"></a>
   <a href="https://github.com/sontiago/ocmanager/actions/workflows/installer.yml"><img src="https://github.com/sontiago/ocmanager/actions/workflows/installer.yml/badge.svg" alt="installer"></a>
   <br>
+  <img src="https://img.shields.io/badge/версия-1.0.0-blue" alt="версия 1.0.0">
   <img src="https://img.shields.io/badge/Python-3.12-3776ab?logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black" alt="React 19">
