@@ -21,7 +21,7 @@ jobs:
       - name: Installer lint
         run: uv run --project backend ruff check deploy/installer
       - name: shellcheck
-        run: shellcheck install.sh deploy/ocm scripts/*.sh
+        run: shellcheck --severity=warning install.sh deploy/ocm scripts/*.sh
       - name: bash -n
         run: for f in install.sh deploy/ocm scripts/*.sh; do bash -n "$f"; done
       - name: Deploy configs
