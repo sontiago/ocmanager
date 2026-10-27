@@ -14,6 +14,7 @@ RUN apt-get update \
 COPY ocserv.conf.tmpl /etc/ocserv/ocserv.conf.tmpl
 COPY --chmod=0755 hooks/connect.sh hooks/disconnect.sh /etc/ocserv/hooks/
 COPY --chmod=0755 entrypoint.sh /entrypoint.sh
+COPY --chmod=0755 render-conf.sh /usr/local/bin/ocm-render-conf
 COPY --chmod=0755 healthcheck.sh /healthcheck.sh
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]

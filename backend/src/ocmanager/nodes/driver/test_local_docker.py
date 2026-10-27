@@ -196,3 +196,31 @@ async def test_files_live_in_state_dir(driver: LocalDockerDriver, tmp_path: Path
     assert await driver.read_crl() is None
     await driver.publish_allowlist(["c2-d1", "c1-d1"])
     assert (tmp_path / "allowed.list").read_bytes() == b"c1-d1\nc2-d1\n"
+
+
+async def test_publish_routes_rebuilds_the_conf_and_reloads_when_running(
+    sh: FakeShell, driver: LocalDockerDriver, tmp_path: Path
+) -> None:
+    sh.reply(("docker", "inspect", "-f", "{{.State.Status}}", "ocm-ocserv"), out="running\n")
+    await driver.publish_routes(["85.142.247.47"])
+    assert "no-route = 85.142.247.47/32" in (tmp_path / "default-user.conf").read_text()
+    assert sh.calls[-2:] == [("docker", "exec", "ocm-ocserv", "ocm-render-conf"), (*EXEC, "reload")]
+
+
+async def test_publish_routes_on_a_stopped_node_only_writes_the_file(
+    sh: FakeShell, driver: LocalDockerDriver, tmp_path: Path
+) -> None:
+    sh.reply(("docker", "inspect", "-f", "{{.State.Status}}", "ocm-ocserv"), out="exited\n")
+    await driver.publish_routes(["85.142.247.47"])
+    assert (tmp_path / "default-user.conf").exists()
+    assert all("ocm-render-conf" not in call for call in sh.calls)
+
+
+async def test_a_failing_render_is_a_node_error_but_the_file_stays(
+    sh: FakeShell, driver: LocalDockerDriver, tmp_path: Path
+) -> None:
+    sh.reply(("docker", "inspect", "-f", "{{.State.Status}}", "ocm-ocserv"), out="running\n")
+    sh.reply(("docker", "exec", "ocm-ocserv", "ocm-render-conf"), code=1, err="bad conf")
+    with pytest.raises(NodeUnreachable):
+        await driver.publish_routes(["85.142.247.47"])
+    assert (tmp_path / "default-user.conf").exists()

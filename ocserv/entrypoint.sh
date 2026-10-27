@@ -13,8 +13,7 @@ die() {
 
 : "${OCSERV_SERVER_CERT:?}" "${OCSERV_SERVER_KEY:?}" "${OCSERV_IPV4_NETWORK:?}"
 : "${OCSERV_CAMOUFLAGE_SECRET:?}" "${OCM_INTERNAL_TOKEN:?}" "${OCM_SESSION_END_URL:?}"
-export OCSERV_MAX_BAN_SCORE="${OCSERV_MAX_BAN_SCORE:-100}"
-export OCSERV_PROXY_PROTOCOL="${OCSERV_PROXY_PROTOCOL:-false}"
+OCSERV_PROXY_PROTOCOL="${OCSERV_PROXY_PROTOCOL:-false}"
 case "$OCSERV_PROXY_PROTOCOL" in true | false) ;; *) die "OCSERV_PROXY_PROTOCOL: true или false" ;; esac
 
 # В проде серверный сертификат выпускает Caddy и он появляется спустя минуты после старта.
@@ -42,11 +41,6 @@ done
 # Пустой allowed.list = всем отказ: безопасный дефолт.
 [ -e "$STATE_DIR/allowed.list" ] || : >"$STATE_DIR/allowed.list"
 
-# Маршруты мимо VPN: файл должен существовать, иначе ocserv ругается при каждом входе.
-# Каталог может быть смонтирован только на чтение — тогда файл создаст панель.
-# Подоболочка: сбой перенаправления у встроенной «:» в dash завершил бы сам entrypoint.
-[ -e "$STATE_DIR/default-user.conf" ] || ( : >"$STATE_DIR/default-user.conf" ) 2>/dev/null || true
-
 # Секреты для хуков — в файлах (решение №12): окружение контейнера
 # до скриптов ocserv не доходит.
 mkdir -p "$RUNTIME_DIR"
@@ -60,9 +54,8 @@ SESSION_END_URL='$OCM_SESSION_END_URL'
 INTERNAL_TOKEN_FILE='$RUNTIME_DIR/internal_token'
 ENV
 
-# Явный список: иначе envsubst съест любой другой $ в конфиге.
-envsubst '${OCSERV_SERVER_CERT} ${OCSERV_SERVER_KEY} ${OCSERV_IPV4_NETWORK} ${OCSERV_CAMOUFLAGE_SECRET} ${OCSERV_MAX_BAN_SCORE} ${OCSERV_PROXY_PROTOCOL}' \
-    </etc/ocserv/ocserv.conf.tmpl >/etc/ocserv/ocserv.conf
+# Шаблон + маршруты мимо VPN из админки (тот же скрипт панель вызывает при смене правил).
+ocm-render-conf
 
 # NAT для всей подсети клиентов; -C делает правило идемпотентным.
 iptables -t nat -C POSTROUTING -s "$OCSERV_IPV4_NETWORK" -j MASQUERADE 2>/dev/null ||
