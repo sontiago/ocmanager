@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/logo-dark.svg">
+    <img src="../assets/logo.svg" alt="ocmanager" height="48">
+  </picture>
+</p>
+
 # ocmanager: установка и обслуживание
 
 Инструкция для владельца сервера. Нужны базовые навыки Linux: SSH, `sudo`, DNS.

@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/logo-dark.svg">
+    <img src="../assets/logo.svg" alt="ocmanager" height="40">
+  </picture>
+</p>
+
 # Развёртывание ocmanager: техническая справка
 
 Обычная установка — одной командой `sudo ./install.sh`, см. [INSTALL.md](INSTALL.md). Ниже — устройство стека
